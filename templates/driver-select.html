@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <title>Seleziona pilota - Kart Performance Monitor</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header>
+    <div class="container header-content">
+      <div class="header-left">
+        <h1>Kart Performance Monitor</h1>
+        <p id="track-name" class="subtitle">Caricamento pista...</p>
+      </div>
+      <div class="header-right">
+        <div class="status-badge status-good">
+          Server: <span class="status-text">Online</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="card">
+      <div class="card-header">
+        <h2>Seleziona pilota</h2>
+      </div>
+      <div class="card-body">
+        <div id="drivers-grid" class="drivers-grid">
+          <!-- Piloti inseriti via JavaScript -->
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-header">
+        <h2>Debug pista</h2>
+      </div>
+      <div class="card-body">
+        <p>Visualizza start/finish, settori e pit lane su una mappa.</p>
+        <a href="/debug" class="btn btn-secondary">Apri debug pista</a>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    (function() {
+      const trackName = "{{ track.name | default('Pista non configurata') }}";
+      document.getElementById("track-name").textContent = "Pista: " + trackName;
+
+      const drivers = {{ drivers | tojson }};
+
+      const grid = document.getElementById("drivers-grid");
+
+      if (!drivers || drivers.length === 0) {
+        grid.innerHTML = "<p>Nessun pilota configurato. Controlla config/drivers.yaml.</p>";
+        return;
+      }
+
+      drivers.forEach(function(driver) {
+        const card = document.createElement("div");
+        card.className = "driver-card";
+
+        const title = document.createElement("h3");
+        title.className = "driver-name";
+        title.textContent = driver.name || "Pilota senza nome";
+
+        const details = document.createElement("p");
+        details.className = "driver-details";
+        details.textContent = "ID: " + (driver.id || "—");
+
+        card.appendChild(title);
+        card.appendChild(details);
+
+        card.addEventListener("click", function() {
+          const url = "/dashboard?driver=" + encodeURIComponent(driver.id);
+          window.location.href = url;
+        });
+
+        grid.appendChild(card);
+      });
+    })();
+  </script>
+</body>
+</html>

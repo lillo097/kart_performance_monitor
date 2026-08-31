@@ -1,0 +1,4114 @@
+==================== app.py ====================
+import json
+import math
+import threading
+import time
+from copy import deepcopy
+from datetime import datetime
+from pathlib import Path
+
+import paho.mqtt.client as mqtt
+import yaml
+from flask import Flask, jsonify, render_template, request
+
+
+BASE_DIR = Path(__file__).resolve().parent
+
+
+def load_yaml(relative_path):
+    with (BASE_DIR / relative_path).open("r", encoding="utf-8") as file:
+        return yaml.safe_load(file) or {}
+
+
+APP_CONFIG = load_yaml("config/app.yaml")
+DRIVERS_CONFIG = load_yaml("config/drivers.yaml")
+TRACK_CONFIG = load_yaml("config/tracks/prima-pista.yaml")
+
+SERVER_CONFIG = APP_CONFIG["server"]
+MQTT_CONFIG = APP_CONFIG["mqtt"]
+SESSION_CONFIG = APP_CONFIG["session"]
+DASHBOARD_CONFIG = APP_CONFIG["dashboard"]
+FILTER_CONFIG = APP_CONFIG["telemetry_filter"]
+
+SESSIONS_DIR = BASE_DIR / SESSION_CONFIG["sessions_dir"]
+CURRENT_DIR = BASE_DIR / SESSION_CONFIG["current_dir"]
+SESSIONS_DIR.mkdir(parents=True, exist_ok=True)
+CURRENT_DIR.mkdir(parents=True, exist_ok=True)
+
+AUTOSAVE_PATH = CURRENT_DIR / "active_session.json"
+EVENTS_PATH = CURRENT_DIR / "active_events.jsonl"
+
+app = Flask(__name__, template_folder="templates", static_folder="static")
+lock = threading.RLock()
+
+drivers = DRIVERS_CONFIG.get("drivers", [])
+
+latest_gps = {
+    "latitude": 0.0,
+    "longitude": 0.0,
+    "speed_kmph": 0.0,
+    "satellites_used": 0,
+    "fix_valid": False,
+    "fix_quality": 0,
+    "fix_type": 0,
+    "hdop": None,
+}
+
+runtime = {
+    "mqtt_connected": False,
+    "mqtt_last_message_at": None,
+    "mqtt_last_message_epoch": 0.0,
+    "mqtt_topic": None,
+    "mqtt_messages": 0,
+    "last_error": None,
+}
+
+session = {
+    "status": "idle",
+    "driver": None,
+    "started_at": None,
+    "paused_at": None,
+    "paused_total_s": 0.0,
+    "ended_at": None,
+    "telemetry_raw": [],
+    "track_points": [],
+    "events": [],
+
+    # Timing
+    "current_lap_number": 0,
+    "current_lap_start_index": None,
+    "current_lap_start_epoch": None,
+    "last_crossing_epoch": None,
+    "last_sector_index": -1,
+    "current_sector_index": None,
+    "sector_started_epoch": None,
+    "current_lap_sectors_s": [],
+    "last_completed_lap_time_s": None,
+    "last_completed_lap_at_epoch": None,
+    "sector_start_epochs": [],
+    "laps": [],
+    "best_lap_time_s": None,
+    "in_pit_lane": False,
+
+    # Stato posizione e sequenza di pista.
+    # pitlane -> warmup -> on_track
+    "track_state": "pitlane",
+    "previous_track_state": None,
+    "warmup_started_at": None,
+    "warmup_sector_seen": False,
+    "warmup_finish_seen": False,
+    "pit_confirm_counter": 0,
+    "track_confirm_counter": 0,
+}
+
+last_autosave_epoch = 0.0
+
+
+def now_local():
+    return datetime.now().astimezone()
+
+
+def now_iso():
+    return now_local().isoformat(timespec="milliseconds")
+
+
+def safe_float(value, default=0.0):
+    try:
+        if value is None:
+            return default
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def safe_int(value, default=0):
+    try:
+        if value is None:
+            return default
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def get_driver(driver_id):
+    for driver in drivers:
+        if driver["id"] == driver_id:
+            return driver
+    return None
+
+
+def append_event(event_name, **data):
+    event = {
+        "event": event_name,
+        "at": now_iso(),
+        **data,
+    }
+
+    session["events"].append(event)
+
+    with EVENTS_PATH.open("a", encoding="utf-8") as file:
+        file.write(json.dumps(event, ensure_ascii=False) + "\n")
+
+
+def session_elapsed_s():
+    if session["status"] == "idle" or not session["started_at"]:
+        return 0.0
+
+    started = datetime.fromisoformat(session["started_at"])
+    end = datetime.fromisoformat(session["ended_at"]) if session["ended_at"] else now_local()
+
+    elapsed = (end - started).total_seconds() - session["paused_total_s"]
+
+    if session["status"] == "paused" and session["paused_at"]:
+        paused_at = datetime.fromisoformat(session["paused_at"])
+        elapsed -= (now_local() - paused_at).total_seconds()
+
+    return max(0.0, elapsed)
+
+
+def haversine_distance_m(lat_a, lon_a, lat_b, lon_b):
+    radius_m = 6371000.0
+
+    lat_a_rad = math.radians(lat_a)
+    lon_a_rad = math.radians(lon_a)
+    lat_b_rad = math.radians(lat_b)
+    lon_b_rad = math.radians(lon_b)
+
+    delta_lat = lat_b_rad - lat_a_rad
+    delta_lon = lon_b_rad - lon_a_rad
+
+    a = (
+        math.sin(delta_lat / 2.0) ** 2
+        + math.cos(lat_a_rad)
+        * math.cos(lat_b_rad)
+        * math.sin(delta_lon / 2.0) ** 2
+    )
+
+    return 2.0 * radius_m * math.asin(math.sqrt(a))
+
+
+def project_point_along_heading(lat, lon, heading_deg, distance_m):
+    R = 6371000.0
+    heading_rad = math.radians(heading_deg)
+
+    lat_rad = math.radians(lat)
+    lon_rad = math.radians(lon)
+
+    d = distance_m / R
+
+    lat2_rad = math.asin(
+        math.sin(lat_rad) * math.cos(d)
+        + math.cos(lat_rad) * math.sin(d) * math.cos(heading_rad)
+    )
+
+    lon2_rad = lon_rad + math.atan2(
+        math.sin(heading_rad) * math.sin(d) * math.cos(lat_rad),
+        math.cos(d) - math.sin(lat_rad) * math.sin(lat2_rad)
+    )
+
+    return math.degrees(lat2_rad), math.degrees(lon2_rad)
+
+
+def point_to_segment_distance_m(lat, lon, lat1, lon1, lat2, lon2):
+    # Distanza punto-segmento approssimata in metri
+    d1 = haversine_distance_m(lat, lon, lat1, lon1)
+    d2 = haversine_distance_m(lat, lon, lat2, lon2)
+    seg_len = haversine_distance_m(lat1, lon1, lat2, lon2)
+
+    if seg_len == 0:
+        return d1
+
+    # Proiezione approssimata
+    t = max(0, min(1, (d1**2 + seg_len**2 - d2**2) / (2 * seg_len**2)))
+    proj_lat, proj_lon = project_point_along_heading(
+        lat1, lon1,
+        math.degrees(math.atan2(
+            math.sin(math.radians(lon2 - lon1)) * math.cos(math.radians(lat2)),
+            math.cos(math.radians(lat1)) * math.sin(math.radians(lat2))
+            - math.sin(math.radians(lat1)) * math.cos(math.radians(lat2))
+            * math.cos(math.radians(lon2 - lon1))
+        )),
+        t * seg_len
+    )
+
+    return haversine_distance_m(lat, lon, proj_lat, proj_lon)
+
+
+def crosses_line_towards_heading(
+    prev_lat, prev_lon, prev_heading,
+    curr_lat, curr_lon, curr_heading,
+    line_lat, line_lon, line_heading_deg,
+    tolerance_m=8.0,
+    min_projection_m=2.0,
+):
+    """
+    Rileva se il segmento prev->curr attraversa la linea definita da
+    (line_lat, line_lon, line_heading_deg) nella direzione corretta.
+    """
+    # Proiettiamo i punti su un asse perpendicolare alla linea
+    line_normal_heading = (line_heading_deg + 90) % 360
+
+    # Semplificazione: usiamo distanza signed approssimata
+    # Calcoliamo la distanza "laterale" dei due punti rispetto alla linea
+    # e vediamo se cambiano segno e se la progressione è coerente.
+
+    # Per semplicità, usiamo una logica basata su proiezione lungo la direzione della linea
+    # e distanza laterale.
+
+    # Direzione della linea
+    line_rad = math.radians(line_heading_deg)
+
+    # Vettore direzione linea (approssimazione locale)
+    dir_x = math.cos(line_rad)
+    dir_y = math.sin(line_rad)
+
+    # Per semplicità, trattiamo lat/lon come piano locale (va bene per piccole distanze)
+    deg_to_m_lat = 111320.0
+    deg_to_m_lon = 111320.0 * math.cos(math.radians(line_lat))
+
+    def to_local(lat_deg, lon_deg):
+        dlat = (lat_deg - line_lat) * deg_to_m_lat
+        dlon = (lon_deg - line_lon) * deg_to_m_lon
+        return dlat, dlon
+
+    px0, py0 = to_local(prev_lat, prev_lon)
+    px1, py1 = to_local(curr_lat, curr_lon)
+
+    # Distanza signed rispetto alla linea (proiezione su normale)
+    # Normale ruotata di 90°
+    nx = -dir_y
+    ny = dir_x
+
+    dist0 = px0 * nx + py0 * ny
+    dist1 = px1 * nx + py1 * ny
+
+    # Attraversamento se cambia segno e la distanza laterale è piccola
+    if dist0 * dist1 >= 0:
+        return False, None
+
+    # Verifica che l'attraversamento sia nella direzione corretta
+    # Proiezione lungo la direzione della linea
+    proj0 = px0 * dir_x + py0 * dir_y
+    proj1 = px1 * dir_x + py1 * dir_y
+
+    # Deve avanzare nella direzione della linea
+    if proj1 - proj0 < min_projection_m:
+        return False, None
+
+    # Distanza laterale massima accettabile
+    if max(abs(dist0), abs(dist1)) > tolerance_m:
+        return False, None
+
+    return True, (proj0 + proj1) / 2.0
+
+
+def is_in_pit_lane_polygon(lat, lon, pit_config):
+    if not pit_config:
+        return False
+
+    polygon = pit_config.get("polygon")
+    if not polygon or len(polygon) < 3:
+        return False
+
+    # Ray casting
+    inside = False
+    n = len(polygon)
+    for i in range(n):
+        lat1, lon1 = polygon[i]["latitude"], polygon[i]["longitude"]
+        lat2, lon2 = polygon[(i + 1) % n]["latitude"], polygon[(i + 1) % n]["longitude"]
+
+        if ((lat1 > lat) != (lat2 > lat)):
+            slope = (lon2 - lon1) / (lat2 - lat1) if (lat2 - lat1) != 0 else 0
+            intersect_lon = lon1 + slope * (lat - lat1)
+            if intersect_lon > lon:
+                inside = not inside
+
+    return inside
+
+
+
+def local_xy_m(lat, lon, origin_lat, origin_lon):
+    """
+    Converte coordinate geografiche in metri su un piano locale.
+    Sufficiente e molto preciso per geometrie di una pista kart.
+    """
+    meters_per_deg_lat = 111320.0
+    meters_per_deg_lon = 111320.0 * math.cos(math.radians(origin_lat))
+
+    x = (lon - origin_lon) * meters_per_deg_lon
+    y = (lat - origin_lat) * meters_per_deg_lat
+
+    return x, y
+
+
+def latlon_from_local_xy_m(x, y, origin_lat, origin_lon):
+    meters_per_deg_lat = 111320.0
+    meters_per_deg_lon = 111320.0 * math.cos(math.radians(origin_lat))
+
+    latitude = origin_lat + (y / meters_per_deg_lat)
+    longitude = origin_lon + (x / meters_per_deg_lon)
+
+    return latitude, longitude
+
+
+def extend_line_endpoints(point_a, point_b, extension_each_side_m):
+    """
+    Estende realmente il segmento a->b di N metri ad entrambi i lati.
+    """
+    lat_a = float(point_a["lat"])
+    lon_a = float(point_a["lon"])
+    lat_b = float(point_b["lat"])
+    lon_b = float(point_b["lon"])
+
+    origin_lat = (lat_a + lat_b) / 2.0
+    origin_lon = (lon_a + lon_b) / 2.0
+
+    ax, ay = local_xy_m(lat_a, lon_a, origin_lat, origin_lon)
+    bx, by = local_xy_m(lat_b, lon_b, origin_lat, origin_lon)
+
+    dx = bx - ax
+    dy = by - ay
+    length = math.hypot(dx, dy)
+
+    if length <= 0.001:
+        return (lat_a, lon_a), (lat_b, lon_b)
+
+    ux = dx / length
+    uy = dy / length
+    extension = max(0.0, float(extension_each_side_m))
+
+    start_x = ax - ux * extension
+    start_y = ay - uy * extension
+    end_x = bx + ux * extension
+    end_y = by + uy * extension
+
+    start_lat, start_lon = latlon_from_local_xy_m(
+        start_x, start_y, origin_lat, origin_lon
+    )
+
+    end_lat, end_lon = latlon_from_local_xy_m(
+        end_x, end_y, origin_lat, origin_lon
+    )
+
+    return (start_lat, start_lon), (end_lat, end_lon)
+
+
+def cross_2d(ax, ay, bx, by):
+    return ax * by - ay * bx
+
+
+def line_crossing_event(previous_sample, current_sample, line_config):
+    """
+    Verifica se il segmento GPS precedente->attuale interseca la retta
+    virtuale a->b, estesa secondo line_extension_each_side_m.
+
+    Restituisce None o un dict con il punto/interpolazione di crossing.
+    """
+    if not line_config:
+        return None
+
+    point_a = line_config.get("a")
+    point_b = line_config.get("b")
+
+    if not point_a or not point_b:
+        return None
+
+    if not valid_coordinates(previous_sample):
+        return None
+
+    if not valid_coordinates(current_sample):
+        return None
+
+    extension_m = safe_float(
+        line_config.get("line_extension_each_side_m"),
+        16.0,
+    )
+
+    line_a, line_b = extend_line_endpoints(
+        point_a,
+        point_b,
+        extension_m,
+    )
+
+    origin_lat = (line_a[0] + line_b[0]) / 2.0
+    origin_lon = (line_a[1] + line_b[1]) / 2.0
+
+    p0x, p0y = local_xy_m(
+        float(previous_sample["latitude"]),
+        float(previous_sample["longitude"]),
+        origin_lat,
+        origin_lon,
+    )
+
+    p1x, p1y = local_xy_m(
+        float(current_sample["latitude"]),
+        float(current_sample["longitude"]),
+        origin_lat,
+        origin_lon,
+    )
+
+    a0x, a0y = local_xy_m(
+        line_a[0],
+        line_a[1],
+        origin_lat,
+        origin_lon,
+    )
+
+    a1x, a1y = local_xy_m(
+        line_b[0],
+        line_b[1],
+        origin_lat,
+        origin_lon,
+    )
+
+    rx = p1x - p0x
+    ry = p1y - p0y
+
+    sx = a1x - a0x
+    sy = a1y - a0y
+
+    denominator = cross_2d(rx, ry, sx, sy)
+
+    if abs(denominator) < 1e-7:
+        return None
+
+    qpx = a0x - p0x
+    qpy = a0y - p0y
+
+    t = cross_2d(qpx, qpy, sx, sy) / denominator
+    u = cross_2d(qpx, qpy, rx, ry) / denominator
+
+    # t: posizione sul movimento GPS.
+    # u: posizione sulla retta virtuale estesa.
+    if t < 0.0 or t > 1.0 or u < 0.0 or u > 1.0:
+        return None
+
+    crossing_lat = (
+        float(previous_sample["latitude"])
+        + t * (
+            float(current_sample["latitude"])
+            - float(previous_sample["latitude"])
+        )
+    )
+
+    crossing_lon = (
+        float(previous_sample["longitude"])
+        + t * (
+            float(current_sample["longitude"])
+            - float(previous_sample["longitude"])
+        )
+    )
+
+    crossing_epoch = (
+        float(previous_sample["received_at_epoch"])
+        + t * (
+            float(current_sample["received_at_epoch"])
+            - float(previous_sample["received_at_epoch"])
+        )
+    )
+
+    return {
+        "latitude": crossing_lat,
+        "longitude": crossing_lon,
+        "crossing_epoch": crossing_epoch,
+        "line_a": line_a,
+        "line_b": line_b,
+        "extension_each_side_m": extension_m,
+    }
+
+
+def bearing_between_points(point_a, point_b):
+    """
+    Bearing geografico: 0=N, 90=E, 180=S, 270=W.
+    """
+    lat_1 = math.radians(float(point_a["lat"]))
+    lon_1 = math.radians(float(point_a["lon"]))
+    lat_2 = math.radians(float(point_b["lat"]))
+    lon_2 = math.radians(float(point_b["lon"]))
+
+    delta_lon = lon_2 - lon_1
+
+    x = math.sin(delta_lon) * math.cos(lat_2)
+    y = (
+        math.cos(lat_1) * math.sin(lat_2)
+        - math.sin(lat_1)
+        * math.cos(lat_2)
+        * math.cos(delta_lon)
+    )
+
+    return (math.degrees(math.atan2(x, y)) + 360.0) % 360.0
+
+
+def movement_bearing(previous_sample, current_sample):
+    point_a = {
+        "lat": previous_sample["latitude"],
+        "lon": previous_sample["longitude"],
+    }
+
+    point_b = {
+        "lat": current_sample["latitude"],
+        "lon": current_sample["longitude"],
+    }
+
+    return bearing_between_points(point_a, point_b)
+
+
+def angular_difference_deg(angle_a, angle_b):
+    return abs((angle_a - angle_b + 180.0) % 360.0 - 180.0)
+
+
+def direction_is_valid(previous_sample, current_sample, line_config):
+    """
+    Se esiste direction_reference.before/after, impone il verso di gara
+    con una tolleranza larga di 100°, utile con GPS consumer.
+
+    Per i settori privi di direction_reference il crossing resta valido.
+    """
+    reference = line_config.get("direction_reference", {})
+
+    before = reference.get("before")
+    after = reference.get("after")
+
+    if not before or not after:
+        return True
+
+    expected = bearing_between_points(before, after)
+    actual = movement_bearing(previous_sample, current_sample)
+
+    return angular_difference_deg(expected, actual) <= 100.0
+
+
+def get_current_sector_index(lat, lon, track_cfg):
+    """
+    Ritorna l'indice del settore la cui linea è più vicina alla posizione.
+    È solo indicativo per dashboard; il timing reale usa line_crossing_event.
+    """
+    sectors = track_cfg.get("sectors", [])
+
+    if not sectors:
+        return None
+
+    best_index = None
+    best_distance = None
+
+    for index, sector in enumerate(sectors):
+        point_a = sector.get("a")
+        point_b = sector.get("b")
+
+        if not point_a or not point_b:
+            continue
+
+        extension = safe_float(
+            sector.get("line_extension_each_side_m"),
+            16.0,
+        )
+
+        line_a, line_b = extend_line_endpoints(
+            point_a,
+            point_b,
+            extension,
+        )
+
+        distance = point_to_segment_distance_m(
+            float(lat),
+            float(lon),
+            line_a[0],
+            line_a[1],
+            line_b[0],
+            line_b[1],
+        )
+
+        if best_distance is None or distance < best_distance:
+            best_distance = distance
+            best_index = index
+
+    return best_index
+
+
+def update_track_state(sample):
+    """
+    Stato operativo:
+    - dentro pit_box -> box
+    - fuori pit_box -> pitlane
+    - primo crossing valido SF/S1/S2 -> on_track
+
+    Il backend conserva pitlane/box separati da on_track.
+    """
+    pit_box = TRACK_CONFIG.get("pit_box", {})
+    center = pit_box.get("center", {})
+
+    center_lat = center.get("lat")
+    center_lon = center.get("lon")
+
+    if center_lat is None or center_lon is None:
+        return session.get("track_state", "pitlane")
+
+    distance_m = haversine_distance_m(
+        float(sample["latitude"]),
+        float(sample["longitude"]),
+        float(center_lat),
+        float(center_lon),
+    )
+
+    radius_m = safe_float(pit_box.get("radius_m"), 12.0)
+    hysteresis_m = safe_float(
+        pit_box.get("exit_hysteresis_m"),
+        4.0,
+    )
+
+    current_state = session.get("track_state", "pitlane")
+
+    if distance_m <= radius_m:
+        session["track_state"] = "box"
+        session["in_pit_lane"] = False
+        return "box"
+
+    if current_state == "box" and distance_m < radius_m + hysteresis_m:
+        session["in_pit_lane"] = False
+        return "box"
+
+    if current_state in {"box", "pitlane"}:
+        session["track_state"] = "pitlane"
+        session["in_pit_lane"] = True
+
+    return session["track_state"]
+
+
+def set_on_track(reason, sample):
+    if session.get("track_state") != "on_track":
+        session["previous_track_state"] = session.get("track_state")
+        session["track_state"] = "on_track"
+        session["in_pit_lane"] = False
+
+        append_event(
+            "on_track",
+            reason=reason,
+            latitude=round(float(sample["latitude"]), 7),
+            longitude=round(float(sample["longitude"]), 7),
+        )
+
+
+def decide_track_point(sample):
+    if not valid_coordinates(sample):
+        return False, "invalid_or_missing_fix", None
+
+    if not session["track_points"]:
+        return True, None, None
+
+    previous = session["track_points"][-1]
+
+    distance_m = haversine_distance_m(
+        previous["latitude"],
+        previous["longitude"],
+        sample["latitude"],
+        sample["longitude"],
+    )
+
+    elapsed_s = max(
+        0.0,
+        sample["received_at_epoch"] - previous["received_at_epoch"],
+    )
+
+    speed_kmph = safe_float(sample.get("speed_kmph"), 0.0)
+    stationary_speed_kmph = safe_float(
+        FILTER_CONFIG.get("stationary_speed_kmph"),
+        2.0,
+    )
+    duplicate_distance_m = safe_float(
+        FILTER_CONFIG.get("duplicate_distance_m"),
+        0.75,
+    )
+    moving_min_distance_m = safe_float(
+        FILTER_CONFIG.get("moving_min_distance_m"),
+        1.5,
+    )
+    stationary_keepalive_s = safe_float(
+        FILTER_CONFIG.get("stationary_keepalive_s"),
+        5.0,
+    )
+    max_track_gap_s = safe_float(
+        FILTER_CONFIG.get("max_track_gap_s"),
+        1.0,
+    )
+
+    is_stationary = speed_kmph < stationary_speed_kmph
+
+    if elapsed_s >= max_track_gap_s:
+        return True, "saved_after_track_gap", distance_m
+
+    if is_stationary:
+        if elapsed_s >= stationary_keepalive_s:
+            return True, "stationary_keepalive", distance_m
+
+        if distance_m < duplicate_distance_m:
+            return False, "stationary_duplicate", distance_m
+
+        return True, "stationary_position_changed", distance_m
+
+    if distance_m >= moving_min_distance_m:
+        return True, None, distance_m
+
+    return False, "moving_point_too_close", distance_m
+
+
+def valid_coordinates(sample):
+    lat = safe_float(sample.get("latitude"), 0.0)
+    lon = safe_float(sample.get("longitude"), 0.0)
+
+    return (
+        sample.get("fix_valid") is True
+        and -90.0 <= lat <= 90.0
+        and -180.0 <= lon <= 180.0
+        and not (lat == 0.0 and lon == 0.0)
+    )
+
+
+def serializable_session():
+    raw = session["telemetry_raw"]
+    track_points = session["track_points"]
+
+    return {
+        "schema_version": 2,
+        "saved_at": now_iso(),
+        "status": session["status"],
+        "driver": deepcopy(session["driver"]),
+        "track": deepcopy(TRACK_CONFIG.get("track", {})),
+        "track_config": deepcopy(TRACK_CONFIG),
+        "started_at": session["started_at"],
+        "paused_at": session["paused_at"],
+        "paused_total_s": round(session["paused_total_s"], 3),
+        "ended_at": session["ended_at"],
+        "session_elapsed_s": round(session_elapsed_s(), 3),
+        "filter_config": deepcopy(FILTER_CONFIG),
+        "summary": {
+            "raw_samples_received": len(raw),
+            "track_points_saved": len(track_points),
+            "valid_gps_samples": sum(1 for sample in raw if sample["fix_valid"]),
+            "filtered_out_samples": sum(
+                1 for sample in raw if not sample["track_point_saved"]
+            ),
+        },
+        "telemetry_raw": deepcopy(raw),
+        "track_points": deepcopy(track_points),
+        "events": deepcopy(session["events"]),
+        "laps": deepcopy(session["laps"]),
+        "best_lap_time_s": session["best_lap_time_s"],
+        "current_lap_number": session["current_lap_number"],
+        "track_state": session["track_state"],
+        "warmup_started_at": session["warmup_started_at"],
+    }
+
+
+def write_json_atomic(path, data):
+    temporary_path = path.with_suffix(path.suffix + ".tmp")
+
+    with temporary_path.open("w", encoding="utf-8") as file:
+        json.dump(data, file, ensure_ascii=False, indent=2)
+
+    temporary_path.replace(path)
+
+
+def autosave_if_due(force=False):
+    global last_autosave_epoch
+
+    if session["status"] not in {"running", "paused"}:
+        return
+
+    now_epoch = time.time()
+    interval_s = safe_float(SESSION_CONFIG.get("autosave_interval_s"), 10.0)
+
+    if not force and now_epoch - last_autosave_epoch < interval_s:
+        return
+
+    write_json_atomic(AUTOSAVE_PATH, serializable_session())
+    last_autosave_epoch = now_epoch
+
+
+def reset_session():
+    global session
+
+    session = {
+        "status": "idle",
+        "driver": None,
+        "started_at": None,
+        "paused_at": None,
+        "paused_total_s": 0.0,
+        "ended_at": None,
+        "telemetry_raw": [],
+        "track_points": [],
+        "events": [],
+
+        "current_lap_number": 0,
+        "current_lap_start_index": None,
+        "current_lap_start_epoch": None,
+        "last_crossing_epoch": None,
+        "last_sector_index": -1,
+        "current_sector_index": None,
+        "sector_started_epoch": None,
+        "current_lap_sectors_s": [],
+        "last_completed_lap_time_s": None,
+        "last_completed_lap_at_epoch": None,
+        "sector_start_epochs": [],
+        "laps": [],
+        "best_lap_time_s": None,
+        "in_pit_lane": False,
+
+        "track_state": "pitlane",
+        "previous_track_state": None,
+        "warmup_started_at": None,
+        "warmup_sector_seen": False,
+        "warmup_finish_seen": False,
+        "pit_confirm_counter": 0,
+        "track_confirm_counter": 0,
+    }
+
+    if AUTOSAVE_PATH.exists():
+        AUTOSAVE_PATH.unlink()
+
+    if EVENTS_PATH.exists():
+        EVENTS_PATH.unlink()
+
+
+def normalise_payload(payload):
+    return {
+        "latitude": safe_float(payload.get("latitude")),
+        "longitude": safe_float(payload.get("longitude")),
+        "speed_kmph": safe_float(payload.get("speed_kmph")),
+        "satellites_used": safe_int(payload.get("satellites_used")),
+        "fix_valid": bool(payload.get("fix_valid", False)),
+        "fix_quality": safe_int(payload.get("fix_quality")),
+        "fix_type": safe_int(payload.get("fix_type")),
+        "hdop": safe_float(payload.get("hdop"), None),
+    }
+
+
+
+
+
+def process_timing(sample):
+    """
+    Stato unico del kart:
+
+      box      = dentro pit_box
+      pitlane  = fuori box, prima di toccare una linea di pista
+      warmup   = ha raggiunto S1/S2, ma non ha ancora tagliato SF
+      on_track = ha tagliato SF e il giro è armato
+
+    Convenzione fissa:
+
+      SF -> S1 = settore 1
+      S1 -> S2 = settore 2
+      S2 -> SF = settore 3
+    """
+    timing = TRACK_CONFIG.get("timing", {})
+    pit_box = TRACK_CONFIG.get("pit_box", {})
+    start_finish = TRACK_CONFIG.get("start_finish", {})
+    sectors = TRACK_CONFIG.get("sectors", [])
+
+    if not start_finish:
+        return
+
+    if len(session["telemetry_raw"]) < 2:
+        return
+
+    previous = session["telemetry_raw"][-2]
+    current = sample
+
+    if not valid_coordinates(previous) or not valid_coordinates(current):
+        return
+
+    # ----------------------------------------------------------
+    # BOX: questo controllo ha sempre la massima priorità.
+    # ----------------------------------------------------------
+    box_center = pit_box.get("center", {})
+    box_lat = box_center.get("lat")
+    box_lon = box_center.get("lon")
+
+    if box_lat is not None and box_lon is not None:
+        distance_from_box_m = haversine_distance_m(
+            float(current["latitude"]),
+            float(current["longitude"]),
+            float(box_lat),
+            float(box_lon),
+        )
+
+        box_radius_m = safe_float(
+            pit_box.get("radius_m"),
+            15.0,
+        )
+
+        exit_hysteresis_m = safe_float(
+            pit_box.get("exit_hysteresis_m"),
+            4.0,
+        )
+
+        previous_state = session.get("track_state", "pitlane")
+
+        # Kart dentro il cerchio box.
+        if distance_from_box_m <= box_radius_m:
+            if previous_state != "box":
+                append_event(
+                    "box_entered",
+                    distance_from_box_m=round(distance_from_box_m, 2),
+                )
+
+            session["track_state"] = "box"
+            session["in_pit_lane"] = False
+            session["current_sector_index"] = None
+            return
+
+        # Isteresi in uscita box: non oscillare BOX/PITLANE.
+        if (
+            previous_state == "box"
+            and distance_from_box_m < box_radius_m + exit_hysteresis_m
+        ):
+            session["track_state"] = "box"
+            session["in_pit_lane"] = False
+            session["current_sector_index"] = None
+            return
+
+        # Prima uscita box.
+        if previous_state == "box":
+            session["track_state"] = "pitlane"
+            session["in_pit_lane"] = True
+            session["current_sector_index"] = None
+            session["current_lap_start_epoch"] = None
+            session["last_sector_index"] = -1
+            session["sector_started_epoch"] = None
+            session["current_lap_sectors_s"] = []
+
+            append_event(
+                "pit_lane_entered",
+                distance_from_box_m=round(distance_from_box_m, 2),
+            )
+
+    # ----------------------------------------------------------
+    # I crossing non valgono se il kart è quasi fermo.
+    # ----------------------------------------------------------
+    minimum_speed_kmph = safe_float(
+        timing.get("crossing_minimum_speed_kmph"),
+        5.0,
+    )
+
+    if safe_float(current.get("speed_kmph"), 0.0) < minimum_speed_kmph:
+        return
+
+    # ----------------------------------------------------------
+    # Cercare crossing S1/S2.
+    # ----------------------------------------------------------
+    crossed_sector_index = None
+    crossed_sector_event = None
+
+    for index, sector in enumerate(sectors):
+        crossing = line_crossing_event(
+            previous,
+            current,
+            sector,
+        )
+
+        if crossing is not None:
+            crossed_sector_index = index
+            crossed_sector_event = crossing
+            break
+
+    if crossed_sector_index is not None:
+        state = session.get("track_state", "pitlane")
+
+        # Primo split raggiunto uscendo dalla pit lane: WARM-UP.
+        if state == "pitlane":
+            session["track_state"] = "warmup"
+            session["in_pit_lane"] = False
+            session["warmup_started_at"] = current["received_at"]
+            session["current_sector_index"] = None
+
+            append_event(
+                "warmup_started",
+                trigger=f"S{crossed_sector_index + 1}",
+            )
+
+            return
+
+        # Durante warmup non registriamo tempi settore:
+        # aspettiamo il primo SF, che arma GIRO 1.
+        if state == "warmup":
+            return
+
+        # In pista: una linea settore chiude un settore soltanto
+        # nell'ordine atteso.
+        if state == "on_track":
+            expected_split_index = session.get("last_sector_index", -1) + 1
+
+            if crossed_sector_index != expected_split_index:
+                append_event(
+                    "sector_cross_ignored",
+                    crossed_split=f"S{crossed_sector_index + 1}",
+                    expected_split=f"S{expected_split_index + 1}",
+                )
+                return
+
+            lap_start = session.get("current_lap_start_epoch")
+            sector_start = session.get("sector_started_epoch")
+
+            if lap_start is None:
+                return
+
+            if sector_start is None:
+                sector_start = lap_start
+
+            sector_time_s = (
+                float(crossed_sector_event["crossing_epoch"])
+                - float(sector_start)
+            )
+
+            sector_count = len(sectors) + 1
+
+            current_sectors = list(
+                session.get("current_lap_sectors_s", [])
+            )
+
+            while len(current_sectors) < sector_count:
+                current_sectors.append(None)
+
+            # Split index 0 = fine Settore 1.
+            # Split index 1 = fine Settore 2.
+            current_sectors[crossed_sector_index] = round(
+                sector_time_s,
+                3,
+            )
+
+            session["current_lap_sectors_s"] = current_sectors
+            session["last_sector_index"] = crossed_sector_index
+            session["sector_started_epoch"] = crossed_sector_event[
+                "crossing_epoch"
+            ]
+
+            # Dopo S1 sei nel settore 2.
+            # Dopo S2 sei nel settore 3.
+            session["current_sector_index"] = crossed_sector_index + 2
+
+            append_event(
+                "sector_completed",
+                sector_number=crossed_sector_index + 1,
+                sector_time_s=round(sector_time_s, 3),
+                next_sector_number=crossed_sector_index + 2,
+            )
+
+            return
+
+    # ----------------------------------------------------------
+    # Cercare crossing Start/Finish.
+    # ----------------------------------------------------------
+    finish_crossing = line_crossing_event(
+        previous,
+        current,
+        start_finish,
+    )
+
+    if finish_crossing is None:
+        return
+
+    if not direction_is_valid(previous, current, start_finish):
+        append_event(
+            "finish_cross_ignored",
+            reason="wrong_direction",
+        )
+        return
+
+    crossing_epoch = float(finish_crossing["crossing_epoch"])
+
+    cooldown_s = safe_float(
+        timing.get("crossing_cooldown_s"),
+        12.0,
+    )
+
+    last_finish_epoch = session.get("last_crossing_epoch")
+
+    if (
+        last_finish_epoch is not None
+        and crossing_epoch - float(last_finish_epoch) < cooldown_s
+    ):
+        append_event(
+            "finish_cross_ignored",
+            reason="cooldown",
+        )
+        return
+
+    session["last_crossing_epoch"] = crossing_epoch
+
+    state = session.get("track_state", "pitlane")
+
+    # ----------------------------------------------------------
+    # Primo SF dopo PIT LANE o WARM-UP:
+    # entra ON TRACK e parte GIRO 1 / SETTORE 1.
+    # ----------------------------------------------------------
+    if state in {"pitlane", "warmup", "box"}:
+        session["track_state"] = "on_track"
+        session["in_pit_lane"] = False
+        session["warmup_started_at"] = None
+        session["current_lap_number"] = 1
+        session["current_lap_start_epoch"] = crossing_epoch
+        session["current_lap_start_index"] = len(
+            session["telemetry_raw"]
+        ) - 1
+        session["last_sector_index"] = -1
+        session["current_sector_index"] = 1
+        session["sector_started_epoch"] = crossing_epoch
+        session["current_lap_sectors_s"] = [None] * (
+            len(sectors) + 1
+        )
+
+        append_event(
+            "on_track",
+            reason="first_start_finish",
+        )
+
+        append_event(
+            "lap_started",
+            lap_number=1,
+            sector_number=1,
+        )
+
+        return
+
+    # ----------------------------------------------------------
+    # SF successivo: chiude Settore 3 e il giro.
+    # ----------------------------------------------------------
+    if state != "on_track":
+        return
+
+    lap_start_epoch = session.get("current_lap_start_epoch")
+
+    if lap_start_epoch is None:
+        return
+
+    lap_time_s = crossing_epoch - float(lap_start_epoch)
+
+    minimum_lap_time_s = safe_float(
+        timing.get("minimum_lap_time_s"),
+        30.0,
+    )
+
+    if lap_time_s < minimum_lap_time_s:
+        append_event(
+            "finish_cross_ignored",
+            reason="lap_too_short",
+            lap_time_s=round(lap_time_s, 3),
+        )
+        return
+
+    sector_count = len(sectors) + 1
+    final_sector_index = sector_count - 1
+
+    sector_start_epoch = session.get("sector_started_epoch")
+
+    if sector_start_epoch is None:
+        sector_start_epoch = lap_start_epoch
+
+    final_sector_time_s = (
+        crossing_epoch - float(sector_start_epoch)
+    )
+
+    current_sectors = list(
+        session.get("current_lap_sectors_s", [])
+    )
+
+    while len(current_sectors) < sector_count:
+        current_sectors.append(None)
+
+    current_sectors[final_sector_index] = round(
+        final_sector_time_s,
+        3,
+    )
+
+    # Giro valido quando tutti gli split configurati S1, S2...
+    # sono stati passati in sequenza.
+    expected_last_split_index = len(sectors) - 1
+    lap_valid = (
+        session.get("last_sector_index", -1)
+        == expected_last_split_index
+    )
+
+    lap_number = session["current_lap_number"]
+
+    lap_data = {
+        "lap_number": lap_number,
+        "lap_time_s": round(lap_time_s, 3),
+        "valid": lap_valid,
+        "sectors_s": list(current_sectors),
+        "started_at_epoch": lap_start_epoch,
+        "ended_at_epoch": crossing_epoch,
+        "start_sample_index": session.get(
+            "current_lap_start_index"
+        ),
+        "end_sample_index": len(session["telemetry_raw"]) - 1,
+    }
+
+    session["laps"].append(lap_data)
+
+    if lap_valid:
+        best_lap = session.get("best_lap_time_s")
+
+        if best_lap is None or lap_time_s < float(best_lap):
+            session["best_lap_time_s"] = lap_time_s
+
+    # S3 viene chiuso nello stesso istante del giro.
+    append_event(
+        "sector_completed",
+        sector_number=sector_count,
+        sector_time_s=round(final_sector_time_s, 3),
+        next_sector_number=1,
+    )
+
+    append_event(
+        "lap_completed",
+        lap_number=lap_number,
+        lap_time_s=round(lap_time_s, 3),
+        valid=lap_valid,
+        sectors_s=list(current_sectors),
+    )
+
+    # Conserva il giro appena chiuso per la dashboard.
+    session["last_completed_lap_time_s"] = round(
+        lap_time_s,
+        3,
+    )
+    session["last_completed_lap_at_epoch"] = time.time()
+
+    # Nuovo giro: parte nello stesso istante sul traguardo.
+    session["current_lap_number"] = lap_number + 1
+    session["current_lap_start_epoch"] = crossing_epoch
+    session["current_lap_start_index"] = len(
+        session["telemetry_raw"]
+    ) - 1
+    session["last_sector_index"] = -1
+    session["current_sector_index"] = 1
+    session["sector_started_epoch"] = crossing_epoch
+    session["current_lap_sectors_s"] = [None] * sector_count
+    session["track_state"] = "on_track"
+    session["in_pit_lane"] = False
+
+    append_event(
+        "lap_started",
+        lap_number=session["current_lap_number"],
+        sector_number=1,
+    )
+
+
+def on_mqtt_connect(client, userdata, flags, reason_code, properties=None):
+    client.subscribe(MQTT_CONFIG["topic"])
+
+    with lock:
+        runtime["mqtt_connected"] = True
+        runtime["last_error"] = None
+
+    print(f"[MQTT] Connected. Subscribed to {MQTT_CONFIG['topic']}")
+
+
+def on_mqtt_disconnect(client, userdata, disconnect_flags, reason_code, properties=None):
+    with lock:
+        runtime["mqtt_connected"] = False
+        runtime["last_error"] = f"MQTT disconnected: {reason_code}"
+
+    print(f"[MQTT] Disconnected: {reason_code}")
+
+
+def on_mqtt_message(client, userdata, message):
+    try:
+        payload_text = message.payload.decode("utf-8", errors="replace")
+        payload = json.loads(payload_text)
+
+        if not isinstance(payload, dict):
+            return
+
+        sample = normalise_payload(payload)
+        sample["received_at"] = now_iso()
+        sample["received_at_epoch"] = time.time()
+        sample["topic"] = message.topic
+
+        with lock:
+            latest_gps.update(sample)
+
+            runtime["mqtt_last_message_at"] = sample["received_at"]
+            runtime["mqtt_last_message_epoch"] = sample["received_at_epoch"]
+            runtime["mqtt_topic"] = message.topic
+            runtime["mqtt_messages"] += 1
+
+            if session["status"] == "running":
+                sample["session_elapsed_s"] = round(session_elapsed_s(), 3)
+
+                moving_limit = safe_float(
+                    FILTER_CONFIG.get("stationary_speed_kmph"),
+                    2.0,
+                )
+
+                sample["moving"] = sample["speed_kmph"] >= moving_limit
+                sample["in_pits"] = session["in_pit_lane"]
+
+                should_save, reason, distance_m = decide_track_point(sample)
+
+                sample["track_point_saved"] = should_save
+                sample["discard_reason"] = None if should_save else reason
+                sample["distance_from_previous_track_point_m"] = (
+                    round(distance_m, 3)
+                    if distance_m is not None
+                    else None
+                )
+
+                session["telemetry_raw"].append(deepcopy(sample))
+
+                # Timing (traguardo, settori, pit, giri)
+                process_timing(sample)
+
+                # Stato finale memorizzato nello stesso campione raw.
+                sample["track_state"] = session["track_state"]
+                sample["in_pits"] = session["track_state"] == "pitlane"
+
+                if should_save:
+                    track_point = deepcopy(sample)
+                    track_point["track_save_reason"] = reason
+                    session["track_points"].append(track_point)
+
+                autosave_if_due()
+
+    except Exception as error:
+        with lock:
+            runtime["last_error"] = str(error)
+
+        print(f"[MQTT] Message error: {error}")
+
+
+def start_mqtt():
+    client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
+    client.on_connect = on_mqtt_connect
+    client.on_disconnect = on_mqtt_disconnect
+    client.on_message = on_mqtt_message
+
+    client.reconnect_delay_set(min_delay=1, max_delay=30)
+    client.connect_async(
+        MQTT_CONFIG["broker"],
+        MQTT_CONFIG["port"],
+        MQTT_CONFIG.get("keepalive_s", 60),
+    )
+    client.loop_start()
+
+    return client
+
+
+
+def get_location_status(gps):
+    """
+    Stato temporaneo richiesto:
+    - dentro il cerchio pit_box => IN BOX
+    - fuori dal cerchio pit_box => IN PIT LANE
+    """
+    if not gps or gps.get("fix_valid") is not True:
+        return {
+            "status": "unknown",
+            "distance_from_box_center_m": None,
+        }
+
+    pit_box = TRACK_CONFIG.get("pit_box", {})
+    center = pit_box.get("center", {})
+
+    center_lat = center.get("lat")
+    center_lon = center.get("lon")
+
+    if center_lat is None or center_lon is None:
+        return {
+            "status": "unknown",
+            "distance_from_box_center_m": None,
+        }
+
+    latitude = gps.get("latitude")
+    longitude = gps.get("longitude")
+
+    if latitude is None or longitude is None:
+        return {
+            "status": "unknown",
+            "distance_from_box_center_m": None,
+        }
+
+    latitude = float(latitude)
+    longitude = float(longitude)
+
+    if latitude == 0.0 and longitude == 0.0:
+        return {
+            "status": "unknown",
+            "distance_from_box_center_m": None,
+        }
+
+    radius_m = float(pit_box.get("radius_m", 12.0))
+
+    distance_m = haversine_distance_m(
+        latitude,
+        longitude,
+        float(center_lat),
+        float(center_lon),
+    )
+
+    return {
+        "status": "box" if distance_m <= radius_m else "pit_lane",
+        "distance_from_box_center_m": round(distance_m, 2),
+        "box_radius_m": radius_m,
+    }
+
+def live_snapshot():
+    with lock:
+        gps = deepcopy(latest_gps)
+        state = deepcopy(runtime)
+
+        now_epoch = time.time()
+        last_epoch = state["mqtt_last_message_epoch"]
+
+        state["data_age_s"] = (
+            round(now_epoch - last_epoch, 3)
+            if last_epoch
+            else None
+        )
+
+        # Info giro corrente
+        current_lap_time = None
+        if session["current_lap_start_epoch"] is not None and session["status"] == "running":
+            current_lap_time = round(
+                time.time() - session["current_lap_start_epoch"],
+                3
+            )
+
+        # Ultimo giro completato.
+        last_lap = session["laps"][-1] if session["laps"] else None
+
+        # Per 1.5 secondi dopo il crossing SF mostra il giro appena chiuso,
+        # poi torna automaticamente al cronometro del nuovo giro.
+        display_lap_time = current_lap_time
+        last_completed_at = session.get("last_completed_lap_at_epoch")
+        last_completed_time = session.get("last_completed_lap_time_s")
+
+        if (
+            last_completed_at is not None
+            and last_completed_time is not None
+            and time.time() - float(last_completed_at) < 1.5
+        ):
+            display_lap_time = last_completed_time
+
+        # Settore in cui il kart sta effettivamente girando.
+        #
+        # Convenzione fissa per tutte le piste:
+        # SF -> S1 = settore 1
+        # S1 -> S2 = settore 2
+        # S2 -> SF = settore 3
+        #
+        # last_sector_index:
+        # -1 = appena partiti dal traguardo / nessun settore tagliato
+        #  0 = appena tagliato S1
+        #  1 = appena tagliato S2
+        sector_count = len(TRACK_CONFIG.get("sectors", [])) + 1
+        last_sector_index = session.get("last_sector_index", -1)
+
+        if session.get("track_state") == "on_track":
+            current_sector = (last_sector_index + 1) % sector_count
+        else:
+            current_sector = None
+
+        location = get_location_status(gps)
+
+        return {
+            "gps": gps,
+            "location": location,
+            "runtime": state,
+            "session": {
+                "status": session["status"],
+                "driver": deepcopy(session["driver"]),
+                "started_at": session["started_at"],
+                "paused_at": session["paused_at"],
+                "session_elapsed_s": round(session_elapsed_s(), 3),
+                "samples_recorded": len(session["telemetry_raw"]),
+                "track_points_recorded": len(session["track_points"]),
+
+                # Timing
+                "current_lap_number": session["current_lap_number"],
+                "current_lap_time_s": current_lap_time,
+                "display_lap_time_s": display_lap_time,
+                "last_lap": deepcopy(last_lap),
+                "best_lap_time_s": session["best_lap_time_s"],
+                "current_sector_index": session.get(
+                    "current_sector_index"
+                ),
+                "current_sector_elapsed_s": (
+                    round(
+                        time.time() - float(session["sector_started_epoch"]),
+                        3,
+                    )
+                    if (
+                        session.get("sector_started_epoch") is not None
+                        and session.get("track_state") == "on_track"
+                    )
+                    else None
+                ),
+                "current_lap_sectors_s": deepcopy(
+                    session.get("current_lap_sectors_s", [])
+                ),
+                "last_completed_lap_time_s": session.get(
+                    "last_completed_lap_time_s"
+                ),
+                "in_pit_lane": session["in_pit_lane"],
+                "track_state": session["track_state"],
+                "warmup_started_at": session["warmup_started_at"],
+            },
+            "track": deepcopy(TRACK_CONFIG.get("track", {})),
+            "dashboard": DASHBOARD_CONFIG,
+        }
+
+
+@app.get("/")
+def driver_select_page():
+    return render_template(
+        "driver-select.html",
+        drivers=drivers,
+        track=TRACK_CONFIG.get("track", {}),
+    )
+
+
+@app.get("/dashboard")
+def dashboard_page():
+    return render_template(
+        "dashboard.html",
+        drivers=drivers,
+        track=TRACK_CONFIG.get("track", {}),
+    )
+
+
+@app.get("/summary")
+def session_summary_page():
+    return render_template("session-summary.html")
+
+
+@app.get("/debug")
+def debug_page():
+    return render_template("track-debug.html", track=TRACK_CONFIG)
+
+
+@app.get("/track-map")
+def track_map_debug():
+    return render_template(
+        "track-map-debug.html",
+        track_config=TRACK_CONFIG,
+    )
+
+
+@app.get("/api/live")
+def api_live():
+    return jsonify(live_snapshot())
+
+
+@app.get("/api/latest")
+def api_latest_legacy():
+    return jsonify(live_snapshot())
+
+
+@app.get("/api/drivers")
+def api_drivers():
+    return jsonify({"drivers": drivers})
+
+
+@app.post("/api/session/start")
+def api_session_start():
+    body = request.get_json(silent=True) or {}
+    driver_id = body.get("driver_id")
+    driver = get_driver(driver_id)
+
+    if not driver:
+        return jsonify({"ok": False, "error": "Pilota non valido."}), 400
+
+    with lock:
+        if session["status"] in {"running", "paused"}:
+            return jsonify({"ok": False, "error": "Una sessione è già attiva."}), 409
+
+        reset_session()
+
+        session["status"] = "running"
+        session["driver"] = deepcopy(driver)
+        session["started_at"] = now_iso()
+
+        append_event(
+            "session_started",
+            driver_id=driver["id"],
+            driver_name=driver["name"],
+        )
+
+        autosave_if_due(force=True)
+
+    return jsonify({"ok": True, "session": live_snapshot()["session"]})
+
+
+@app.post("/api/session/pause")
+def api_session_pause():
+    with lock:
+        if session["status"] != "running":
+            return jsonify({"ok": False, "error": "La sessione non è in corso."}), 409
+
+        session["status"] = "paused"
+        session["paused_at"] = now_iso()
+
+        append_event("session_paused")
+        autosave_if_due(force=True)
+
+    return jsonify({"ok": True, "session": live_snapshot()["session"]})
+
+
+@app.post("/api/session/resume")
+def api_session_resume():
+    with lock:
+        if session["status"] != "paused":
+            return jsonify({"ok": False, "error": "La sessione non è in pausa."}), 409
+
+        paused_at = datetime.fromisoformat(session["paused_at"])
+        session["paused_total_s"] += (now_local() - paused_at).total_seconds()
+        session["paused_at"] = None
+        session["status"] = "running"
+
+        append_event("session_resumed")
+        autosave_if_due(force=True)
+
+    return jsonify({"ok": True, "session": live_snapshot()["session"]})
+
+
+@app.post("/api/session/stop")
+def api_session_stop():
+    with lock:
+        if session["status"] not in {"running", "paused"}:
+            return jsonify({"ok": False, "error": "Nessuna sessione da fermare."}), 409
+
+        if session["status"] == "paused" and session["paused_at"]:
+            paused_at = datetime.fromisoformat(session["paused_at"])
+            session["paused_total_s"] += (now_local() - paused_at).total_seconds()
+            session["paused_at"] = None
+
+        session["ended_at"] = now_iso()
+        session["status"] = "stopped"
+
+        append_event("session_stopped")
+        final_data = serializable_session()
+
+        driver_id = session["driver"]["id"] if session["driver"] else "unknown"
+        track_id = TRACK_CONFIG.get("track", {}).get("id", "unknown-track")
+        stamp = now_local().strftime("%Y-%m-%d_%H-%M-%S")
+
+        final_path = SESSIONS_DIR / f"{stamp}_{driver_id}_{track_id}.json"
+
+        write_json_atomic(final_path, final_data)
+        write_json_atomic(AUTOSAVE_PATH, final_data)
+
+    return jsonify({
+        "ok": True,
+        "session": live_snapshot()["session"],
+        "saved_file": final_path.name,
+    })
+
+
+if __name__ == "__main__":
+    start_mqtt()
+
+    print()
+    print("=== Kart Performance Monitor ===")
+    print(f"Dashboard: http://127.0.0.1:{SERVER_CONFIG['port']}")
+    print("Apri da iPhone usando l'IP locale del Mac e la stessa porta.")
+    print()
+
+    app.run(
+        host=SERVER_CONFIG["host"],
+        port=SERVER_CONFIG["port"],
+        debug=False,
+        use_reloader=False,
+        threaded=True,
+    )
+
+================ static/app.js =================
+(function () {
+  "use strict";
+
+  const element = (id) => document.getElementById(id);
+
+  const ui = {
+    trackName: element("track-name"),
+    driverName: element("driver-name"),
+    sessionState: element("session-state"),
+    backButton: element("back-button"),
+
+    speedValue: element("speed-value"),
+
+    lapNumber: element("lap-number"),
+    lapValid: element("lap-valid"),
+    currentLapTime: element("current-lap-time"),
+    bestLapTime: element("best-lap-time"),
+
+    sectorCurrent: element("sector-current"),
+    trackStatus: element("track-status"),
+    lastSectors: element("last-sectors"),
+
+    gpsMini: element("gps-mini"),
+
+    startButton: element("start-button"),
+    pauseButton: element("pause-button"),
+    resumeButton: element("resume-button"),
+    stopButton: element("stop-button"),
+  };
+
+  const driverId = new URLSearchParams(
+    window.location.search
+  ).get("driver");
+
+  function formatTime(seconds) {
+    if (
+      seconds === null ||
+      seconds === undefined ||
+      !Number.isFinite(Number(seconds))
+    ) {
+      return "—";
+    }
+
+    const value = Number(seconds);
+    const minutes = Math.floor(value / 60);
+    const secondsPart = Math.floor(value % 60);
+    const milliseconds = Math.floor(
+      (value - Math.floor(value)) * 1000
+    );
+
+    return (
+      String(minutes).padStart(2, "0") +
+      ":" +
+      String(secondsPart).padStart(2, "0") +
+      "." +
+      String(milliseconds).padStart(3, "0")
+    );
+  }
+
+  function setBadge(id, label, styleClass) {
+    const target = element(id);
+
+    if (!target) {
+      return;
+    }
+
+    target.textContent = label;
+    target.className = "status-badge " + (styleClass || "");
+  }
+
+  function updateSessionState(status) {
+    const labels = {
+      idle: "IN ATTESA",
+      running: "IN CORSO",
+      paused: "IN PAUSA",
+      stopped: "STOP",
+    };
+
+    ui.sessionState.textContent =
+      labels[status] || "IN ATTESA";
+
+    ui.sessionState.className =
+      "session-state " + (status || "");
+  }
+
+  function updateTrackState(trackState, location) {
+    /*
+     * Una sola priorità:
+     *
+     * 1. BOX: il GPS è nel cerchio box.
+     * 2. WARM-UP: uscito dai box, prima del primo SF.
+     * 3. IN PISTA: dopo il primo SF.
+     * 4. PIT LANE: fuori box e nessuna transizione pista ancora rilevata.
+     *
+     * location.status NON deve sovrascrivere warmup/on_track:
+     * fuori dal box è normale che location dica pit_lane.
+     */
+    if (trackState === "box" || location.status === "box") {
+      setBadge("track-status", "IN BOX", "pit");
+      return;
+    }
+
+    if (trackState === "warmup") {
+      setBadge("track-status", "WARM-UP", "warmup");
+      return;
+    }
+
+    if (trackState === "on_track") {
+      setBadge("track-status", "IN PISTA", "valid");
+      return;
+    }
+
+    if (trackState === "pitlane" || location.status === "pit_lane") {
+      setBadge("track-status", "IN PIT LANE", "");
+      return;
+    }
+
+    setBadge("track-status", "POSIZIONE N/D", "");
+  }
+
+  function updateLapValidity(lastLap) {
+    if (!lastLap) {
+      setBadge("lap-valid", "—", "");
+      return;
+    }
+
+    setBadge(
+      "lap-valid",
+      lastLap.valid ? "VALIDO" : "NON VALIDO",
+      lastLap.valid ? "valid" : "invalid"
+    );
+  }
+
+  function updateSectorTimes(session) {
+    /*
+     * current_lap_sectors_s contiene solo settori già chiusi:
+     * [S1, S2, S3]
+     *
+     * current_sector_elapsed_s viene mostrato soltanto nello slot
+     * del settore attualmente in corso.
+     */
+    const closedSectors = Array.isArray(session.current_lap_sectors_s)
+      ? session.current_lap_sectors_s.slice(0, 3)
+      : [];
+
+    while (closedSectors.length < 3) {
+      closedSectors.push(null);
+    }
+
+    const currentSector = Number(session.current_sector_index);
+
+    if (
+      Number.isInteger(currentSector) &&
+      currentSector >= 1 &&
+      currentSector <= 3 &&
+      session.current_sector_elapsed_s !== null &&
+      session.current_sector_elapsed_s !== undefined
+    ) {
+      closedSectors[currentSector - 1] =
+        Number(session.current_sector_elapsed_s);
+    }
+
+    ui.lastSectors.textContent = closedSectors
+      .map((value) => formatTime(value))
+      .join(" / ");
+  }
+
+  function updateGps(gps, runtime) {
+    const valid = gps && gps.fix_valid === true;
+    const fixType = Number(gps && gps.fix_type ? gps.fix_type : 0);
+
+    const fix = valid
+      ? (fixType === 3 ? "FIX 3D" : "FIX")
+      : "NO FIX";
+
+    const sats = gps && gps.satellites_used != null
+      ? gps.satellites_used
+      : 0;
+
+    const hdop = gps && gps.hdop != null
+      ? Number(gps.hdop).toFixed(2)
+      : "—";
+
+    const age = runtime && runtime.data_age_s != null
+      ? " | " + Number(runtime.data_age_s).toFixed(1) + "s"
+      : "";
+
+    ui.gpsMini.innerHTML =
+      "GPS: " + fix + "<br>" +
+      "Sat: " + sats + " | HDOP: " + hdop + age;
+
+    ui.gpsMini.className =
+      "gps-mini " + (valid ? "gps-ok" : "gps-no");
+  }
+
+  function updateButtons(status) {
+    ui.startButton.disabled =
+      status === "running" || status === "paused";
+
+    ui.pauseButton.disabled = status !== "running";
+    ui.resumeButton.disabled = status !== "paused";
+    ui.stopButton.disabled =
+      status !== "running" && status !== "paused";
+  }
+
+  function updateDashboard(data) {
+    const gps = data.gps || {};
+    const runtime = data.runtime || {};
+    const session = data.session || {};
+    const track = data.track || {};
+    const location = data.location || {};
+
+    ui.trackName.textContent =
+      track.name || "Pista non configurata";
+
+    ui.driverName.textContent = session.driver
+      ? "Pilota: " + (session.driver.name || "—")
+      : "Pilota: —";
+
+    const status = session.status || "idle";
+
+    updateSessionState(status);
+
+    ui.speedValue.textContent = Math.round(
+      Number(gps.speed_kmph) || 0
+    );
+
+    ui.lapNumber.textContent =
+      session.current_lap_number || 0;
+
+    ui.currentLapTime.textContent = formatTime(
+      session.display_lap_time_s != null
+        ? session.display_lap_time_s
+        : session.current_lap_time_s
+    );
+
+    ui.bestLapTime.textContent = formatTime(
+      session.best_lap_time_s
+    );
+
+    ui.sectorCurrent.textContent =
+      session.current_sector_index == null
+        ? "—"
+        : String(session.current_sector_index);
+
+    updateTrackState(
+      session.track_state,
+      location
+    );
+
+    updateLapValidity(session.last_lap);
+    updateSectorTimes(session);
+    updateGps(gps, runtime);
+    updateButtons(status);
+  }
+
+  async function fetchLive() {
+    const response = await fetch("/api/live", {
+      cache: "no-store",
+      headers: {
+        Accept: "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error("HTTP " + response.status);
+    }
+
+    return response.json();
+  }
+
+  async function refresh() {
+    try {
+      const data = await fetchLive();
+      updateDashboard(data);
+    } catch (error) {
+      console.error("Errore dashboard:", error);
+    }
+  }
+
+  async function post(url, body) {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: body
+        ? { "Content-Type": "application/json" }
+        : {},
+      body: body ? JSON.stringify(body) : undefined,
+    });
+
+    const data = await response.json();
+
+    if (!response.ok || data.ok === false) {
+      throw new Error(
+        data.error || "Errore HTTP " + response.status
+      );
+    }
+
+    return data;
+  }
+
+  ui.startButton.addEventListener("click", async () => {
+    if (!driverId) {
+      alert("Pilota non selezionato.");
+      return;
+    }
+
+    try {
+      await post("/api/session/start", {
+        driver_id: driverId,
+      });
+      await refresh();
+    } catch (error) {
+      alert("Errore avvio: " + error.message);
+    }
+  });
+
+  ui.pauseButton.addEventListener("click", async () => {
+    try {
+      await post("/api/session/pause");
+      await refresh();
+    } catch (error) {
+      alert("Errore pausa: " + error.message);
+    }
+  });
+
+  ui.resumeButton.addEventListener("click", async () => {
+    try {
+      await post("/api/session/resume");
+      await refresh();
+    } catch (error) {
+      alert("Errore ripresa: " + error.message);
+    }
+  });
+
+  ui.stopButton.addEventListener("click", async () => {
+    if (!window.confirm("Fermare la sessione?")) {
+      return;
+    }
+
+    try {
+      await post("/api/session/stop");
+      await refresh();
+    } catch (error) {
+      alert("Errore stop: " + error.message);
+    }
+  });
+
+  ui.backButton.addEventListener("click", () => {
+    window.location.href = "/";
+  });
+
+  refresh();
+  window.setInterval(refresh, 250);
+})();
+
+=========== templates/dashboard.html ===========
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <title>Kart Performance Monitor</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+  <link rel="stylesheet" href="/static/style.css">
+  <style>
+    html,
+    body {
+      width: 100%;
+      min-width: 100%;
+      max-width: 100%;
+      height: 100%;
+      min-height: 100%;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+    }
+
+    .driver-dashboard {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100dvh;
+      min-width: 0;
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    .topbar,
+    .dashboard-grid,
+    .controlbar {
+      width: 100%;
+      min-width: 0;
+    }
+
+    .dashboard-grid {
+      grid-template-columns: minmax(0, 0.82fr) minmax(0, 1.18fr);
+    }
+
+    .dashboard-card {
+      min-width: 0;
+      max-width: none;
+    }
+  </style>
+</head>
+<body class="driver-dashboard">
+  <header class="topbar">
+    <div class="brand">
+      <div id="track-name" class="track-name">Pista non configurata</div>
+      <div id="driver-name" class="driver-name">Pilota: —</div>
+    </div>
+
+    <div class="topbar-actions">
+      <div id="session-state" class="session-state">IN ATTESA</div>
+      <button id="back-button" class="back-button">←</button>
+    </div>
+  </header>
+
+  <main class="dashboard-grid">
+    <section class="speed-card dashboard-card">
+      <div class="eyebrow">VELOCITÀ</div>
+      <div id="speed-value" class="speed-number">0</div>
+      <div class="speed-unit">KM/H</div>
+    </section>
+
+    <section class="lap-card dashboard-card">
+      <div class="eyebrow">GIRO</div>
+
+      <div class="lap-main">
+        <div id="lap-number" class="lap-number">0</div>
+        <div id="lap-valid" class="status-badge">—</div>
+      </div>
+
+      <div class="metric-block">
+        <div class="eyebrow">GIRO CORRENTE</div>
+        <div id="current-lap-time" class="metric-time">—</div>
+      </div>
+
+      <div class="metric-block">
+        <div class="eyebrow">MIGLIOR GIRO</div>
+        <div id="best-lap-time" class="metric-time">—</div>
+      </div>
+    </section>
+
+    <section class="sector-card dashboard-card">
+      <div class="eyebrow">SETTORE</div>
+
+      <div class="sector-main">
+        <div id="sector-current" class="sector-number">—</div>
+        <div id="track-status" class="status-badge">PITLANE</div>
+      </div>
+
+      <div class="metric-block">
+        <div class="eyebrow">ULTIMI SETTORI</div>
+        <div id="last-sectors" class="sector-times">— / — / —</div>
+      </div>
+    </section>
+  </main>
+
+  <div id="gps-mini" class="gps-mini gps-no">
+    GPS: NO FIX<br>
+    Sat: 0 | HDOP: —
+  </div>
+
+  <footer class="controlbar">
+    <button id="start-button" class="control-button start">AVVIA</button>
+    <button id="pause-button" class="control-button pause" disabled>PAUSA</button>
+    <button id="resume-button" class="control-button resume" disabled>RIPRENDI</button>
+    <button id="stop-button" class="control-button stop" disabled>STOP</button>
+  </footer>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
+
+=============== static/style.css ===============
+:root {
+  --black: #050505;
+  --panel: #111214;
+  --panel-2: #17181b;
+  --border: #292b2f;
+  --text: #f5f5f5;
+  --muted: #8b8e94;
+  --green: #25c76a;
+  --yellow: #e5a51c;
+  --red: #e5484d;
+  --purple: #a855f7;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--black);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", sans-serif;
+}
+
+button {
+  font: inherit;
+}
+
+.driver-dashboard {
+  min-height: 100dvh;
+  display: grid;
+  grid-template-rows: 52px minmax(0, 1fr) 58px;
+  background:
+    radial-gradient(circle at 25% 35%, #191a1e 0, #080808 46%, #050505 100%);
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-width: 0;
+  padding: 0 14px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(15, 16, 18, 0.96);
+}
+
+.brand {
+  min-width: 0;
+}
+
+.track-name,
+.driver-name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.track-name {
+  color: #d8d9dc;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.driver-name {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.session-state,
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 24px;
+  padding: 3px 8px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  color: var(--muted);
+  background: #1d1e21;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+
+.session-state.running,
+.status-badge.valid {
+  color: #d8ffe7;
+  background: rgba(37, 199, 106, 0.2);
+  border-color: rgba(37, 199, 106, 0.65);
+}
+
+.session-state.paused {
+  color: #ffe8a3;
+  background: rgba(229, 165, 28, 0.2);
+  border-color: rgba(229, 165, 28, 0.65);
+}
+
+.session-state.stopped,
+.status-badge.invalid {
+  color: #ffd6d8;
+  background: rgba(229, 72, 77, 0.2);
+  border-color: rgba(229, 72, 77, 0.65);
+}
+
+.status-badge.pit {
+  color: #f0d9ff;
+  background: rgba(168, 85, 247, 0.24);
+  border-color: rgba(168, 85, 247, 0.7);
+}
+
+.back-button {
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  color: #ddd;
+  background: #202124;
+  cursor: pointer;
+}
+
+.dashboard-grid {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(220px, 0.8fr) minmax(300px, 1.2fr);
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  padding: 6px;
+}
+
+.dashboard-card {
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: rgba(18, 19, 21, 0.93);
+}
+
+.speed-card {
+  grid-row: 1 / 3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.lap-card,
+.sector-card {
+  display: grid;
+  grid-template-columns: 90px 1fr 1fr;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 18px;
+}
+
+.eyebrow {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.speed-card .eyebrow {
+  font-size: 13px;
+}
+
+.speed-number {
+  margin: 4px 0;
+  color: #fff;
+  font-size: clamp(72px, 13vw, 142px);
+  font-weight: 900;
+  line-height: 0.88;
+  letter-spacing: -0.08em;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 0 22px rgba(255, 255, 255, 0.18);
+}
+
+.speed-unit {
+  color: #a1a4a9;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+}
+
+.lap-card > .eyebrow,
+.sector-card > .eyebrow {
+  grid-column: 1 / -1;
+  align-self: end;
+}
+
+.lap-main,
+.sector-main {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.lap-number,
+.sector-number {
+  color: #fff;
+  font-size: clamp(32px, 5vw, 58px);
+  font-weight: 900;
+  line-height: 0.9;
+  font-variant-numeric: tabular-nums;
+}
+
+.metric-block {
+  min-width: 0;
+}
+
+.metric-time,
+.sector-times {
+  margin-top: 6px;
+  color: #f5f5f5;
+  font-size: clamp(22px, 3vw, 34px);
+  font-weight: 800;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.sector-times {
+  font-size: clamp(14px, 2vw, 21px);
+  color: #d9dadd;
+}
+
+.gps-mini {
+  position: fixed;
+  top: 60px;
+  right: 14px;
+  z-index: 5;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.4;
+  text-align: right;
+  pointer-events: none;
+}
+
+.gps-ok {
+  color: var(--green);
+}
+
+.gps-no {
+  color: var(--red);
+}
+
+.controlbar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 7px;
+  border-top: 1px solid var(--border);
+  background: rgba(15, 16, 18, 0.98);
+}
+
+.control-button {
+  min-width: 92px;
+  height: 42px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 6px;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+}
+
+.control-button:disabled {
+  opacity: 0.28;
+  cursor: not-allowed;
+}
+
+.control-button.start,
+.control-button.resume {
+  background: #168b4b;
+}
+
+.control-button.pause {
+  background: #9c7010;
+}
+
+.control-button.stop {
+  background: #b92e34;
+}
+
+@media (orientation: portrait) {
+  .driver-dashboard {
+    grid-template-rows: 52px minmax(0, 1fr) 58px;
+  }
+
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+    grid-template-rows: 1.2fr 1fr 1fr;
+  }
+
+  .speed-card {
+    grid-row: auto;
+  }
+
+  .lap-card,
+  .sector-card {
+    grid-template-columns: 70px 1fr 1fr;
+    padding: 10px 12px;
+  }
+
+  .speed-number {
+    font-size: clamp(72px, 25vw, 120px);
+  }
+
+  .control-button {
+    min-width: 70px;
+    padding: 0 8px;
+    font-size: 10px;
+  }
+}
+
+.status-badge.warmup {
+  color: #fff1b8;
+  background: rgba(229, 165, 28, 0.28);
+  border-color: rgba(229, 165, 28, 0.8);
+}
+
+.status-badge.on-track {
+  color: #d8ffe7;
+  background: rgba(37, 199, 106, 0.24);
+  border-color: rgba(37, 199, 106, 0.75);
+}
+
+.status-badge.warmup {
+  color: #dbeafe;
+  background: rgba(37, 99, 235, 0.25);
+  border-color: rgba(37, 99, 235, 0.75);
+}
+
+============== config/app.yaml =================
+server:
+  host: "0.0.0.0"
+  port: 8080
+
+mqtt:
+  broker: "broker.hivemq.com"
+  port: 1883
+  topic: "sensors2mqtt-glo2/esp32/location"
+  keepalive_s: 60
+
+dashboard:
+  refresh_ms: 200
+  stale_warning_s: 1.0
+  stale_error_s: 3.0
+
+session:
+  autosave_interval_s: 10
+  sessions_dir: "sessions"
+  current_dir: "current"
+
+timing:
+  expected_gps_rate_hz: 10
+  min_satellites: 4
+  max_hdop: 3.5
+  min_fix_type: 3
+
+telemetry_filter:
+  # Sotto questa velocità il kart è trattato come quasi fermo.
+  stationary_speed_kmph: 2.0
+
+  # Se il punto è entro questa distanza dall'ultimo punto traccia
+  # e il kart è fermo, non viene aggiunto a track_points.
+  duplicate_distance_m: 0.75
+
+  # Quando il kart è in movimento, salva un nuovo punto traiettoria
+  # soltanto dopo almeno questa distanza dal precedente.
+  moving_min_distance_m: 1.5
+
+  # Da fermo conserva comunque un punto ogni N secondi nella traccia,
+  # evitando una lista infinita di coordinate ripetute.
+  stationary_keepalive_s: 5.0
+
+  # Dopo un intervallo GPS oltre questa soglia, salva il primo nuovo punto
+  # anche se vicino al precedente: rende visibili i buchi nella traccia.
+  max_track_gap_s: 1.0
+
+===== config/tracks/prima-pista.yaml =====
+track:
+  id: "prima-pista"
+  name: "Prima Pista"
+
+timing:
+  # Giro atteso: 45-55 secondi.
+  # Se un crossing avviene prima di 30 s, viene ignorato:
+  # protegge da falsi trigger GPS presso il traguardo.
+  minimum_lap_time_s: 30.0
+
+  # Dopo un crossing valido, non accettare altri trigger SF
+  # finché non sono trascorsi almeno 12 s.
+  crossing_cooldown_s: 12.0
+
+  # Evita trigger in sosta, nei box o a bassissima velocità.
+  crossing_minimum_speed_kmph: 5.0
+
+  # Campione GPS idoneo per timing.
+  min_satellites: 4
+  max_hdop: 3.5
+  min_fix_type: 3
+
+pit_box:
+  # Il kart è IN BOX solo dentro questo cerchio.
+  center:
+    lat: 41.274350
+    lon: 13.154050
+
+  radius_m: 15.0
+
+  # Il kart lascia il BOX soltanto oltre radius_m + exit_hysteresis_m.
+  exit_hysteresis_m: 4.0
+
+  # Campioni GPS consecutivi necessari per confermare il cambio stato,
+  # evitando falsi cambi dovuti a jitter GPS.
+  minimum_samples_to_confirm: 3
+
+pit_lane:
+  # Per ora non abbiamo il poligono reale della pit lane.
+  #
+  # Stato provvisorio:
+  # - dentro pit_box: IN BOX
+  # - fuori pit_box: IN PIT LANE
+  #
+  # Quando configurerai il perimetro reale, inseriremo qui:
+  #
+  # polygon:
+  #   - lat: 41.xxxxxx
+  #     lon: 13.xxxxxx
+  #
+  polygon: []
+
+start_finish:
+  id: "SF"
+  name: "Start / Finish"
+
+  # Verso gara ricavato dai punti prima e dopo traguardo.
+  direction: "forward"
+
+  # Punto circa 15-30 m prima e dopo la linea nel verso gara.
+  direction_reference:
+    before:
+      lat: 41.273779
+      lon: 13.155610
+
+    after:
+      lat: 41.273563
+      lon: 13.154869
+
+  # Estremi fisici della retta virtuale di traguardo.
+  a:
+    lat: 41.273733
+    lon: 13.155396
+
+  b:
+    lat: 41.273690
+    lon: 13.155428
+
+  # Estensione reale della linea virtuale oltre a e b.
+  # +18 metri per ciascun lato.
+  line_extension_each_side_m: 18.0
+
+  crossing_tolerance_m: 12.0
+
+sectors:
+  - id: "S1"
+    name: "Settore 1"
+    direction: "forward"
+
+    a:
+      lat: 41.272649
+      lon: 13.155243
+
+    b:
+      lat: 41.272663
+      lon: 13.155299
+
+    # Estensione reale della linea virtuale oltre a e b.
+    # +16 metri per ciascun lato.
+    line_extension_each_side_m: 16.0
+
+    crossing_tolerance_m: 12.0
+
+  - id: "S2"
+    name: "Settore 2"
+    direction: "forward"
+
+    a:
+      lat: 41.272907
+      lon: 13.156021
+
+    b:
+      lat: 41.272918
+      lon: 13.156094
+
+    # Estensione reale della linea virtuale oltre a e b.
+    # +16 metri per ciascun lato.
+    line_extension_each_side_m: 16.0
+
+    crossing_tolerance_m: 12.0
+
+======== simulate_kart_session.py ========
+#!/usr/bin/env python3
+
+import argparse
+import json
+import math
+import time
+from pathlib import Path
+
+import paho.mqtt.client as mqtt
+import yaml
+
+
+BASE_DIR = Path(__file__).resolve().parent
+APP_CONFIG = BASE_DIR / "config" / "app.yaml"
+TRACK_CONFIG = BASE_DIR / "config" / "tracks" / "prima-pista.yaml"
+
+A = (41.273531, 13.154795)
+B = (41.272110, 13.155612)
+C = (41.272289, 13.156320)
+D = (41.273787, 13.155719)
+
+
+def load_yaml(path):
+    with path.open(encoding="utf-8") as file:
+        return yaml.safe_load(file) or {}
+
+
+def point(value):
+    if not isinstance(value, dict):
+        return None
+
+    if value.get("lat") is None or value.get("lon") is None:
+        return None
+
+    return float(value["lat"]), float(value["lon"])
+
+
+def distance_m(a, b):
+    earth = 6371000.0
+
+    lat1 = math.radians(a[0])
+    lon1 = math.radians(a[1])
+    lat2 = math.radians(b[0])
+    lon2 = math.radians(b[1])
+
+    dlat = lat2 - lat1
+    dlon = lon2 - lon1
+
+    h = (
+        math.sin(dlat / 2) ** 2
+        + math.cos(lat1)
+        * math.cos(lat2)
+        * math.sin(dlon / 2) ** 2
+    )
+
+    return 2 * earth * math.asin(math.sqrt(h))
+
+
+def interpolate(a, b, f):
+    return (
+        a[0] + (b[0] - a[0]) * f,
+        a[1] + (b[1] - a[1]) * f,
+    )
+
+
+def bearing(a, b):
+    lat1 = math.radians(a[0])
+    lon1 = math.radians(a[1])
+    lat2 = math.radians(b[0])
+    lon2 = math.radians(b[1])
+
+    dlon = lon2 - lon1
+
+    x = math.sin(dlon) * math.cos(lat2)
+    y = (
+        math.cos(lat1) * math.sin(lat2)
+        - math.sin(lat1)
+        * math.cos(lat2)
+        * math.cos(dlon)
+    )
+
+    return (math.degrees(math.atan2(x, y)) + 360) % 360
+
+
+def destination(origin, heading, distance):
+    earth = 6371000.0
+
+    lat1 = math.radians(origin[0])
+    lon1 = math.radians(origin[1])
+    heading_rad = math.radians(heading)
+    angular = distance / earth
+
+    lat2 = math.asin(
+        math.sin(lat1) * math.cos(angular)
+        + math.cos(lat1)
+        * math.sin(angular)
+        * math.cos(heading_rad)
+    )
+
+    lon2 = lon1 + math.atan2(
+        math.sin(heading_rad)
+        * math.sin(angular)
+        * math.cos(lat1),
+        math.cos(angular) - math.sin(lat1) * math.sin(lat2),
+    )
+
+    return math.degrees(lat2), math.degrees(lon2)
+
+
+def center(a, b):
+    return (
+        (a[0] + b[0]) / 2,
+        (a[1] + b[1]) / 2,
+    )
+
+
+def get_geometry(config):
+    start_finish = config.get("start_finish", {})
+    sectors = config.get("sectors", [])
+    pit_box = config.get("pit_box", {})
+
+    sf_a = point(start_finish.get("a"))
+    sf_b = point(start_finish.get("b"))
+
+    s1_a = point(sectors[0].get("a"))
+    s1_b = point(sectors[0].get("b"))
+    s2_a = point(sectors[1].get("a"))
+    s2_b = point(sectors[1].get("b"))
+
+    box = point(pit_box.get("center"))
+
+    if not all([sf_a, sf_b, s1_a, s1_b, s2_a, s2_b, box]):
+        raise RuntimeError("Geometria incompleta nel file YAML.")
+
+    return {
+        "sf": (sf_a, sf_b),
+        "s1": (s1_a, s1_b),
+        "s2": (s2_a, s2_b),
+        "box": box,
+    }
+
+
+def crossing_pair(line_a, line_b, incoming, outgoing, offset_m=14.0):
+    """
+    Genera due punti attorno alla linea, ma sceglie sempre il verso
+    più vicino al segmento incoming -> outgoing.
+    """
+    line_center = center(line_a, line_b)
+    line_heading = bearing(line_a, line_b)
+
+    normal_1 = (line_heading + 90) % 360
+    normal_2 = (line_heading - 90) % 360
+
+    route_heading = bearing(incoming, outgoing)
+
+    def angle_error(value):
+        return abs((route_heading - value + 180) % 360 - 180)
+
+    crossing_heading = (
+        normal_1 if angle_error(normal_1) <= angle_error(normal_2)
+        else normal_2
+    )
+
+    before = destination(
+        line_center,
+        (crossing_heading + 180) % 360,
+        offset_m,
+    )
+
+    after = destination(
+        line_center,
+        crossing_heading,
+        offset_m,
+    )
+
+    return before, after
+
+
+def add_straight(route, start, end, speed, hz, phase, minimum=3):
+    length = distance_m(start, end)
+    duration = length / max(speed / 3.6, 0.5)
+    count = max(minimum, math.ceil(duration * hz))
+
+    for i in range(1, count + 1):
+        current = interpolate(start, end, i / count)
+
+        route.append({
+            "latitude": current[0],
+            "longitude": current[1],
+            "speed_kmph": speed,
+            "phase": phase,
+        })
+
+    return end
+
+
+def add_line_crossing(
+    route,
+    start,
+    line_a,
+    line_b,
+    next_waypoint,
+    speed,
+    hz,
+    phase,
+):
+    before, after = crossing_pair(
+        line_a,
+        line_b,
+        start,
+        next_waypoint,
+    )
+
+    add_straight(
+        route,
+        start,
+        before,
+        speed,
+        hz,
+        phase + "_approach",
+    )
+
+    add_straight(
+        route,
+        before,
+        after,
+        speed,
+        hz,
+        phase + "_cross",
+        minimum=16,
+    )
+
+    add_straight(
+        route,
+        after,
+        next_waypoint,
+        speed,
+        hz,
+        phase + "_exit",
+    )
+
+    return next_waypoint
+
+
+def add_exact_lap(route, geometry, hz, phase, speeds):
+    """
+    Ordine imposto senza ambiguità:
+
+    A -> S1 -> B -> C -> S2 -> D -> SF -> A
+
+    Dopo SF viene raggiunto esplicitamente A.
+    Solo dopo A viene raggiunto S1.
+    """
+    s1_a, s1_b = geometry["s1"]
+    s2_a, s2_b = geometry["s2"]
+    sf_a, sf_b = geometry["sf"]
+
+    current = A
+
+    # A -> S1 -> B
+    current = add_line_crossing(
+        route,
+        current,
+        s1_a,
+        s1_b,
+        B,
+        speeds["s1"],
+        hz,
+        phase + "_s1",
+    )
+
+    # B -> C
+    current = add_straight(
+        route,
+        current,
+        C,
+        speeds["b_to_c"],
+        hz,
+        phase + "_b_to_c",
+    )
+
+    # C -> S2 -> D
+    current = add_line_crossing(
+        route,
+        current,
+        s2_a,
+        s2_b,
+        D,
+        speeds["s2"],
+        hz,
+        phase + "_s2",
+    )
+
+    # D -> SF -> A
+    current = add_line_crossing(
+        route,
+        current,
+        sf_a,
+        sf_b,
+        A,
+        speeds["finish"],
+        hz,
+        phase + "_finish",
+    )
+
+    return current
+
+
+def build_route(config, hz):
+    geometry = get_geometry(config)
+    box = geometry["box"]
+
+    route = []
+
+    # BOX
+    for sample in range(max(1, int(3 * hz))):
+        route.append({
+            "latitude": box[0],
+            "longitude": box[1],
+            "speed_kmph": 0.0,
+            "phase": "box_stationary",
+        })
+
+    # BOX -> PIT LANE -> A
+    add_straight(
+        route,
+        box,
+        A,
+        20.0,
+        hz,
+        "pit_lane_exit",
+    )
+
+    # WARMUP: più lento
+    add_exact_lap(
+        route,
+        geometry,
+        hz,
+        "warmup",
+        {
+            "s1": 44.0,
+            "b_to_c": 46.0,
+            "s2": 45.0,
+            "finish": 50.0,
+        },
+    )
+
+    # GIRO 1: più veloce
+    add_exact_lap(
+        route,
+        geometry,
+        hz,
+        "lap_1",
+        {
+            "s1": 58.0,
+            "b_to_c": 60.0,
+            "s2": 56.0,
+            "finish": 66.0,
+        },
+    )
+
+    # GIRO 2: ancora più veloce
+    add_exact_lap(
+        route,
+        geometry,
+        hz,
+        "lap_2_fast",
+        {
+            "s1": 65.0,
+            "b_to_c": 68.0,
+            "s2": 63.0,
+            "finish": 75.0,
+        },
+    )
+
+    # Solo dopo i due giri: A -> PIT LANE -> BOX
+    add_straight(
+        route,
+        A,
+        box,
+        20.0,
+        hz,
+        "pit_lane_entry",
+    )
+
+    for sample in range(max(1, int(4 * hz))):
+        route.append({
+            "latitude": box[0],
+            "longitude": box[1],
+            "speed_kmph": 0.0,
+            "phase": "box_returned",
+        })
+
+    return route
+
+
+def publish(route, mqtt_config, hz, multiplier):
+    broker = mqtt_config["broker"]
+    port = int(mqtt_config.get("port", 1883))
+    topic = mqtt_config["topic"]
+
+    connected = False
+
+    def on_connect(client, userdata, flags, reason_code, properties=None):
+        nonlocal connected
+        connected = True
+
+    client = mqtt.Client(
+        mqtt.CallbackAPIVersion.VERSION2,
+        client_id=f"kart-sim-{int(time.time())}",
+    )
+
+    client.on_connect = on_connect
+    client.connect(broker, port, keepalive=60)
+    client.loop_start()
+
+    start = time.time()
+
+    while not connected:
+        if time.time() - start > 8:
+            client.loop_stop()
+            client.disconnect()
+            raise RuntimeError("Connessione MQTT non riuscita.")
+        time.sleep(0.05)
+
+    print()
+    print("=== SIMULATORE PERCORSO ESATTO ===")
+    print("BOX -> PITLANE -> A -> S1 -> B -> C -> S2 -> D -> SF -> A")
+    print("ripetuto: warmup, lap_1, lap_2_fast")
+    print("poi A -> PITLANE -> BOX")
+    print()
+    print(f"Campioni: {len(route)}")
+    print(f"Frequenza: {hz:.1f} Hz")
+    print(f"Moltiplicatore: {multiplier:.2f}x")
+    print()
+
+    interval = 1.0 / hz / multiplier
+    last_phase = None
+
+    try:
+        for index, item in enumerate(route, start=1):
+            phase = item["phase"]
+
+            if phase != last_phase:
+                print(
+                    f"[{index:04d}/{len(route):04d}] "
+                    f"{phase:30s} "
+                    f"{item['speed_kmph']:5.1f} km/h"
+                )
+                last_phase = phase
+
+            payload = {
+                "latitude": round(item["latitude"], 7),
+                "longitude": round(item["longitude"], 7),
+                "speed_kmph": round(item["speed_kmph"], 1),
+                "satellites_used": 10,
+                "fix_valid": True,
+                "fix_quality": 1,
+                "fix_type": 3,
+                "hdop": 0.75,
+                "simulated": True,
+                "simulation_phase": phase,
+            }
+
+            result = client.publish(
+                topic,
+                json.dumps(payload),
+                qos=0,
+                retain=False,
+            )
+
+            if result.rc != mqtt.MQTT_ERR_SUCCESS:
+                raise RuntimeError(f"MQTT publish error: {result.rc}")
+
+            time.sleep(interval)
+
+    except KeyboardInterrupt:
+        print("\nSimulazione interrotta.")
+
+    finally:
+        client.loop_stop()
+        client.disconnect()
+
+    print("=== SIMULAZIONE COMPLETATA ===")
+
+
+def main():
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument(
+        "--hz",
+        type=float,
+        default=10.0,
+    )
+
+    parser.add_argument(
+        "--speed",
+        type=float,
+        default=1.0,
+    )
+
+    args = parser.parse_args()
+
+    if args.hz <= 0 or args.speed <= 0:
+        raise SystemExit("--hz e --speed devono essere maggiori di zero.")
+
+    app_config = load_yaml(APP_CONFIG)
+    track_config = load_yaml(TRACK_CONFIG)
+
+    route = build_route(track_config, args.hz)
+
+    publish(
+        route,
+        app_config["mqtt"],
+        args.hz,
+        args.speed,
+    )
+
+
+if __name__ == "__main__":
+    main()
+
+========== track_map_server.py ===========
+#!/usr/bin/env python3
+
+import json
+import math
+import urllib.request
+from pathlib import Path
+
+import yaml
+from flask import Flask, jsonify, render_template_string
+
+
+BASE_DIR = Path(__file__).resolve().parent
+TRACK_FILE = BASE_DIR / "config" / "tracks" / "prima-pista.yaml"
+
+MAIN_APP_API = "http://127.0.0.1:8080/api/live"
+
+HOST = "0.0.0.0"
+PORT = 8081
+
+app = Flask(__name__)
+
+
+def load_yaml():
+    with TRACK_FILE.open("r", encoding="utf-8") as file:
+        return yaml.safe_load(file) or {}
+
+
+def yaml_point(value):
+    """
+    Converte:
+      {lat: 41.x, lon: 13.x}
+    in:
+      [41.x, 13.x]
+    """
+    if not isinstance(value, dict):
+        return None
+
+    latitude = value.get("lat")
+    longitude = value.get("lon")
+
+    if latitude is None or longitude is None:
+        return None
+
+    return [float(latitude), float(longitude)]
+
+
+def midpoint(point_a, point_b):
+    return [
+        (point_a[0] + point_b[0]) / 2.0,
+        (point_a[1] + point_b[1]) / 2.0,
+    ]
+
+
+def bearing_degrees(point_a, point_b):
+    """
+    Direzione geografica:
+    0° Nord, 90° Est, 180° Sud, 270° Ovest.
+    """
+    latitude_1 = math.radians(point_a[0])
+    longitude_1 = math.radians(point_a[1])
+    latitude_2 = math.radians(point_b[0])
+    longitude_2 = math.radians(point_b[1])
+
+    delta_longitude = longitude_2 - longitude_1
+
+    x = math.sin(delta_longitude) * math.cos(latitude_2)
+    y = (
+        math.cos(latitude_1) * math.sin(latitude_2)
+        - math.sin(latitude_1)
+        * math.cos(latitude_2)
+        * math.cos(delta_longitude)
+    )
+
+    return (math.degrees(math.atan2(x, y)) + 360.0) % 360.0
+
+
+def destination_point(point, bearing_deg, distance_m):
+    """
+    Sposta un punto GPS di distance_m metri nella direzione bearing_deg.
+    """
+    earth_radius_m = 6371000.0
+
+    latitude_1 = math.radians(point[0])
+    longitude_1 = math.radians(point[1])
+    bearing = math.radians(bearing_deg)
+    angular_distance = distance_m / earth_radius_m
+
+    latitude_2 = math.asin(
+        math.sin(latitude_1) * math.cos(angular_distance)
+        + math.cos(latitude_1)
+        * math.sin(angular_distance)
+        * math.cos(bearing)
+    )
+
+    longitude_2 = longitude_1 + math.atan2(
+        math.sin(bearing)
+        * math.sin(angular_distance)
+        * math.cos(latitude_1),
+        math.cos(angular_distance)
+        - math.sin(latitude_1) * math.sin(latitude_2),
+    )
+
+    return [
+        math.degrees(latitude_2),
+        math.degrees(longitude_2),
+    ]
+
+
+def extend_line(point_a, point_b, extension_each_side_m):
+    """
+    Estende la retta a->b oltre entrambe le estremità.
+
+    Esempio:
+      a---b, extension_each_side_m=18
+    diventa:
+      A-----------B
+
+    Le coordinate originali restano in YAML.
+    """
+    extension = max(0.0, float(extension_each_side_m))
+
+    if extension == 0.0:
+        return [point_a, point_b]
+
+    heading_a_to_b = bearing_degrees(point_a, point_b)
+    heading_b_to_a = (heading_a_to_b + 180.0) % 360.0
+
+    extended_a = destination_point(
+        point_a,
+        heading_b_to_a,
+        extension,
+    )
+
+    extended_b = destination_point(
+        point_b,
+        heading_a_to_b,
+        extension,
+    )
+
+    return [extended_a, extended_b]
+
+
+def direction_arrow(before, after):
+    """
+    Freccia nel verso reale di percorrenza:
+      direction_reference.before -> direction_reference.after
+    """
+    heading = bearing_degrees(before, after)
+    center = midpoint(before, after)
+
+    tail = destination_point(
+        center,
+        (heading + 180.0) % 360.0,
+        8.0,
+    )
+
+    tip = destination_point(
+        center,
+        heading,
+        16.0,
+    )
+
+    return {
+        "tail": tail,
+        "tip": tip,
+        "heading_deg": heading,
+    }
+
+
+def line_data(line_config, default_extension_m=16.0):
+    """
+    Legge una linea del formato:
+      a: {lat, lon}
+      b: {lat, lon}
+      line_extension_each_side_m: 18.0
+    """
+    if not isinstance(line_config, dict):
+        return None
+
+    point_a = yaml_point(line_config.get("a"))
+    point_b = yaml_point(line_config.get("b"))
+
+    if not point_a or not point_b:
+        return None
+
+    extension = float(
+        line_config.get(
+            "line_extension_each_side_m",
+            default_extension_m,
+        )
+    )
+
+    return {
+        "original_line": [point_a, point_b],
+        "line": extend_line(point_a, point_b, extension),
+        "center": midpoint(point_a, point_b),
+        "line_extension_each_side_m": extension,
+        "crossing_tolerance_m": float(
+            line_config.get("crossing_tolerance_m", 12.0)
+        ),
+    }
+
+
+def build_map_config():
+    """
+    Legge direttamente il YAML corrente.
+
+    Struttura attesa:
+      track:
+      start_finish:
+      sectors:
+      pit_box:
+    """
+    config = load_yaml()
+
+    track = config.get("track", {})
+    start_finish_config = config.get("start_finish", {})
+    sectors_config = config.get("sectors", [])
+    pit_box_config = config.get("pit_box", {})
+
+    result = {
+        "track": {
+            "id": track.get("id", "unknown"),
+            "name": track.get("name", "Pista non configurata"),
+        },
+        "start_finish": None,
+        "sectors": [],
+        "pit_box": None,
+    }
+
+    # Start / Finish
+    start_finish = line_data(
+        start_finish_config,
+        default_extension_m=18.0,
+    )
+
+    if start_finish:
+        start_finish["id"] = start_finish_config.get("id", "SF")
+        start_finish["name"] = start_finish_config.get(
+            "name",
+            "Start / Finish",
+        )
+        start_finish["direction"] = start_finish_config.get(
+            "direction",
+            "forward",
+        )
+        start_finish["direction_arrow"] = None
+
+        references = start_finish_config.get(
+            "direction_reference",
+            {},
+        )
+
+        before = yaml_point(references.get("before"))
+        after = yaml_point(references.get("after"))
+
+        if before and after:
+            start_finish["direction_arrow"] = direction_arrow(
+                before,
+                after,
+            )
+
+        result["start_finish"] = start_finish
+
+    # Settori
+    if isinstance(sectors_config, list):
+        for index, sector_config in enumerate(sectors_config, start=1):
+            sector = line_data(
+                sector_config,
+                default_extension_m=16.0,
+            )
+
+            if not sector:
+                continue
+
+            sector["id"] = sector_config.get("id", f"S{index}")
+            sector["name"] = sector_config.get(
+                "name",
+                f"Settore {index}",
+            )
+            sector["direction"] = sector_config.get(
+                "direction",
+                "forward",
+            )
+
+            result["sectors"].append(sector)
+
+    # BOX: cerchio separato dalla pit lane.
+    pit_center = yaml_point(pit_box_config.get("center"))
+
+    if pit_center:
+        result["pit_box"] = {
+            "center": pit_center,
+            "radius_m": float(
+                pit_box_config.get("radius_m", 12.0)
+            ),
+            "exit_hysteresis_m": float(
+                pit_box_config.get("exit_hysteresis_m", 4.0)
+            ),
+        }
+
+    return result
+
+
+def read_live_gps():
+    fallback = {
+        "latitude": 0.0,
+        "longitude": 0.0,
+        "speed_kmph": 0.0,
+        "satellites_used": 0,
+        "fix_valid": False,
+        "fix_type": 0,
+        "hdop": None,
+    }
+
+    try:
+        with urllib.request.urlopen(
+            MAIN_APP_API,
+            timeout=1.0,
+        ) as response:
+            data = json.loads(response.read().decode("utf-8"))
+            return data.get("gps", fallback)
+
+    except Exception as error:
+        fallback["error"] = str(error)
+        return fallback
+
+
+MAP_HTML = r"""
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <title>Track Map Live</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+  >
+
+  <style>
+    html, body, #map {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      background: #101114;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", sans-serif;
+    }
+
+    .info-panel {
+      position: fixed;
+      z-index: 1000;
+      top: 12px;
+      left: 12px;
+      width: min(315px, calc(100vw - 24px));
+      padding: 12px;
+      background: rgba(12, 13, 16, 0.94);
+      color: #f5f5f5;
+      border: 1px solid rgba(255, 255, 255, 0.22);
+      border-radius: 9px;
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.38);
+    }
+
+    .track-title {
+      margin: 0 0 10px;
+      font-size: 16px;
+      font-weight: 850;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .metric-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 7px;
+    }
+
+    .metric {
+      padding: 7px;
+      background: #18191d;
+      border: 1px solid #32343a;
+      border-radius: 6px;
+    }
+
+    .label {
+      display: block;
+      color: #a5a8ae;
+      font-size: 9px;
+      font-weight: 800;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    .value {
+      display: block;
+      margin-top: 2px;
+      color: #fff;
+      font-size: 16px;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .good { color: #2ed477; }
+    .bad { color: #f16066; }
+
+    .legend {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      margin-top: 10px;
+      color: #d9dade;
+      font-size: 11px;
+    }
+
+    .legend-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .legend-line {
+      width: 20px;
+      height: 4px;
+      flex: 0 0 20px;
+      border-radius: 3px;
+    }
+
+    .map-status {
+      margin-top: 10px;
+      padding-top: 9px;
+      border-top: 1px solid #36383d;
+      color: #b1b4ba;
+      font-size: 10px;
+      line-height: 1.35;
+    }
+
+    .live-kart {
+      width: 20px;
+      height: 20px;
+      border: 3px solid #fff;
+      border-radius: 50%;
+      background: #a855f7;
+      box-shadow: 0 0 13px rgba(168, 85, 247, 0.95);
+    }
+
+    .direction-arrow {
+      width: 0;
+      height: 0;
+      border-left: 9px solid transparent;
+      border-right: 9px solid transparent;
+      border-bottom: 25px solid #ef4444;
+      filter: drop-shadow(0 0 3px rgba(0, 0, 0, 0.95));
+      transform-origin: 50% 50%;
+    }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+
+  <aside class="info-panel">
+    <h1 id="track-name" class="track-title">Caricamento…</h1>
+
+    <div class="metric-grid">
+      <div class="metric">
+        <span class="label">GPS</span>
+        <span id="gps-status" class="value bad">NO FIX</span>
+      </div>
+
+      <div class="metric">
+        <span class="label">Velocità</span>
+        <span id="speed" class="value">0 km/h</span>
+      </div>
+
+      <div class="metric">
+        <span class="label">Satelliti</span>
+        <span id="satellites" class="value">0</span>
+      </div>
+
+      <div class="metric">
+        <span class="label">HDOP</span>
+        <span id="hdop" class="value">—</span>
+      </div>
+    </div>
+
+    <div class="legend">
+      <div class="legend-row">
+        <span class="legend-line" style="background:#ef4444"></span>
+        Traguardo
+      </div>
+
+      <div class="legend-row">
+        <span class="legend-line" style="background:#2563eb"></span>
+        Settore 1
+      </div>
+
+      <div class="legend-row">
+        <span class="legend-line" style="background:#16a34a"></span>
+        Settore 2
+      </div>
+
+      <div class="legend-row">
+        <span class="legend-line" style="background:#f59e0b"></span>
+        Settore 3
+      </div>
+
+      <div class="legend-row">
+        <span class="legend-line" style="background:#6b7280"></span>
+        BOX
+      </div>
+
+      <div class="legend-row">
+        <span class="legend-line" style="background:#a855f7"></span>
+        GPS live
+      </div>
+    </div>
+
+    <div id="map-status" class="map-status">
+      Lettura configurazione YAML…
+    </div>
+  </aside>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <script>
+    const map = L.map("map", {
+      preferCanvas: true
+    });
+
+    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 20,
+      attribution:
+        '&copy; <a href="https://www.openstreetmap.org/copyright">' +
+        'OpenStreetMap contributors</a>'
+    }).addTo(map);
+
+    const colors = ["#2563eb", "#16a34a", "#f59e0b"];
+
+    let configFingerprint = null;
+    let configurationLayers = [];
+    let initialZoomDone = false;
+
+    let gpsMarker = null;
+    let gpsTrail = [];
+    let gpsTrailLine = null;
+
+    function addLayer(layer) {
+      configurationLayers.push(layer);
+      return layer;
+    }
+
+    function clearConfiguration() {
+      configurationLayers.forEach((layer) => map.removeLayer(layer));
+      configurationLayers = [];
+    }
+
+    function drawArrow(arrow, color) {
+      if (!arrow || !arrow.tail || !arrow.tip) return;
+
+      const tail = L.latLng(arrow.tail[0], arrow.tail[1]);
+      const tip = L.latLng(arrow.tip[0], arrow.tip[1]);
+
+      const angle = Math.atan2(
+        tip.lng - tail.lng,
+        tip.lat - tail.lat
+      ) * 180 / Math.PI;
+
+      const icon = L.divIcon({
+        className: "",
+        html:
+          '<div class="direction-arrow" style="' +
+          'border-bottom-color:' + color + ';' +
+          'transform:rotate(' + angle + 'deg)"></div>',
+        iconSize: [18, 25],
+        iconAnchor: [9, 12]
+      });
+
+      addLayer(
+        L.marker(
+          [
+            (tail.lat + tip.lat) / 2,
+            (tail.lng + tip.lng) / 2
+          ],
+          {
+            icon: icon,
+            interactive: false
+          }
+        ).addTo(map)
+      );
+    }
+
+    function drawConfig(config) {
+      const fingerprint = JSON.stringify(config);
+
+      if (fingerprint === configFingerprint) {
+        return;
+      }
+
+      configFingerprint = fingerprint;
+      clearConfiguration();
+
+      const bounds = [];
+      const sf = config.start_finish;
+      const sectors = config.sectors || [];
+      const pitBox = config.pit_box;
+
+      document.getElementById("track-name").textContent =
+        config.track && config.track.name
+          ? config.track.name
+          : "Pista non configurata";
+
+      if (sf && Array.isArray(sf.line) && sf.line.length === 2) {
+        addLayer(
+          L.polyline(sf.line, {
+            color: "#ef4444",
+            weight: 7,
+            opacity: 1
+          }).addTo(map)
+        );
+
+        addLayer(
+          L.polyline(sf.original_line, {
+            color: "#ffffff",
+            weight: 2,
+            opacity: 0.65,
+            dashArray: "3 5"
+          }).addTo(map)
+        );
+
+        addLayer(
+          L.circleMarker(sf.center, {
+            radius: 6,
+            color: "#ffffff",
+            weight: 2,
+            fillColor: "#ef4444",
+            fillOpacity: 1
+          }).addTo(map).bindPopup(
+            "<b>START / FINISH</b><br>" +
+            "Estensione: +" +
+            sf.line_extension_each_side_m +
+            " m per lato"
+          )
+        );
+
+        drawArrow(sf.direction_arrow, "#ef4444");
+        bounds.push(...sf.line);
+      }
+
+      sectors.forEach((sector, index) => {
+        const color = colors[index % colors.length];
+
+        if (!Array.isArray(sector.line) || sector.line.length !== 2) {
+          return;
+        }
+
+        addLayer(
+          L.polyline(sector.line, {
+            color: color,
+            weight: 6,
+            opacity: 1
+          }).addTo(map)
+        );
+
+        addLayer(
+          L.polyline(sector.original_line, {
+            color: "#ffffff",
+            weight: 2,
+            opacity: 0.6,
+            dashArray: "3 5"
+          }).addTo(map)
+        );
+
+        addLayer(
+          L.circleMarker(sector.center, {
+            radius: 5,
+            color: "#ffffff",
+            weight: 2,
+            fillColor: color,
+            fillOpacity: 1
+          }).addTo(map).bindPopup(
+            "<b>" + sector.name + "</b><br>" +
+            "Estensione: +" +
+            sector.line_extension_each_side_m +
+            " m per lato"
+          )
+        );
+
+        bounds.push(...sector.line);
+      });
+
+      if (pitBox && pitBox.center) {
+        addLayer(
+          L.circle(pitBox.center, {
+            radius: pitBox.radius_m,
+            color: "#6b7280",
+            weight: 3,
+            fillColor: "#6b7280",
+            fillOpacity: 0.30
+          }).addTo(map).bindPopup(
+            "<b>BOX</b><br>" +
+            "Raggio: " + pitBox.radius_m + " m"
+          )
+        );
+
+        bounds.push(pitBox.center);
+      }
+
+      const sfText = sf ? "traguardo OK" : "traguardo assente";
+      const boxText = pitBox ? "box OK" : "box assente";
+
+      document.getElementById("map-status").textContent =
+        "YAML: " +
+        sfText +
+        " | " +
+        sectors.length +
+        " settori | " +
+        boxText;
+
+      if (!initialZoomDone && bounds.length > 1) {
+        map.fitBounds(bounds, {
+          padding: [80, 80],
+          maxZoom: 19
+        });
+
+        initialZoomDone = true;
+      }
+    }
+
+    function updateGps(gps) {
+      const gpsStatus = document.getElementById("gps-status");
+      const speed = document.getElementById("speed");
+      const satellites = document.getElementById("satellites");
+      const hdop = document.getElementById("hdop");
+
+      const valid =
+        gps &&
+        gps.fix_valid === true &&
+        Number.isFinite(Number(gps.latitude)) &&
+        Number.isFinite(Number(gps.longitude)) &&
+        !(
+          Number(gps.latitude) === 0 &&
+          Number(gps.longitude) === 0
+        );
+
+      gpsStatus.textContent = valid
+        ? (Number(gps.fix_type) === 3 ? "FIX 3D" : "FIX")
+        : "NO FIX";
+
+      gpsStatus.className = "value " + (valid ? "good" : "bad");
+
+      speed.textContent =
+        Math.round(Number(gps && gps.speed_kmph) || 0) +
+        " km/h";
+
+      satellites.textContent =
+        String(
+          gps && gps.satellites_used != null
+            ? gps.satellites_used
+            : 0
+        );
+
+      hdop.textContent =
+        gps && gps.hdop != null
+          ? Number(gps.hdop).toFixed(2)
+          : "—";
+
+      if (!valid) {
+        return;
+      }
+
+      const position = [
+        Number(gps.latitude),
+        Number(gps.longitude)
+      ];
+
+      if (!gpsMarker) {
+        const icon = L.divIcon({
+          className: "",
+          html: '<div class="live-kart"></div>',
+          iconSize: [20, 20],
+          iconAnchor: [10, 10]
+        });
+
+        gpsMarker = L.marker(position, {
+          icon: icon,
+          zIndexOffset: 1000
+        }).addTo(map);
+
+        gpsMarker.bindPopup("<b>GPS LIVE</b>");
+      } else {
+        gpsMarker.setLatLng(position);
+      }
+
+      gpsTrail.push(position);
+
+      if (gpsTrail.length > 1200) {
+        gpsTrail.shift();
+      }
+
+      if (!gpsTrailLine) {
+        gpsTrailLine = L.polyline(gpsTrail, {
+          color: "#a855f7",
+          weight: 4,
+          opacity: 0.85
+        }).addTo(map);
+      } else {
+        gpsTrailLine.setLatLngs(gpsTrail);
+      }
+    }
+
+    async function updateMap() {
+      try {
+        const response = await fetch("/api/map/live", {
+          cache: "no-store"
+        });
+
+        if (!response.ok) {
+          throw new Error("HTTP " + response.status);
+        }
+
+        const data = await response.json();
+
+        drawConfig(data.config);
+        updateGps(data.gps);
+
+      } catch (error) {
+        document.getElementById("map-status").textContent =
+          "Errore: " + error.message;
+
+        console.error("Errore aggiornamento mappa:", error);
+      }
+
+      window.setTimeout(updateMap, 500);
+    }
+
+    updateMap();
+  </script>
+</body>
+</html>
+"""
+
+
+@app.get("/")
+def index():
+    return render_template_string(MAP_HTML)
+
+
+@app.get("/api/map/live")
+def map_live():
+    return jsonify({
+        "config": build_map_config(),
+        "gps": read_live_gps(),
+    })
+
+
+if __name__ == "__main__":
+    print()
+    print("=== Kart Track Map Live ===")
+    print(f"Mappa: http://127.0.0.1:{PORT}")
+    print(f"Configurazione YAML: {TRACK_FILE}")
+    print(f"GPS live da: {MAIN_APP_API}")
+    print()
+
+    app.run(
+        host=HOST,
+        port=PORT,
+        debug=False,
+        use_reloader=False,
+        threaded=True,
+    )

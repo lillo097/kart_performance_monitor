@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <title>Kart Performance Monitor</title>
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no"
+  >
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <main class="app">
+    <header class="topbar">
+      <div class="brand">
+        <div id="track-name" class="track-name">Pista non configurata</div>
+        <div id="driver-name" class="driver-name">Pilota: —</div>
+      </div>
+
+      <div class="top-status">
+        <div id="gps-mini" class="gps">GPS: NO FIX · Sat: 0 | HDOP: —</div>
+        <div id="session-state" class="status-badge">IN ATTESA</div>
+      </div>
+    </header>
+
+    <section class="layout">
+      <!-- LEFT: sectors -->
+      <aside class="panel sectors-panel">
+        <div class="panel-heading">Settori</div>
+
+        <div id="sector-live-panel" class="sector-current">
+          <div class="sector-kicker">Settore corrente</div>
+          <div id="sector-id" class="sector-id">S1</div>
+          <div id="sector-live-status" class="sector-state">NESSUN SETTORE</div>
+          <div id="sector-live-time" class="sector-time">—</div>
+        </div>
+
+        <div class="sector-history">
+          <div class="sector-history-title">Ultimi settori</div>
+
+          <div class="sector-row">
+            <div class="sector-row-name">S1</div>
+            <div id="sector-history-s1" class="sector-row-value">—</div>
+          </div>
+
+          <div class="sector-row">
+            <div class="sector-row-name">S2</div>
+            <div id="sector-history-s2" class="sector-row-value">—</div>
+          </div>
+
+          <div class="sector-row">
+            <div class="sector-row-name">S3</div>
+            <div id="sector-history-s3" class="sector-row-value">—</div>
+          </div>
+        </div>
+      </aside>
+
+      <!-- CENTER: speed -->
+      <section class="panel speed-panel">
+        <div class="speed-label">Velocità</div>
+        <div id="speed-value" class="speed-value">0</div>
+        <div class="speed-unit">KM/H</div>
+        <div id="track-status" class="track-state">POSIZIONE N/D</div>
+      </section>
+
+      <!-- RIGHT: lap -->
+      <aside class="panel lap-panel">
+        <div class="lap-top">
+          <div class="lap-number-block">
+            <div class="lap-number-label">Giro</div>
+            <div id="lap-number" class="lap-number">0</div>
+          </div>
+          <div id="lap-valid" class="lap-valid">—</div>
+        </div>
+
+        <div class="lap-metric">
+          <div class="lap-metric-label">Giro corrente</div>
+          <div id="current-lap-time" class="lap-metric-value">—</div>
+        </div>
+
+        <div class="lap-metrics">
+          <div class="lap-metric">
+            <div class="lap-metric-label">Ultimo giro</div>
+            <div id="last-lap-time" class="lap-metric-value">—</div>
+          </div>
+
+          <div id="best-lap-panel" class="lap-metric best-lap">
+            <div class="lap-metric-label">Miglior giro</div>
+            <div id="best-lap-time" class="lap-metric-value">—</div>
+          </div>
+        </div>
+      </aside>
+    </section>
+
+    <footer class="controls">
+      <button id="start-button" class="control green">AVVIA</button>
+      <button id="pause-button" class="control" disabled>PAUSA</button>
+      <button id="resume-button" class="control" disabled>RIPRENDI</button>
+      <button id="stop-button" class="control red" disabled>STOP</button>
+      <button id="back-button" class="control purple">←</button>
+    </footer>
+  </main>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

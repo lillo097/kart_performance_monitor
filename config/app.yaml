@@ -1,0 +1,45 @@
+server:
+  host: "0.0.0.0"
+  port: 8080
+
+mqtt:
+  broker: "broker.hivemq.com"
+  port: 1883
+  topic: "sensors2mqtt-glo2/esp32/location"
+  keepalive_s: 60
+
+dashboard:
+  refresh_ms: 200
+  stale_warning_s: 1.0
+  stale_error_s: 3.0
+
+session:
+  autosave_interval_s: 10
+  sessions_dir: "sessions"
+  current_dir: "current"
+
+timing:
+  expected_gps_rate_hz: 10
+  min_satellites: 4
+  max_hdop: 3.5
+  min_fix_type: 3
+
+telemetry_filter:
+  # Sotto questa velocità il kart è trattato come quasi fermo.
+  stationary_speed_kmph: 2.0
+
+  # Se il punto è entro questa distanza dall'ultimo punto traccia
+  # e il kart è fermo, non viene aggiunto a track_points.
+  duplicate_distance_m: 0.75
+
+  # Quando il kart è in movimento, salva un nuovo punto traiettoria
+  # soltanto dopo almeno questa distanza dal precedente.
+  moving_min_distance_m: 1.5
+
+  # Da fermo conserva comunque un punto ogni N secondi nella traccia,
+  # evitando una lista infinita di coordinate ripetute.
+  stationary_keepalive_s: 5.0
+
+  # Dopo un intervallo GPS oltre questa soglia, salva il primo nuovo punto
+  # anche se vicino al precedente: rende visibili i buchi nella traccia.
+  max_track_gap_s: 1.0

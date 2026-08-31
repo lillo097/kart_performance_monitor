@@ -1,0 +1,143 @@
+{
+  "schema_version": 5,
+  "saved_at": "2026-08-29T01:13:12.975+02:00",
+  "status": "stopped",
+  "driver": {
+    "id": "livio",
+    "name": "Livio",
+    "color": "#32d583"
+  },
+  "track": {
+    "id": "prima-pista",
+    "name": "Prima Pista"
+  },
+  "track_config": {
+    "track": {
+      "id": "prima-pista",
+      "name": "Prima Pista"
+    },
+    "timing": {
+      "minimum_lap_time_s": 30.0,
+      "crossing_cooldown_s": 12.0,
+      "crossing_minimum_speed_kmph": 5.0,
+      "min_satellites": 4,
+      "max_hdop": 3.5,
+      "min_fix_type": 3
+    },
+    "pit_box": {
+      "center": {
+        "lat": 41.27435,
+        "lon": 13.15405
+      },
+      "radius_m": 15.0,
+      "exit_hysteresis_m": 4.0,
+      "minimum_samples_to_confirm": 3
+    },
+    "pit_lane": {
+      "start": {
+        "lat": 41.274236,
+        "lon": 13.154299
+      },
+      "end": {
+        "lat": 41.273531,
+        "lon": 13.154795
+      },
+      "polygon": []
+    },
+    "start_finish": {
+      "id": "SF",
+      "name": "Start / Finish",
+      "direction": "forward",
+      "direction_reference": {
+        "before": {
+          "lat": 41.273779,
+          "lon": 13.15561
+        },
+        "after": {
+          "lat": 41.273563,
+          "lon": 13.154869
+        }
+      },
+      "a": {
+        "lat": 41.273733,
+        "lon": 13.155396
+      },
+      "b": {
+        "lat": 41.27369,
+        "lon": 13.155428
+      },
+      "line_extension_each_side_m": 18.0,
+      "crossing_tolerance_m": 12.0
+    },
+    "sectors": [
+      {
+        "id": "S1",
+        "name": "Settore 1",
+        "direction": "forward",
+        "a": {
+          "lat": 41.272649,
+          "lon": 13.155243
+        },
+        "b": {
+          "lat": 41.272663,
+          "lon": 13.155299
+        },
+        "line_extension_each_side_m": 16.0,
+        "crossing_tolerance_m": 12.0
+      },
+      {
+        "id": "S2",
+        "name": "Settore 2",
+        "direction": "forward",
+        "a": {
+          "lat": 41.272907,
+          "lon": 13.156021
+        },
+        "b": {
+          "lat": 41.272918,
+          "lon": 13.156094
+        },
+        "line_extension_each_side_m": 16.0,
+        "crossing_tolerance_m": 12.0
+      }
+    ]
+  },
+  "started_at": "2026-08-29T01:13:00.559+02:00",
+  "paused_at": null,
+  "paused_total_s": 0.0,
+  "ended_at": "2026-08-29T01:13:12.974+02:00",
+  "session_elapsed_s": 12.415,
+  "summary": {
+    "raw_samples_received": 0,
+    "track_points_saved": 0,
+    "valid_gps_samples": 0,
+    "filtered_out_samples": 0
+  },
+  "telemetry_raw": [],
+  "track_points": [],
+  "events": [
+    {
+      "event": "session_started",
+      "at": "2026-08-29T01:13:00.559+02:00",
+      "driver_id": "livio",
+      "driver_name": "Livio"
+    },
+    {
+      "event": "session_stopped",
+      "at": "2026-08-29T01:13:12.974+02:00"
+    }
+  ],
+  "laps": [],
+  "best_lap_time_s": null,
+  "best_sector_times_s": [
+    null,
+    null,
+    null
+  ],
+  "track_state": "pitlane",
+  "current_lap_number": 0,
+  "current_sector_number": null,
+  "current_lap_sectors_s": [],
+  "last_sector_result": null,
+  "last_aborted_lap": null
+}

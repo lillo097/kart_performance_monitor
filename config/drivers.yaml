@@ -1,0 +1,8 @@
+drivers:
+  - id: "livio"
+    name: "Livio"
+    color: "#32d583"
+
+  - id: "andrea"
+    name: "Andrea"
+    color: "#52a7ff"

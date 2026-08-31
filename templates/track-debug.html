@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1, viewport-fit=cover"
+  >
+  <title>Track Debug</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+
+<body class="debug-page">
+  <main class="debug-app">
+    <div class="eyebrow">Kart Performance Monitor</div>
+    <h1>Track configuration debug</h1>
+
+    <p>
+      Questa pagina servirà nel prossimo modulo per visualizzare mappa,
+      traiettoria, box, traguardo e settori.
+    </p>
+
+    <pre>{{ track | tojson(indent=2) }}</pre>
+
+    <a href="/">Torna alla selezione pilota</a>
+  </main>
+</body>
+</html>

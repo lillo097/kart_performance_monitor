@@ -1,0 +1,25 @@
+{"event": "session_started", "at": "2026-08-30T10:50:37.863+02:00", "driver_id": "livio", "driver_name": "Livio"}
+{"event": "track_state_changed", "at": "2026-08-30T10:50:38.045+02:00", "from_state": "pitlane", "to_state": "box", "reason": "inside_pit_box", "latitude": 41.2743768, "longitude": 13.1540466}
+{"event": "box_entered", "at": "2026-08-30T10:50:38.045+02:00", "distance_from_box_m": 3.0}
+{"event": "track_state_changed", "at": "2026-08-30T10:51:26.449+02:00", "from_state": "box", "to_state": "pitlane", "reason": "left_pit_box", "latitude": 41.2742503, "longitude": 13.1543106}
+{"event": "pit_lane_entered", "at": "2026-08-30T10:51:26.450+02:00", "distance_from_box_m": 24.44}
+{"event": "track_state_changed", "at": "2026-08-30T10:51:46.416+02:00", "from_state": "pitlane", "to_state": "warmup", "reason": "reached_pit_lane_end", "latitude": 41.2737089, "longitude": 13.1547531}
+{"event": "warmup_started", "at": "2026-08-30T10:51:46.417+02:00", "reason": "reached_pit_lane_end"}
+{"event": "track_state_changed", "at": "2026-08-30T11:52:45.862+02:00", "from_state": "warmup", "to_state": "on_track", "reason": "crossed_start_finish", "latitude": 41.273666, "longitude": 13.1554435}
+{"event": "lap_started", "at": "2026-08-30T11:52:45.862+02:00", "lap_number": 1, "sector_number": 1}
+{"event": "sector_completed", "at": "2026-08-30T11:53:25.385+02:00", "sector_number": 1, "sector_time_s": 39.482, "previous_best_s": null, "delta_s": null, "status": "best"}
+{"event": "sector_completed", "at": "2026-08-30T11:54:12.587+02:00", "sector_number": 2, "sector_time_s": 47.243, "previous_best_s": null, "delta_s": null, "status": "best"}
+{"event": "sector_completed", "at": "2026-08-30T11:54:45.852+02:00", "sector_number": 3, "sector_time_s": 33.294, "previous_best_s": null, "delta_s": null, "status": "best"}
+{"event": "lap_completed", "at": "2026-08-30T11:54:45.853+02:00", "lap_number": 1, "lap_time_s": 120.019, "valid": true, "sectors_s": [39.482, 47.243, 33.294]}
+{"event": "lap_started", "at": "2026-08-30T11:54:45.853+02:00", "lap_number": 2, "sector_number": 1}
+{"event": "sector_completed", "at": "2026-08-30T11:55:25.386+02:00", "sector_number": 1, "sector_time_s": 39.524, "previous_best_s": 39.482, "delta_s": 0.042, "status": "slower"}
+{"event": "sector_completed", "at": "2026-08-30T11:56:13.992+02:00", "sector_number": 2, "sector_time_s": 48.632, "previous_best_s": 47.243, "delta_s": 1.389, "status": "slower"}
+{"event": "sector_completed", "at": "2026-08-30T11:57:00.374+02:00", "sector_number": 3, "sector_time_s": 46.34, "previous_best_s": 33.294, "delta_s": 13.046, "status": "slower"}
+{"event": "lap_completed", "at": "2026-08-30T11:57:00.375+02:00", "lap_number": 2, "lap_time_s": 134.496, "valid": true, "sectors_s": [39.524, 48.632, 46.34]}
+{"event": "lap_started", "at": "2026-08-30T11:57:00.375+02:00", "lap_number": 3, "sector_number": 1}
+{"event": "lap_aborted", "at": "2026-08-30T11:57:23.355+02:00", "lap_number": 3, "elapsed_s": 23.105, "reason": "entered_pit_lane", "sectors_s": [null, null, null]}
+{"event": "track_state_changed", "at": "2026-08-30T11:57:23.357+02:00", "from_state": "on_track", "to_state": "pitlane", "reason": "entered_pit_lane", "latitude": 41.2737032, "longitude": 13.1547105}
+{"event": "pit_lane_entry_detected", "at": "2026-08-30T11:57:23.358+02:00", "distance_from_pit_lane_centerline_m": 2.71, "position_on_pit_lane": 0.772}
+{"event": "track_state_changed", "at": "2026-08-30T11:57:47.784+02:00", "from_state": "pitlane", "to_state": "box", "reason": "inside_pit_box", "latitude": 41.2742891, "longitude": 13.1542726}
+{"event": "box_entered", "at": "2026-08-30T11:57:47.785+02:00", "distance_from_box_m": 19.8}
+{"event": "session_stopped", "at": "2026-08-30T11:58:13.312+02:00"}
