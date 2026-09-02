@@ -15,8 +15,8 @@ dashboard:
 
 session:
   autosave_interval_s: 10
-  sessions_dir: "sessions"
-  current_dir: "current"
+  sessions_dir: "../sessions"
+  current_dir: "../current"
 
 timing:
   expected_gps_rate_hz: 10

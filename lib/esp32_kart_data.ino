@@ -3,6 +3,8 @@
 #include <WiFi.h>
 #include <PubSubClient.h>
 #include <ArduinoJson.h>
+#include <Wire.h>
+#include <math.h>
 
 #if !defined(CONFIG_BT_ENABLED) || !defined(CONFIG_BLUEDROID_ENABLED)
   #error Bluetooth non abilitato per questa scheda/compilazione.
@@ -13,54 +15,184 @@
 #endif
 
 // ============================================================
-// CONFIGURAZIONE WIFI / MQTT
+// WIFI / MQTT
 // ============================================================
-static const char *WIFI_SSID     = "iPhone di Livio";
+
+static const char *WIFI_SSID = "iPhone di Livio";
 static const char *WIFI_PASSWORD = "12345678";
 
 static const char *MQTT_BROKER = "broker.hivemq.com";
 static const uint16_t MQTT_PORT = 1883;
-static const char *MQTT_TOPIC = "sensors2mqtt-glo2/esp32/location";
 
-static const uint16_t MQTT_BUFFER_SIZE = 512;
+static const char *MQTT_TOPIC =
+  "sensors2mqtt-glo2/esp32/location";
+
+// Topic status individuali: un topic per ogni componente.
+static const char *STATUS_TOPIC_HOTSPOT =
+  "sensors2mqtt-glo2/esp32/status/hotspot";
+
+static const char *STATUS_TOPIC_MQTT =
+  "sensors2mqtt-glo2/esp32/status/mqtt";
+
+static const char *STATUS_TOPIC_NTC =
+  "sensors2mqtt-glo2/esp32/status/ntc";
+
+static const char *STATUS_TOPIC_AS5600 =
+  "sensors2mqtt-glo2/esp32/status/as5600";
+
+static const char *STATUS_TOPIC_IR_RPM =
+  "sensors2mqtt-glo2/esp32/status/ir_rpm";
+
+static const char *STATUS_TOPIC_GPS =
+  "sensors2mqtt-glo2/esp32/status/gps";
+
+static const uint16_t MQTT_BUFFER_SIZE = 768;
 static const uint16_t MQTT_KEEPALIVE_SECONDS = 20;
 static const uint16_t MQTT_SOCKET_TIMEOUT_SECONDS = 3;
 
-// 200 ms = massimo 5 payload al secondo.
 static const uint32_t MQTT_PUBLISH_INTERVAL_MS = 200;
-
-// Se Wi-Fi è sotto questa soglia, si evita di inviare payload:
-// aiuta a evitare publish in condizioni radio molto instabili.
 static const int WIFI_MIN_RSSI_DBM = -82;
 
 // ============================================================
-// CONFIGURAZIONE GARMIN GLO 2
+// NTC 10K B3950
+//
+// 3V3 ESP32 ---- NTC ----+---- GPIO34
+//                         |
+//                         +---- Resistenza 3.3 kOhm ---- GND
 // ============================================================
+
+static const uint8_t NTC_PIN = 34;
+
+static const float NTC_VCC = 3.30f;
+static const float NTC_R_FIXED = 3300.0f;
+static const float NTC_R_NOMINAL = 10000.0f;
+static const float NTC_T_NOMINAL_C = 25.0f;
+static const float NTC_BETA = 3950.0f;
+
+static const uint8_t NTC_SAMPLES = 8;
+static const uint32_t NTC_READ_INTERVAL_MS = 200;
+static const float NTC_FILTER_ALPHA = 0.65f;
+
+static float temperatureC = NAN;
+
+static bool temperatureValid = false;
+
+static uint32_t lastTemperatureReadMs = 0;
+
+// ============================================================
+// AS5600: posizione magnete / pedale
+//
+// AS5600 VCC -> 3V3 ESP32
+// AS5600 GND -> GND ESP32
+// AS5600 SDA -> GPIO21 ESP32
+// AS5600 SCL -> GPIO22 ESP32
+// AS5600 DIR -> GND ESP32
+// ============================================================
+
+static const uint8_t AS5600_ADDRESS = 0x36;
+
+static const uint8_t AS5600_REG_STATUS = 0x0B;
+static const uint8_t AS5600_REG_RAW_ANGLE = 0x0C;
+
+static const uint8_t AS5600_SDA_PIN = 21;
+static const uint8_t AS5600_SCL_PIN = 22;
+
+static const uint32_t AS5600_I2C_CLOCK_HZ = 400000;
+static const uint32_t AS5600_READ_INTERVAL_MS = 10;
+
+static bool as5600Present = false;
+
+static bool as5600MagnetDetected = false;
+static bool as5600MagnetTooWeak = false;
+static bool as5600MagnetTooStrong = false;
+
+static uint8_t as5600Status = 0;
+
+static uint16_t as5600RawAngle = 0;
+static uint16_t as5600PreviousRawAngle = 0;
+
+static float as5600AngleDeg = NAN;
+static float as5600Rpm = 0.0f;
+
+static uint32_t lastAs5600ReadMs = 0;
+static uint32_t as5600PreviousReadUs = 0;
+
+static bool as5600FirstReading = true;
+
+// ============================================================
+// SENSORE IR: RPM OTTICO
+//
+// IR VCC -> 3V3 ESP32
+// IR GND -> GND ESP32
+// IR OUT -> GPIO27 ESP32
+//
+// 1 marker riflettente = 1 impulso/giro
+// ============================================================
+
+static const uint8_t IR_RPM_PIN = 27;
+static const uint8_t IR_PULSES_PER_REVOLUTION = 1;
+
+static const uint32_t IR_MIN_VALID_PERIOD_US = 1500;
+static const uint32_t IR_STOP_TIMEOUT_US = 1000000;
+
+static const uint32_t IR_RPM_UPDATE_INTERVAL_MS = 100;
+
+// Per considerare il sensore IR “verificato” serve almeno
+// una transizione logica o un impulso rilevato.
+static const uint32_t IR_PRESENT_TIMEOUT_MS = 15000;
+
+volatile uint32_t irTotalPulses = 0;
+
+volatile uint32_t irLastEdgeUs = 0;
+volatile uint32_t irLatestPeriodUs = 0;
+
+volatile bool irNewPeriodAvailable = false;
+
+static float irRpm = 0.0f;
+
+static uint32_t lastIrRpmUpdateMs = 0;
+
+static int irLastDigitalState = HIGH;
+static bool irStateChangedAtLeastOnce = false;
+
+static uint32_t irLastStateChangeMs = 0;
+
+// ============================================================
+// GARMIN GLO 2: BLUETOOTH CLASSIC
+// ============================================================
+
 static const char *GLO2_MAC = "14:13:0B:C0:B2:1E";
+
 static const char *PAIRING_PIN = "1234";
 static const uint8_t PAIRING_PIN_LEN = 4;
 
-static const uint32_t CONNECT_RETRY_MAX = 5;
-static const uint32_t CONNECT_RETRY_DELAY_MS = 1000;
-static const uint32_t RECONNECT_DELAY_MS = 2000;
 static const uint32_t MAX_NMEA_LINE_LENGTH = 160;
 
-// ============================================================
-// LOGGING
-// ============================================================
-static const uint32_t GPS_ACQUIRING_LOG_INTERVAL_MS = 3000;
-static const uint32_t NMEA_WAIT_LOG_INTERVAL_MS = 3000;
-static const uint32_t TELEMETRY_LOG_INTERVAL_MS = 5000;
-static const uint32_t WIFI_WEAK_LOG_INTERVAL_MS = 5000;
+static const uint32_t GPS_RECONNECT_INTERVAL_MS = 5000;
+
+// Se Bluetooth è connesso ma non arrivano NMEA entro questo tempo,
+// GPS torna false.
+static const uint32_t GPS_NMEA_TIMEOUT_MS = 5000;
+
+static const uint32_t GPS_TASK_STACK_SIZE = 6144;
+static const UBaseType_t GPS_TASK_PRIORITY = 1;
+
+static TaskHandle_t gpsTaskHandle = nullptr;
+
+static volatile bool btConnected = false;
+
+static String nmeaLine;
+
+static volatile uint32_t lastNmeaSentenceMs = 0;
 
 // ============================================================
-// RETE: RETRY NON BLOCCANTE
+// RETE / MQTT
 // ============================================================
+
 static volatile bool wifiConnected = false;
-static volatile bool mqttNeedsReconnect = true;
 
-static unsigned long nextWifiRetryMs = 0;
-static unsigned long nextMqttRetryMs = 0;
+static uint32_t nextWifiRetryMs = 0;
+static uint32_t nextMqttRetryMs = 0;
 
 static uint32_t wifiRetryDelayMs = 1000;
 static uint32_t mqttRetryDelayMs = 1000;
@@ -71,67 +203,86 @@ static const uint32_t WIFI_RETRY_MAX_MS = 30000;
 static const uint32_t MQTT_RETRY_MIN_MS = 1000;
 static const uint32_t MQTT_RETRY_MAX_MS = 15000;
 
+static uint32_t lastPublishMs = 0;
+
+static uint32_t lastWeakWifiLogMs = 0;
+static const uint32_t WIFI_WEAK_LOG_INTERVAL_MS = 5000;
+
+// ============================================================
+// STATO DISPONIBILITÀ SENSORI
+// ============================================================
+
+struct ComponentStatus {
+  bool hotspot = false;
+  bool mqtt = false;
+  bool ntc = false;
+  bool as5600 = false;
+  bool irRpm = false;
+  bool gps = false;
+};
+
+static ComponentStatus currentStatus;
+
+// Stato precedente già inviato MQTT.
+// -1 significa “mai inviato”: forza il publish iniziale.
+static int8_t publishedHotspot = -1;
+static int8_t publishedMqtt = -1;
+static int8_t publishedNtc = -1;
+static int8_t publishedAs5600 = -1;
+static int8_t publishedIrRpm = -1;
+static int8_t publishedGps = -1;
+
+static bool forcePublishAllStatuses = true;
+
 // ============================================================
 // STATO GPS / NMEA
 // ============================================================
+
 struct GpsState {
-  char rmc_status = 0;
+  char rmcStatus = 0;
 
   double latitude = 0.0;
   double longitude = 0.0;
 
-  double speed_knots = 0.0;
-  double speed_kmph = 0.0;
-  double track_true_deg = 0.0;
+  double speedKnots = 0.0;
+  double speedKmph = 0.0;
 
-  uint8_t gps_qual = 0;
-  uint8_t num_sats = 0;
-  uint8_t gsa_fix_type = 0;
+  double trackTrueDeg = 0.0;
+
+  uint8_t fixQuality = 0;
+  uint8_t satellitesUsed = 0;
+  uint8_t fixType = 0;
 
   double hdop = 0.0;
 
-  bool valid_fix = false;
+  bool validFix = false;
 };
 
 static GpsState gps;
 
+static portMUX_TYPE gpsMux =
+  portMUX_INITIALIZER_UNLOCKED;
+
 // ============================================================
-// STATO RUNTIME / OGGETTI
+// OGGETTI
 // ============================================================
-enum GpsRuntimeState {
-  GPS_STATE_BT_DISCONNECTED,
-  GPS_STATE_WAITING_NMEA,
-  GPS_STATE_ACQUIRING_FIX,
-  GPS_STATE_FIX_READY
-};
 
 BluetoothSerial SerialBT;
+
 WiFiClient wifiClient;
 PubSubClient mqttClient(wifiClient);
-
-static bool btConnected = false;
-static String nmeaLine;
-
-static unsigned long lastPublishMs = 0;
-static unsigned long lastNmeaSentenceMs = 0;
-
-static unsigned long lastNmeaWaitLogMs = 0;
-static unsigned long lastAcquiringLogMs = 0;
-static unsigned long lastTelemetryLogMs = 0;
-static unsigned long lastWeakWifiLogMs = 0;
-
-static GpsRuntimeState currentGpsState = GPS_STATE_BT_DISCONNECTED;
-static GpsRuntimeState previousGpsState = GPS_STATE_BT_DISCONNECTED;
 
 // ============================================================
 // UTILITY
 // ============================================================
+
 double safeDouble(const char *text, double fallback = 0.0) {
   if (!text || !*text) {
     return fallback;
   }
 
   char *endPtr = nullptr;
+
   double value = strtod(text, &endPtr);
 
   return endPtr == text ? fallback : value;
@@ -143,133 +294,542 @@ double knotsToKmph(double knots) {
 
 double nmeaCoordinateToDecimal(double value) {
   int degrees = static_cast<int>(value / 100.0);
-  double minutes = value - (degrees * 100.0);
+
+  double minutes =
+    value - (degrees * 100.0);
 
   return degrees + (minutes / 60.0);
 }
 
 void updateValidFix() {
-  bool validRmc = gps.rmc_status == 'A';
-  bool validGga = gps.gps_qual > 0;
-  bool validGsa = gps.gsa_fix_type > 1;
-
-  gps.valid_fix = validRmc || validGga || validGsa;
-}
-
-const char *fixQualityLabel(uint8_t quality) {
-  switch (quality) {
-    case 0: return "nessun fix";
-    case 1: return "GPS";
-    case 2: return "DGPS";
-    case 3: return "PPS";
-    case 4: return "RTK fixed";
-    case 5: return "RTK float";
-    case 6: return "stimato";
-    case 7: return "manuale";
-    case 8: return "simulazione";
-    default: return "sconosciuto";
-  }
+  gps.validFix =
+    (gps.rmcStatus == 'A') ||
+    (gps.fixQuality > 0) ||
+    (gps.fixType > 1);
 }
 
 // ============================================================
-// LOG GPS A STATI
+// NTC
 // ============================================================
-void setGpsRuntimeState(GpsRuntimeState newState) {
-  currentGpsState = newState;
 
-  if (currentGpsState == previousGpsState) {
-    return;
+float readNtcTemperatureC() {
+  uint32_t sumMillivolts = 0;
+
+  for (uint8_t i = 0; i < NTC_SAMPLES; i++) {
+    sumMillivolts += analogReadMilliVolts(NTC_PIN);
   }
 
-  previousGpsState = currentGpsState;
+  float voltage =
+    (sumMillivolts /
+     static_cast<float>(NTC_SAMPLES)) / 1000.0f;
 
-  switch (currentGpsState) {
-    case GPS_STATE_BT_DISCONNECTED:
-      Serial.println("[GPS] Bluetooth GLO 2 non connesso.");
-      break;
-
-    case GPS_STATE_WAITING_NMEA:
-      Serial.println("[GPS] GLO 2 connesso. Attendo stream NMEA...");
-      break;
-
-    case GPS_STATE_ACQUIRING_FIX:
-      Serial.println("[GPS] Stream NMEA attivo. Acquisizione segnale GPS in corso...");
-      break;
-
-    case GPS_STATE_FIX_READY:
-      Serial.println("[GPS] Segnale GPS acquisito. Invio telemetria MQTT.");
-      break;
+  if (
+    voltage < 0.03f ||
+    voltage > (NTC_VCC - 0.03f)
+  ) {
+    return NAN;
   }
+
+  float rNtc =
+    NTC_R_FIXED *
+    ((NTC_VCC / voltage) - 1.0f);
+
+  if (rNtc <= 0.0f || isnan(rNtc)) {
+    return NAN;
+  }
+
+  float inverseKelvin =
+    (1.0f /
+      (NTC_T_NOMINAL_C + 273.15f)) +
+    (log(rNtc / NTC_R_NOMINAL) /
+      NTC_BETA);
+
+  return (1.0f / inverseKelvin) - 273.15f;
 }
 
-void updateGpsRuntimeState() {
-  if (!btConnected || !SerialBT.connected()) {
-    setGpsRuntimeState(GPS_STATE_BT_DISCONNECTED);
+void updateTemperature() {
+  uint32_t now = millis();
+
+  if (
+    now - lastTemperatureReadMs <
+    NTC_READ_INTERVAL_MS
+  ) {
     return;
   }
 
-  if (lastNmeaSentenceMs == 0) {
-    setGpsRuntimeState(GPS_STATE_WAITING_NMEA);
+  lastTemperatureReadMs = now;
+
+  float rawTemperature =
+    readNtcTemperatureC();
+
+  if (isnan(rawTemperature)) {
+    temperatureValid = false;
+
+    temperatureC = NAN;
+
     return;
   }
 
-  if (!gps.valid_fix) {
-    setGpsRuntimeState(GPS_STATE_ACQUIRING_FIX);
-    return;
+  if (!temperatureValid || isnan(temperatureC)) {
+    temperatureC = rawTemperature;
+  } else {
+    temperatureC =
+      NTC_FILTER_ALPHA * rawTemperature +
+      (1.0f - NTC_FILTER_ALPHA) *
+      temperatureC;
   }
 
-  setGpsRuntimeState(GPS_STATE_FIX_READY);
+  temperatureValid = true;
 }
 
-void printPeriodicGpsLog() {
-  unsigned long now = millis();
+// ============================================================
+// AS5600
+// ============================================================
 
-  if (currentGpsState == GPS_STATE_WAITING_NMEA &&
-      now - lastNmeaWaitLogMs >= NMEA_WAIT_LOG_INTERVAL_MS) {
-    Serial.println("[GPS] In attesa di frasi NMEA dal Garmin GLO 2...");
-    lastNmeaWaitLogMs = now;
+bool as5600ReadBytes(
+  uint8_t startRegister,
+  uint8_t *buffer,
+  uint8_t length
+) {
+  Wire.beginTransmission(AS5600_ADDRESS);
+
+  Wire.write(startRegister);
+
+  if (Wire.endTransmission(false) != 0) {
+    return false;
   }
 
-  if (currentGpsState == GPS_STATE_ACQUIRING_FIX &&
-      now - lastAcquiringLogMs >= GPS_ACQUIRING_LOG_INTERVAL_MS) {
-    Serial.printf(
-      "[GPS] Acquisizione | sats=%u | qualità=%u (%s) | HDOP=%.1f\n",
-      gps.num_sats,
-      gps.gps_qual,
-      fixQualityLabel(gps.gps_qual),
-      gps.hdop
+  uint8_t received =
+    Wire.requestFrom(
+      AS5600_ADDRESS,
+      length
     );
 
-    lastAcquiringLogMs = now;
+  if (received != length) {
+    return false;
   }
 
-  if (currentGpsState == GPS_STATE_FIX_READY &&
-      now - lastTelemetryLogMs >= TELEMETRY_LOG_INTERVAL_MS) {
-    Serial.printf(
-      "[GPS] Telemetria | sats=%u | qualità=%u (%s) | HDOP=%.1f | %.6f, %.6f | %.2f km/h | WiFi=%d dBm\n",
-      gps.num_sats,
-      gps.gps_qual,
-      fixQualityLabel(gps.gps_qual),
-      gps.hdop,
-      gps.latitude,
-      gps.longitude,
-      gps.speed_kmph,
-      WiFi.status() == WL_CONNECTED ? WiFi.RSSI() : -127
+  for (uint8_t i = 0; i < length; i++) {
+    buffer[i] = Wire.read();
+  }
+
+  return true;
+}
+
+bool detectAS5600() {
+  Wire.beginTransmission(AS5600_ADDRESS);
+
+  return Wire.endTransmission() == 0;
+}
+
+void updateAS5600() {
+  uint32_t nowMs = millis();
+
+  if (
+    nowMs - lastAs5600ReadMs <
+    AS5600_READ_INTERVAL_MS
+  ) {
+    return;
+  }
+
+  lastAs5600ReadMs = nowMs;
+
+  uint8_t statusBuffer[1];
+  uint8_t angleBuffer[2];
+
+  if (!as5600ReadBytes(
+        AS5600_REG_STATUS,
+        statusBuffer,
+        1
+      )) {
+
+    as5600Present = false;
+
+    as5600MagnetDetected = false;
+    as5600MagnetTooWeak = false;
+    as5600MagnetTooStrong = false;
+
+    as5600AngleDeg = NAN;
+
+    as5600Rpm = 0.0f;
+
+    as5600FirstReading = true;
+
+    return;
+  }
+
+  as5600Present = true;
+
+  as5600Status = statusBuffer[0];
+
+  as5600MagnetDetected =
+    (as5600Status & 0x20) != 0;
+
+  as5600MagnetTooWeak =
+    (as5600Status & 0x10) != 0;
+
+  as5600MagnetTooStrong =
+    (as5600Status & 0x08) != 0;
+
+  if (!as5600ReadBytes(
+        AS5600_REG_RAW_ANGLE,
+        angleBuffer,
+        2
+      )) {
+
+    as5600Present = false;
+
+    as5600AngleDeg = NAN;
+
+    as5600Rpm = 0.0f;
+
+    as5600FirstReading = true;
+
+    return;
+  }
+
+  as5600RawAngle =
+    (
+      (static_cast<uint16_t>(angleBuffer[0]) << 8) |
+      static_cast<uint16_t>(angleBuffer[1])
+    ) & 0x0FFF;
+
+  as5600AngleDeg =
+    as5600RawAngle * 360.0f / 4096.0f;
+
+  bool fieldValid =
+    as5600MagnetDetected &&
+    !as5600MagnetTooWeak &&
+    !as5600MagnetTooStrong;
+
+  if (!fieldValid) {
+    as5600Rpm = 0.0f;
+
+    as5600FirstReading = true;
+
+    return;
+  }
+
+  uint32_t nowUs = micros();
+
+  if (as5600FirstReading) {
+    as5600PreviousRawAngle =
+      as5600RawAngle;
+
+    as5600PreviousReadUs = nowUs;
+
+    as5600FirstReading = false;
+
+    return;
+  }
+
+  uint32_t deltaTimeUs =
+    nowUs - as5600PreviousReadUs;
+
+  if (deltaTimeUs == 0) {
+    return;
+  }
+
+  int32_t deltaRaw =
+    static_cast<int32_t>(as5600RawAngle) -
+    static_cast<int32_t>(
+      as5600PreviousRawAngle
     );
 
-    lastTelemetryLogMs = now;
+  if (deltaRaw > 2048) {
+    deltaRaw -= 4096;
+  }
+
+  if (deltaRaw < -2048) {
+    deltaRaw += 4096;
+  }
+
+  float instantaneousRpm =
+    (deltaRaw * 60000000.0f) /
+    (4096.0f * deltaTimeUs);
+
+  as5600Rpm =
+    0.35f * instantaneousRpm +
+    0.65f * as5600Rpm;
+
+  as5600PreviousRawAngle =
+    as5600RawAngle;
+
+  as5600PreviousReadUs = nowUs;
+}
+
+// ============================================================
+// IR RPM
+// ============================================================
+
+void IRAM_ATTR onIrPulse() {
+  uint32_t nowUs = micros();
+
+  if (irLastEdgeUs == 0) {
+    irLastEdgeUs = nowUs;
+
+    irTotalPulses++;
+
+    return;
+  }
+
+  uint32_t periodUs =
+    nowUs - irLastEdgeUs;
+
+  if (periodUs < IR_MIN_VALID_PERIOD_US) {
+    return;
+  }
+
+  irLastEdgeUs = nowUs;
+
+  irLatestPeriodUs = periodUs;
+
+  irNewPeriodAvailable = true;
+
+  irTotalPulses++;
+}
+
+void updateIrRpm() {
+  uint32_t nowMs = millis();
+
+  // Controlla se il pin digitale è vivo:
+  // è la migliore verifica possibile senza muovere l'albero.
+  int currentDigitalState =
+    digitalRead(IR_RPM_PIN);
+
+  if (currentDigitalState != irLastDigitalState) {
+    irLastDigitalState = currentDigitalState;
+
+    irStateChangedAtLeastOnce = true;
+
+    irLastStateChangeMs = nowMs;
+  }
+
+  if (
+    nowMs - lastIrRpmUpdateMs <
+    IR_RPM_UPDATE_INTERVAL_MS
+  ) {
+    return;
+  }
+
+  lastIrRpmUpdateMs = nowMs;
+
+  uint32_t periodUs = 0;
+  uint32_t lastEdgeUs = 0;
+
+  bool hasNewPeriod = false;
+
+  noInterrupts();
+
+  if (irNewPeriodAvailable) {
+    periodUs = irLatestPeriodUs;
+
+    irNewPeriodAvailable = false;
+
+    hasNewPeriod = true;
+  }
+
+  lastEdgeUs = irLastEdgeUs;
+
+  interrupts();
+
+  if (hasNewPeriod && periodUs > 0) {
+    irRpm =
+      60000000.0f /
+      (periodUs * IR_PULSES_PER_REVOLUTION);
+  }
+
+  if (
+    lastEdgeUs == 0 ||
+    (uint32_t)(micros() - lastEdgeUs) >
+    IR_STOP_TIMEOUT_US
+  ) {
+    irRpm = 0.0f;
   }
 }
 
 // ============================================================
-// PARSER NMEA
+// STATUS MQTT: PAYLOAD INDIVIDUALE
 // ============================================================
+
+bool publishComponentStatus(
+  const char *topic,
+  const char *component,
+  bool present
+) {
+  if (!mqttClient.connected()) {
+    return false;
+  }
+
+  StaticJsonDocument<128> doc;
+
+  doc["sensor"] = component;
+  doc["present"] = present;
+  doc["timestamp_ms"] = millis();
+
+  char buffer[128];
+
+  size_t length =
+    serializeJson(
+      doc,
+      buffer,
+      sizeof(buffer)
+    );
+
+  if (length == 0) {
+    return false;
+  }
+
+  bool ok = mqttClient.publish(
+    topic,
+    reinterpret_cast<const uint8_t *>(buffer),
+    length,
+    true
+  );
+
+  if (ok) {
+    Serial.printf(
+      "[STATUS] %s -> %s\n",
+      component,
+      present ? "true" : "false"
+    );
+  } else {
+    Serial.printf(
+      "[STATUS] Publish fallito: %s\n",
+      component
+    );
+  }
+
+  return ok;
+}
+
+void publishStatusIfChanged(
+  const char *topic,
+  const char *component,
+  bool value,
+  int8_t &lastPublished
+) {
+  if (
+    forcePublishAllStatuses ||
+    lastPublished == -1 ||
+    lastPublished != (value ? 1 : 0)
+  ) {
+    if (
+      publishComponentStatus(
+        topic,
+        component,
+        value
+      )
+    ) {
+      lastPublished = value ? 1 : 0;
+    }
+  }
+}
+
+void updateAndPublishComponentStatuses() {
+  // Questo metodo è chiamato solo quando MQTT è connesso.
+
+  currentStatus.hotspot =
+    WiFi.status() == WL_CONNECTED;
+
+  currentStatus.mqtt =
+    mqttClient.connected();
+
+  currentStatus.ntc =
+    temperatureValid &&
+    !isnan(temperatureC);
+
+  // “AS5600 presente” significa che il chip risponde I2C.
+  // Il magnete può essere non allineato, ma il chip è presente.
+  currentStatus.as5600 =
+    as5600Present;
+
+  /*
+    Il sensore IR non ha un chip interrogabile.
+    Stato true se:
+    - il pin è attivo e ha visto almeno un cambio di stato,
+      oppure
+    - l'uscita attuale è LOW (marker/oggetto rilevato).
+
+    All'avvio, con albero fermo e OUT=HIGH, resterà false
+    finché non fai passare almeno una volta il marker.
+  */
+  currentStatus.irRpm =
+    irStateChangedAtLeastOnce ||
+    (digitalRead(IR_RPM_PIN) == LOW);
+
+  /*
+    GPS presente = Garmin Bluetooth collegato E almeno una
+    frase NMEA arrivata negli ultimi GPS_NMEA_TIMEOUT_MS.
+  */
+  uint32_t lastNmeaCopy = lastNmeaSentenceMs;
+
+  currentStatus.gps =
+    btConnected &&
+    lastNmeaCopy > 0 &&
+    (uint32_t)(millis() - lastNmeaCopy) <=
+      GPS_NMEA_TIMEOUT_MS;
+
+  publishStatusIfChanged(
+    STATUS_TOPIC_HOTSPOT,
+    "hotspot",
+    currentStatus.hotspot,
+    publishedHotspot
+  );
+
+  publishStatusIfChanged(
+    STATUS_TOPIC_MQTT,
+    "mqtt",
+    currentStatus.mqtt,
+    publishedMqtt
+  );
+
+  publishStatusIfChanged(
+    STATUS_TOPIC_NTC,
+    "ntc",
+    currentStatus.ntc,
+    publishedNtc
+  );
+
+  publishStatusIfChanged(
+    STATUS_TOPIC_AS5600,
+    "as5600",
+    currentStatus.as5600,
+    publishedAs5600
+  );
+
+  publishStatusIfChanged(
+    STATUS_TOPIC_IR_RPM,
+    "ir_rpm",
+    currentStatus.irRpm,
+    publishedIrRpm
+  );
+
+  publishStatusIfChanged(
+    STATUS_TOPIC_GPS,
+    "gps",
+    currentStatus.gps,
+    publishedGps
+  );
+
+  // Dopo il primo giro completo di pubblicazioni,
+  // i payload verranno mandati solo se cambia lo stato.
+  forcePublishAllStatuses = false;
+}
+
+// ============================================================
+// NMEA PARSER
+// ============================================================
+
 void parseRMC(const char *line) {
   char buffer[256];
+
   strncpy(buffer, line, sizeof(buffer) - 1);
+
   buffer[sizeof(buffer) - 1] = '\0';
 
   char *token = strtok(buffer, ",");
+
   if (!token) {
     return;
   }
@@ -278,42 +838,50 @@ void parseRMC(const char *line) {
   token = strtok(nullptr, ","); // A/V
 
   if (token && token[0]) {
-    gps.rmc_status = token[0];
+    gps.rmcStatus = token[0];
   }
 
-  token = strtok(nullptr, ","); // latitudine
+  token = strtok(nullptr, ","); // lat
   double rawLatitude = safeDouble(token);
 
   token = strtok(nullptr, ","); // N/S
+
   if (rawLatitude != 0.0) {
-    gps.latitude = nmeaCoordinateToDecimal(rawLatitude);
+    gps.latitude =
+      nmeaCoordinateToDecimal(rawLatitude);
 
     if (token && token[0] == 'S') {
       gps.latitude = -gps.latitude;
     }
   }
 
-  token = strtok(nullptr, ","); // longitudine
+  token = strtok(nullptr, ","); // lon
   double rawLongitude = safeDouble(token);
 
   token = strtok(nullptr, ","); // E/W
+
   if (rawLongitude != 0.0) {
-    gps.longitude = nmeaCoordinateToDecimal(rawLongitude);
+    gps.longitude =
+      nmeaCoordinateToDecimal(rawLongitude);
 
     if (token && token[0] == 'W') {
       gps.longitude = -gps.longitude;
     }
   }
 
-  token = strtok(nullptr, ","); // velocità nodi
+  token = strtok(nullptr, ","); // knots
+
   if (token && token[0]) {
-    gps.speed_knots = safeDouble(token);
-    gps.speed_kmph = knotsToKmph(gps.speed_knots);
+    gps.speedKnots = safeDouble(token);
+
+    gps.speedKmph =
+      knotsToKmph(gps.speedKnots);
   }
 
-  token = strtok(nullptr, ","); // rotta
+  token = strtok(nullptr, ","); // track true
+
   if (token && token[0]) {
-    gps.track_true_deg = safeDouble(token);
+    gps.trackTrueDeg = safeDouble(token);
   }
 
   updateValidFix();
@@ -321,47 +889,63 @@ void parseRMC(const char *line) {
 
 void parseGGA(const char *line) {
   char buffer[256];
+
   strncpy(buffer, line, sizeof(buffer) - 1);
+
   buffer[sizeof(buffer) - 1] = '\0';
 
   char *token = strtok(buffer, ",");
+
   if (!token) {
     return;
   }
 
   token = strtok(nullptr, ","); // UTC
 
-  token = strtok(nullptr, ","); // latitudine
+  token = strtok(nullptr, ","); // lat
   double rawLatitude = safeDouble(token);
 
   token = strtok(nullptr, ","); // N/S
+
   if (rawLatitude != 0.0) {
-    gps.latitude = nmeaCoordinateToDecimal(rawLatitude);
+    gps.latitude =
+      nmeaCoordinateToDecimal(rawLatitude);
 
     if (token && token[0] == 'S') {
       gps.latitude = -gps.latitude;
     }
   }
 
-  token = strtok(nullptr, ","); // longitudine
+  token = strtok(nullptr, ","); // lon
   double rawLongitude = safeDouble(token);
 
   token = strtok(nullptr, ","); // E/W
+
   if (rawLongitude != 0.0) {
-    gps.longitude = nmeaCoordinateToDecimal(rawLongitude);
+    gps.longitude =
+      nmeaCoordinateToDecimal(rawLongitude);
 
     if (token && token[0] == 'W') {
       gps.longitude = -gps.longitude;
     }
   }
 
-  token = strtok(nullptr, ","); // qualità
-  gps.gps_qual = token ? static_cast<uint8_t>(atoi(token)) : 0;
+  token = strtok(nullptr, ","); // fix quality
 
-  token = strtok(nullptr, ","); // satelliti
-  gps.num_sats = token ? static_cast<uint8_t>(atoi(token)) : 0;
+  gps.fixQuality =
+    token ?
+      static_cast<uint8_t>(atoi(token)) :
+      0;
+
+  token = strtok(nullptr, ","); // satellites
+
+  gps.satellitesUsed =
+    token ?
+      static_cast<uint8_t>(atoi(token)) :
+      0;
 
   token = strtok(nullptr, ","); // HDOP
+
   gps.hdop = safeDouble(token);
 
   updateValidFix();
@@ -369,19 +953,23 @@ void parseGGA(const char *line) {
 
 void parseGSA(const char *line) {
   char buffer[256];
+
   strncpy(buffer, line, sizeof(buffer) - 1);
+
   buffer[sizeof(buffer) - 1] = '\0';
 
   char *token = strtok(buffer, ",");
+
   if (!token) {
     return;
   }
 
   token = strtok(nullptr, ","); // A/M
-  token = strtok(nullptr, ","); // 1 / 2 / 3
+  token = strtok(nullptr, ","); // fix type
 
   if (token && token[0]) {
-    gps.gsa_fix_type = static_cast<uint8_t>(atoi(token));
+    gps.fixType =
+      static_cast<uint8_t>(atoi(token));
   }
 
   updateValidFix();
@@ -389,33 +977,37 @@ void parseGSA(const char *line) {
 
 void parseVTG(const char *line) {
   char buffer[256];
+
   strncpy(buffer, line, sizeof(buffer) - 1);
+
   buffer[sizeof(buffer) - 1] = '\0';
 
   char *token = strtok(buffer, ",");
+
   if (!token) {
     return;
   }
 
-  token = strtok(nullptr, ","); // rotta vera
+  token = strtok(nullptr, ","); // track true
+
   if (token && token[0]) {
-    gps.track_true_deg = safeDouble(token);
+    gps.trackTrueDeg = safeDouble(token);
   }
 
   token = strtok(nullptr, ","); // T
-  token = strtok(nullptr, ","); // rotta magnetica
+  token = strtok(nullptr, ","); // magnetic
   token = strtok(nullptr, ","); // M
+  token = strtok(nullptr, ","); // knots
 
-  token = strtok(nullptr, ","); // nodi
   if (token && token[0]) {
-    gps.speed_knots = safeDouble(token);
+    gps.speedKnots = safeDouble(token);
   }
 
   token = strtok(nullptr, ","); // N
   token = strtok(nullptr, ","); // km/h
 
   if (token && token[0]) {
-    gps.speed_kmph = safeDouble(token);
+    gps.speedKmph = safeDouble(token);
   }
 }
 
@@ -424,52 +1016,230 @@ void processNmeaLine(const String &line) {
     return;
   }
 
-  lastNmeaSentenceMs = millis();
+  portENTER_CRITICAL(&gpsMux);
 
-  if (line.startsWith("$GPRMC") || line.startsWith("$GNRMC")) {
+  if (
+    line.startsWith("$GPRMC") ||
+    line.startsWith("$GNRMC")
+  ) {
     parseRMC(line.c_str());
-  } else if (line.startsWith("$GPGGA") || line.startsWith("$GNGGA")) {
+  } else if (
+    line.startsWith("$GPGGA") ||
+    line.startsWith("$GNGGA")
+  ) {
     parseGGA(line.c_str());
-  } else if (line.startsWith("$GPGSA") || line.startsWith("$GNGSA")) {
+  } else if (
+    line.startsWith("$GPGSA") ||
+    line.startsWith("$GNGSA")
+  ) {
     parseGSA(line.c_str());
-  } else if (line.startsWith("$GPVTG") || line.startsWith("$GNVTG")) {
+  } else if (
+    line.startsWith("$GPVTG") ||
+    line.startsWith("$GNVTG")
+  ) {
     parseVTG(line.c_str());
+  }
+
+  portEXIT_CRITICAL(&gpsMux);
+
+  lastNmeaSentenceMs = millis();
+}
+
+// ============================================================
+// GPS BLUETOOTH TASK IN BACKGROUND
+// ============================================================
+
+void clearGpsState() {
+  portENTER_CRITICAL(&gpsMux);
+
+  gps.rmcStatus = 0;
+
+  gps.latitude = 0.0;
+  gps.longitude = 0.0;
+
+  gps.speedKnots = 0.0;
+  gps.speedKmph = 0.0;
+
+  gps.trackTrueDeg = 0.0;
+
+  gps.fixQuality = 0;
+  gps.satellitesUsed = 0;
+  gps.fixType = 0;
+
+  gps.hdop = 0.0;
+
+  gps.validFix = false;
+
+  portEXIT_CRITICAL(&gpsMux);
+
+  lastNmeaSentenceMs = 0;
+}
+
+void readBluetoothNmeaNonBlocking() {
+  if (!SerialBT.connected()) {
+    return;
+  }
+
+  while (SerialBT.available()) {
+    int value = SerialBT.read();
+
+    if (value < 0) {
+      continue;
+    }
+
+    char character =
+      static_cast<char>(value);
+
+    if (character == '\n') {
+      nmeaLine.trim();
+
+      if (nmeaLine.length() > 0) {
+        processNmeaLine(nmeaLine);
+      }
+
+      nmeaLine = "";
+
+      continue;
+    }
+
+    if (character == '\r') {
+      continue;
+    }
+
+    if (
+      nmeaLine.length() <
+      MAX_NMEA_LINE_LENGTH
+    ) {
+      nmeaLine += character;
+    } else {
+      Serial.println(
+        "[NMEA] Riga troppo lunga: buffer resettato."
+      );
+
+      nmeaLine = "";
+    }
+  }
+}
+
+void gpsBluetoothTask(void *parameter) {
+  BTAddress address(GLO2_MAC);
+
+  for (;;) {
+    if (!SerialBT.connected()) {
+      if (btConnected) {
+        btConnected = false;
+
+        clearGpsState();
+
+        Serial.println(
+          "[GPS] Connessione Garmin GLO2 persa."
+        );
+      }
+
+      Serial.println(
+        "[BT] Tentativo connessione Garmin GLO2 in background..."
+      );
+
+      SerialBT.setPin(
+        PAIRING_PIN,
+        PAIRING_PIN_LEN
+      );
+
+      // Questa chiamata può bloccare, ma soltanto
+      // la task GPS: loop, sensori e MQTT restano vivi.
+      bool ok = SerialBT.connect(address);
+
+      if (ok && SerialBT.connected()) {
+        btConnected = true;
+
+        nmeaLine = "";
+
+        lastNmeaSentenceMs = 0;
+
+        Serial.println(
+          "[OK] GPS Garmin GLO2 connesso via Bluetooth."
+        );
+      } else {
+        SerialBT.disconnect();
+
+        btConnected = false;
+
+        clearGpsState();
+
+        Serial.println(
+          "[!!] GPS Garmin GLO2 non raggiungibile; "
+          "telemetria locale continua."
+        );
+
+        vTaskDelay(
+          pdMS_TO_TICKS(
+            GPS_RECONNECT_INTERVAL_MS
+          )
+        );
+
+        continue;
+      }
+    }
+
+    readBluetoothNmeaNonBlocking();
+
+    vTaskDelay(pdMS_TO_TICKS(2));
   }
 }
 
 // ============================================================
-// WIFI: EVENTI E RIPRISTINO
+// WIFI
 // ============================================================
-void onWiFiEvent(WiFiEvent_t event, WiFiEventInfo_t info) {
+
+void onWiFiEvent(
+  WiFiEvent_t event,
+  WiFiEventInfo_t info
+) {
   switch (event) {
     case ARDUINO_EVENT_WIFI_STA_GOT_IP:
       wifiConnected = true;
-      mqttNeedsReconnect = true;
 
-      wifiRetryDelayMs = WIFI_RETRY_MIN_MS;
+      wifiRetryDelayMs =
+        WIFI_RETRY_MIN_MS;
+
       nextWifiRetryMs = 0;
 
-      Serial.print("[WIFI] Connesso | IP=");
-      Serial.print(WiFi.localIP());
-      Serial.print(" | RSSI=");
-      Serial.print(WiFi.RSSI());
-      Serial.println(" dBm");
+      // Nuova connessione Wi-Fi:
+      // quando MQTT si riconnetterà, ripubblichiamo tutto.
+      forcePublishAllStatuses = true;
+
+      Serial.printf(
+        "[OK] Hotspot Wi-Fi connesso | IP=%s | RSSI=%d dBm\n",
+        WiFi.localIP().toString().c_str(),
+        WiFi.RSSI()
+      );
+
       break;
 
     case ARDUINO_EVENT_WIFI_STA_DISCONNECTED:
       wifiConnected = false;
-      mqttNeedsReconnect = true;
+
+      mqttClient.disconnect();
+
+      forcePublishAllStatuses = true;
 
       Serial.printf(
         "[WIFI] Disconnesso | motivo=%d | retry=%lu ms\n",
         info.wifi_sta_disconnected.reason,
-        static_cast<unsigned long>(wifiRetryDelayMs)
+        static_cast<unsigned long>(
+          wifiRetryDelayMs
+        )
       );
 
-      mqttClient.disconnect();
+      nextWifiRetryMs =
+        millis() + wifiRetryDelayMs;
 
-      nextWifiRetryMs = millis() + wifiRetryDelayMs;
-      wifiRetryDelayMs = min(wifiRetryDelayMs * 2, WIFI_RETRY_MAX_MS);
+      wifiRetryDelayMs =
+        min(
+          wifiRetryDelayMs * 2,
+          WIFI_RETRY_MAX_MS
+        );
+
       break;
 
     default:
@@ -480,6 +1250,7 @@ void onWiFiEvent(WiFiEvent_t event, WiFiEventInfo_t info) {
 void maintainWiFi() {
   if (WiFi.status() == WL_CONNECTED) {
     wifiConnected = true;
+
     return;
   }
 
@@ -492,25 +1263,39 @@ void maintainWiFi() {
   Serial.println("[WIFI] Riconnessione hotspot...");
 
   WiFi.disconnect(false, false);
-  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
 
-  nextWifiRetryMs = millis() + wifiRetryDelayMs;
+  WiFi.begin(
+    WIFI_SSID,
+    WIFI_PASSWORD
+  );
+
+  nextWifiRetryMs =
+    millis() + wifiRetryDelayMs;
 }
 
 // ============================================================
-// MQTT: CONNESSIONE E RIPRISTINO
+// MQTT
 // ============================================================
-void mqttCallback(char *topic, byte *payload, unsigned int length) {
-  // Questo progetto pubblica solo telemetria.
+
+void mqttCallback(
+  char *topic,
+  byte *payload,
+  unsigned int length
+) {
+  // Progetto solo publishing.
 }
 
 void maintainMqtt() {
-  if (!wifiConnected || WiFi.status() != WL_CONNECTED) {
+  if (
+    !wifiConnected ||
+    WiFi.status() != WL_CONNECTED
+  ) {
     return;
   }
 
   if (mqttClient.connected()) {
     mqttClient.loop();
+
     return;
   }
 
@@ -518,43 +1303,76 @@ void maintainMqtt() {
     return;
   }
 
-  String clientId = "ESP32-GLO2-" + WiFi.macAddress();
+  String clientId =
+    "ESP32-KART-" +
+    WiFi.macAddress();
+
   clientId.replace(":", "");
 
   Serial.println("[MQTT] Riconnessione broker...");
 
-  bool ok = mqttClient.connect(clientId.c_str());
+  bool ok =
+    mqttClient.connect(clientId.c_str());
 
   if (ok) {
-    mqttNeedsReconnect = false;
-    mqttRetryDelayMs = MQTT_RETRY_MIN_MS;
+    mqttRetryDelayMs =
+      MQTT_RETRY_MIN_MS;
+
     nextMqttRetryMs = 0;
 
-    Serial.println("[MQTT] Broker connesso.");
+    // Forza la pubblicazione iniziale individuale
+    // degli status dopo ogni riconnessione MQTT.
+    forcePublishAllStatuses = true;
+
+    publishedHotspot = -1;
+    publishedMqtt = -1;
+    publishedNtc = -1;
+    publishedAs5600 = -1;
+    publishedIrRpm = -1;
+    publishedGps = -1;
+
+    Serial.println(
+      "[OK] MQTT broker connesso."
+    );
   } else {
     Serial.printf(
       "[MQTT] Connessione fallita | stato=%d | retry=%lu ms\n",
       mqttClient.state(),
-      static_cast<unsigned long>(mqttRetryDelayMs)
+      static_cast<unsigned long>(
+        mqttRetryDelayMs
+      )
     );
 
-    nextMqttRetryMs = millis() + mqttRetryDelayMs;
-    mqttRetryDelayMs = min(mqttRetryDelayMs * 2, MQTT_RETRY_MAX_MS);
+    nextMqttRetryMs =
+      millis() + mqttRetryDelayMs;
+
+    mqttRetryDelayMs =
+      min(
+        mqttRetryDelayMs * 2,
+        MQTT_RETRY_MAX_MS
+      );
   }
 }
 
 // ============================================================
-// PUBBLICAZIONE MQTT
+// TELEMETRIA PRINCIPALE
 // ============================================================
-void publishPayload() {
-  if (!wifiConnected || !mqttClient.connected()) {
+
+void publishTelemetryPayload() {
+  if (
+    !wifiConnected ||
+    !mqttClient.connected()
+  ) {
     return;
   }
 
   int rssi = WiFi.RSSI();
 
   if (rssi < WIFI_MIN_RSSI_DBM) {
-    if (millis() - lastWeakWifiLogMs >= WIFI_WEAK_LOG_INTERVAL_MS) {
+    if (
+      millis() - lastWeakWifiLogMs >=
+      WIFI_WEAK_LOG_INTERVAL_MS
+    ) {
       Serial.printf(
         "[WIFI] Segnale debole (%d dBm), invio telemetria rimandato.\n",
         rssi
@@ -566,175 +1384,347 @@ void publishPayload() {
     return;
   }
 
-  StaticJsonDocument<256> doc;
+  GpsState gpsCopy;
 
-  doc["satellites_used"] = gps.num_sats;
-  doc["latitude"] = gps.latitude;
-  doc["longitude"] = gps.longitude;
-  doc["speed_kmph"] = gps.speed_kmph;
-  doc["fix_valid"] = gps.valid_fix;
-  doc["fix_quality"] = gps.gps_qual;
-  doc["fix_type"] = gps.gsa_fix_type;
-  doc["hdop"] = gps.hdop;
+  portENTER_CRITICAL(&gpsMux);
 
-  char jsonBuffer[256];
-  size_t jsonLength = serializeJson(doc, jsonBuffer, sizeof(jsonBuffer));
+  gpsCopy = gps;
+
+  portEXIT_CRITICAL(&gpsMux);
+
+  uint32_t irPulsesCopy;
+
+  noInterrupts();
+
+  irPulsesCopy = irTotalPulses;
+
+  interrupts();
+
+  bool as5600FieldValid =
+    as5600Present &&
+    as5600MagnetDetected &&
+    !as5600MagnetTooWeak &&
+    !as5600MagnetTooStrong;
+
+  StaticJsonDocument<512> doc;
+
+  doc["satellites_used"] =
+    gpsCopy.satellitesUsed;
+
+  doc["latitude"] = gpsCopy.latitude;
+  doc["longitude"] = gpsCopy.longitude;
+
+  doc["speed_kmph"] = gpsCopy.speedKmph;
+
+  doc["fix_valid"] = gpsCopy.validFix;
+
+  doc["fix_quality"] =
+    gpsCopy.fixQuality;
+
+  doc["fix_type"] = gpsCopy.fixType;
+
+  doc["hdop"] = gpsCopy.hdop;
+
+  if (
+    temperatureValid &&
+    !isnan(temperatureC)
+  ) {
+    doc["temperature_c"] =
+      temperatureC;
+  } else {
+    doc["temperature_c"] =
+      nullptr;
+  }
+
+  if (
+    as5600Present &&
+    !isnan(as5600AngleDeg)
+  ) {
+    doc["as5600_angle_deg"] =
+      as5600AngleDeg;
+  } else {
+    doc["as5600_angle_deg"] =
+      nullptr;
+  }
+
+  if (as5600FieldValid) {
+    doc["as5600_rpm"] =
+      as5600Rpm;
+  } else {
+    doc["as5600_rpm"] =
+      nullptr;
+  }
+
+  doc["as5600_magnet_ok"] =
+    as5600FieldValid;
+
+  doc["ir_rpm"] = irRpm;
+
+  doc["ir_total_pulses"] =
+    irPulsesCopy;
+
+  char jsonBuffer[512];
+
+  size_t jsonLength =
+    serializeJson(
+      doc,
+      jsonBuffer,
+      sizeof(jsonBuffer)
+    );
 
   if (jsonLength == 0) {
-    Serial.println("[MQTT] Errore serializzazione JSON.");
+    Serial.println(
+      "[MQTT] Errore serializzazione telemetria."
+    );
+
     return;
   }
 
   bool published = mqttClient.publish(
     MQTT_TOPIC,
-    reinterpret_cast<const uint8_t *>(jsonBuffer),
+    reinterpret_cast<const uint8_t *>(
+      jsonBuffer
+    ),
     jsonLength,
     false
   );
 
   if (!published) {
-    Serial.printf(
-      "[MQTT] Publish fallito | mqtt=%d | WiFi=%d | RSSI=%d dBm | reset socket\n",
-      mqttClient.connected() ? 1 : 0,
-      WiFi.status(),
-      WiFi.RSSI()
+    Serial.println(
+      "[MQTT] Publish telemetria fallito."
     );
 
-    // Evita di restare con un socket half-open:
-    // il prossimo maintainMqtt() stabilirà una nuova sessione.
     mqttClient.disconnect();
 
-    mqttNeedsReconnect = true;
     nextMqttRetryMs = millis() + 250;
-    mqttRetryDelayMs = MQTT_RETRY_MIN_MS;
+
+    mqttRetryDelayMs =
+      MQTT_RETRY_MIN_MS;
   }
 }
 
 // ============================================================
-// BLUETOOTH GLO 2
+// CHECK AVVIO
 // ============================================================
-bool connectToGLO2() {
-  BTAddress address(GLO2_MAC);
 
-  SerialBT.setPin(PAIRING_PIN, PAIRING_PIN_LEN);
+void printCheck(
+  const char *label,
+  bool ok,
+  const char *okText,
+  const char *failText
+) {
+  Serial.printf(
+    "%s %-18s %s\n",
+    ok ? "[OK]" : "[!!]",
+    label,
+    ok ? okText : failText
+  );
+}
 
-  for (uint32_t attempt = 1; attempt <= CONNECT_RETRY_MAX; attempt++) {
+void initialHardwareCheck() {
+  Serial.println();
+  Serial.println(
+    "===================================================="
+  );
+  Serial.println(
+    "         KART TELEMETRY - STARTUP CHECK"
+  );
+  Serial.println(
+    "===================================================="
+  );
+
+  float initialTemperature =
+    readNtcTemperatureC();
+
+  printCheck(
+    "NTC GPIO34",
+    !isnan(initialTemperature),
+    "presente",
+    "non valido / controlla cablaggio"
+  );
+
+  if (!isnan(initialTemperature)) {
     Serial.printf(
-      "[BT] Connessione GLO 2 | tentativo %lu/%lu\n",
-      static_cast<unsigned long>(attempt),
-      static_cast<unsigned long>(CONNECT_RETRY_MAX)
+      "     Temperatura iniziale: %.1f C\n",
+      initialTemperature
     );
-
-    bool connectedNow = SerialBT.connect(address);
-
-    if (connectedNow && SerialBT.connected()) {
-      Serial.println("[BT] GLO 2 connesso via Bluetooth.");
-
-      btConnected = true;
-      nmeaLine = "";
-      lastNmeaSentenceMs = 0;
-
-      setGpsRuntimeState(GPS_STATE_WAITING_NMEA);
-      return true;
-    }
-
-    SerialBT.disconnect();
-    delay(CONNECT_RETRY_DELAY_MS);
   }
 
-  Serial.println("[BT] Connessione GLO 2 fallita.");
+  as5600Present = detectAS5600();
 
-  btConnected = false;
-  setGpsRuntimeState(GPS_STATE_BT_DISCONNECTED);
+  printCheck(
+    "AS5600 I2C",
+    as5600Present,
+    "trovato @ 0x36",
+    "non trovato"
+  );
 
-  return false;
-}
+  if (as5600Present) {
+    updateAS5600();
 
-void readBluetoothNmea() {
-  while (SerialBT.connected()) {
-    // Rete sempre mantenuta senza interrompere il BT/NMEA.
-    maintainWiFi();
-    maintainMqtt();
+    bool fieldValid =
+      as5600MagnetDetected &&
+      !as5600MagnetTooWeak &&
+      !as5600MagnetTooStrong;
 
-    while (SerialBT.available()) {
-      int value = SerialBT.read();
-
-      if (value < 0) {
-        continue;
-      }
-
-      char character = static_cast<char>(value);
-
-      if (character == '\n') {
-        nmeaLine.trim();
-
-        if (nmeaLine.length() > 0) {
-          processNmeaLine(nmeaLine);
-        }
-
-        nmeaLine = "";
-        continue;
-      }
-
-      if (character == '\r') {
-        continue;
-      }
-
-      if (nmeaLine.length() < MAX_NMEA_LINE_LENGTH) {
-        nmeaLine += character;
-      } else {
-        Serial.println("[NMEA] Riga troppo lunga: buffer resettato.");
-        nmeaLine = "";
-      }
-    }
-
-    updateGpsRuntimeState();
-    printPeriodicGpsLog();
-
-    if (millis() - lastPublishMs >= MQTT_PUBLISH_INTERVAL_MS) {
-      // Non invia finché non è arrivata almeno una frase NMEA.
-      if (lastNmeaSentenceMs > 0) {
-        publishPayload();
-      }
-
-      lastPublishMs = millis();
-    }
-
-    delay(2);
+    printCheck(
+      "AS5600 magnete",
+      fieldValid,
+      "campo magnetico OK",
+      "centra / avvicina magnete"
+    );
   }
 
-  Serial.println("[BT] Connessione GLO 2 persa.");
+  Serial.printf(
+    "[--] IR RPM GPIO27      OUT=%d | verra confermato al primo trigger\n",
+    digitalRead(IR_RPM_PIN)
+  );
 
-  btConnected = false;
-  setGpsRuntimeState(GPS_STATE_BT_DISCONNECTED);
+  Serial.println(
+    "[--] Garmin GLO2       verra verificato in background."
+  );
+
+  Serial.println(
+    "[--] Wi-Fi hotspot     verra verificato dopo setup."
+  );
+
+  Serial.println(
+    "===================================================="
+  );
 }
 
 // ============================================================
-// SETUP / LOOP
+// LOG PERIODICO
 // ============================================================
+
+void printPeriodicLog() {
+  static uint32_t lastLogMs = 0;
+
+  if (millis() - lastLogMs < 5000) {
+    return;
+  }
+
+  lastLogMs = millis();
+
+  GpsState gpsCopy;
+
+  portENTER_CRITICAL(&gpsMux);
+
+  gpsCopy = gps;
+
+  portEXIT_CRITICAL(&gpsMux);
+
+  Serial.printf(
+    "[TEL] GPS=%.2f km/h | Fix=%d | sats=%u | Temp=%.1f C | "
+    "AS=%.1f deg | AS-RPM=%.1f | IR=%.1f rpm | "
+    "WiFi=%d dBm | GLO2=%s\n",
+    gpsCopy.speedKmph,
+    gpsCopy.validFix ? 1 : 0,
+    gpsCopy.satellitesUsed,
+    temperatureC,
+    as5600AngleDeg,
+    as5600Rpm,
+    irRpm,
+    WiFi.status() == WL_CONNECTED ?
+      WiFi.RSSI() :
+      -127,
+    btConnected ? "OK" : "OFF"
+  );
+}
+
+// ============================================================
+// SENSORI LOCALI
+// ============================================================
+
+void updateLocalSensors() {
+  updateTemperature();
+
+  updateAS5600();
+
+  updateIrRpm();
+}
+
+// ============================================================
+// SETUP
+// ============================================================
+
 void setup() {
   Serial.begin(115200);
+
   delay(800);
 
-  Serial.println();
-  Serial.println("=== ESP32 Garmin GLO 2 -> MQTT · resilient telemetry ===");
+  // NTC
+  pinMode(NTC_PIN, INPUT);
 
-  // Wi-Fi station stabile e a bassa latenza.
+  analogReadResolution(12);
+
+  analogSetPinAttenuation(
+    NTC_PIN,
+    ADC_11db
+  );
+
+  // IR RPM
+  pinMode(IR_RPM_PIN, INPUT);
+
+  irLastDigitalState =
+    digitalRead(IR_RPM_PIN);
+
+  attachInterrupt(
+    digitalPinToInterrupt(IR_RPM_PIN),
+    onIrPulse,
+    FALLING
+  );
+
+  // AS5600 I2C
+  Wire.begin(
+    AS5600_SDA_PIN,
+    AS5600_SCL_PIN,
+    AS5600_I2C_CLOCK_HZ
+  );
+
+  initialHardwareCheck();
+
+  // Wi-Fi
   WiFi.mode(WIFI_STA);
+
   WiFi.persistent(false);
+
   WiFi.setAutoReconnect(true);
+
   WiFi.setSleep(false);
+
   WiFi.onEvent(onWiFiEvent);
 
-  Serial.println("[WIFI] Avvio connessione hotspot...");
-  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+  Serial.println(
+    "[WIFI] Avvio connessione hotspot..."
+  );
 
-  mqttClient.setServer(MQTT_BROKER, MQTT_PORT);
-  mqttClient.setKeepAlive(MQTT_KEEPALIVE_SECONDS);
-  mqttClient.setSocketTimeout(MQTT_SOCKET_TIMEOUT_SECONDS);
+  WiFi.begin(
+    WIFI_SSID,
+    WIFI_PASSWORD
+  );
 
-  if (!mqttClient.setBufferSize(MQTT_BUFFER_SIZE)) {
-    Serial.println("[MQTT] Errore: impossibile allocare buffer MQTT.");
+  // MQTT
+  mqttClient.setServer(
+    MQTT_BROKER,
+    MQTT_PORT
+  );
+
+  mqttClient.setKeepAlive(
+    MQTT_KEEPALIVE_SECONDS
+  );
+
+  mqttClient.setSocketTimeout(
+    MQTT_SOCKET_TIMEOUT_SECONDS
+  );
+
+  if (!mqttClient.setBufferSize(
+        MQTT_BUFFER_SIZE
+      )) {
+
+    Serial.println(
+      "[MQTT] Errore: impossibile allocare buffer."
+    );
 
     while (true) {
       delay(1000);
@@ -743,29 +1733,84 @@ void setup() {
 
   mqttClient.setCallback(mqttCallback);
 
+  // Bluetooth Classic Garmin GLO 2
   if (!SerialBT.begin("ESP32-GLO2", true)) {
-    Serial.println("[BT] BluetoothSerial.begin() fallita.");
+    Serial.println(
+      "[BT] BluetoothSerial.begin() fallita."
+    );
 
     while (true) {
       delay(1000);
     }
   }
 
-  Serial.println("[BT] Bluetooth Classic inizializzato in modalità client.");
-}
+  Serial.println(
+    "[OK] Bluetooth Classic inizializzato."
+  );
 
-void loop() {
-  maintainWiFi();
-  maintainMqtt();
+  // Task GPS separata: GPS non blocca mai MQTT/sensori.
+  BaseType_t taskCreated =
+    xTaskCreatePinnedToCore(
+      gpsBluetoothTask,
+      "GarminGpsTask",
+      GPS_TASK_STACK_SIZE,
+      nullptr,
+      GPS_TASK_PRIORITY,
+      &gpsTaskHandle,
+      0
+    );
 
-  if (!btConnected || !SerialBT.connected()) {
-    btConnected = false;
+  if (taskCreated != pdPASS) {
+    Serial.println(
+      "[BT] Errore: impossibile avviare task Garmin."
+    );
 
-    if (!connectToGLO2()) {
-      delay(RECONNECT_DELAY_MS);
-      return;
+    while (true) {
+      delay(1000);
     }
   }
 
-  readBluetoothNmea();
+  Serial.println(
+    "[OK] Task Garmin GPS avviata in background."
+  );
+
+  Serial.println(
+    "[SYS] Telemetria locale + status MQTT pronta."
+  );
+}
+
+// ============================================================
+// LOOP PRINCIPALE
+//
+// Non dipende da Garmin/GPS.
+// ============================================================
+
+void loop() {
+  updateLocalSensors();
+
+  maintainWiFi();
+
+  maintainMqtt();
+
+  /*
+    Quando MQTT è connesso:
+    1) invia eventuali cambiamenti status individuali;
+    2) invia la telemetria aggregata ogni 200 ms.
+  */
+  if (mqttClient.connected()) {
+    updateAndPublishComponentStatuses();
+  }
+
+  if (
+    millis() - lastPublishMs >=
+    MQTT_PUBLISH_INTERVAL_MS
+  ) {
+    publishTelemetryPayload();
+
+    lastPublishMs = millis();
+  }
+
+  printPeriodicLog();
+
+  delay(2);
 }
