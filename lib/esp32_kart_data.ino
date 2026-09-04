@@ -1795,7 +1795,7 @@ void loop() {
   /*
     Quando MQTT è connesso:
     1) invia eventuali cambiamenti status individuali;
-    2) invia la telemetria aggregata ogni 200 ms.
+    2) invia la telemetria aggregata ogni 200 m.
   */
   if (mqttClient.connected()) {
     updateAndPublishComponentStatuses();
