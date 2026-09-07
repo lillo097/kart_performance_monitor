@@ -6,7 +6,9 @@ import time
 from datetime import datetime
 
 from flask import Flask, jsonify, render_template_string
+import os
 
+MAPBOX_TOKEN = os.environ["MAPBOX_TOKEN"]
 app = Flask(__name__)
 
 state = {
@@ -93,7 +95,7 @@ WEB_PORT = int(os.getenv("WEB_PORT", "5001"))
 # Token Mapbox (puoi metterlo anche in env: MAPBOX_TOKEN)
 MAPBOX_TOKEN = os.getenv(
     "MAPBOX_TOKEN",
-    "REDACTED_MAPBOX_TOKEN"
+    f"{MAPBOX_TOKEN}"
 )
 
 
