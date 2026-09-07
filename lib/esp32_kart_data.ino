@@ -1,17 +1,17 @@
 #include <Arduino.h>
-#include <BluetoothSerial.h>
-#include <WiFi.h>
-#include <PubSubClient.h>
 #include <ArduinoJson.h>
+#include <BluetoothSerial.h>
+#include <PubSubClient.h>
+#include <WiFi.h>
 #include <Wire.h>
 #include <math.h>
 
 #if !defined(CONFIG_BT_ENABLED) || !defined(CONFIG_BLUEDROID_ENABLED)
-  #error Bluetooth non abilitato per questa scheda/compilazione.
+#error Bluetooth non abilitato per questa scheda/compilazione.
 #endif
 
 #if !defined(CONFIG_BT_SPP_ENABLED)
-  #error BluetoothSerial/SPP non disponibile. Serve un ESP32 classico con Bluetooth Classic.
+#error BluetoothSerial/SPP non disponibile. Serve un ESP32 classico con Bluetooth Classic.
 #endif
 
 // ============================================================
@@ -24,27 +24,23 @@ static const char *WIFI_PASSWORD = "12345678";
 static const char *MQTT_BROKER = "broker.hivemq.com";
 static const uint16_t MQTT_PORT = 1883;
 
-static const char *MQTT_TOPIC =
-  "sensors2mqtt-glo2/esp32/location";
+static const char *MQTT_TOPIC = "sensors2mqtt-glo2/esp32/location";
 
 // Topic status individuali: un topic per ogni componente.
 static const char *STATUS_TOPIC_HOTSPOT =
-  "sensors2mqtt-glo2/esp32/status/hotspot";
+    "sensors2mqtt-glo2/esp32/status/hotspot";
 
-static const char *STATUS_TOPIC_MQTT =
-  "sensors2mqtt-glo2/esp32/status/mqtt";
+static const char *STATUS_TOPIC_MQTT = "sensors2mqtt-glo2/esp32/status/mqtt";
 
-static const char *STATUS_TOPIC_NTC =
-  "sensors2mqtt-glo2/esp32/status/ntc";
+static const char *STATUS_TOPIC_NTC = "sensors2mqtt-glo2/esp32/status/ntc";
 
 static const char *STATUS_TOPIC_AS5600 =
-  "sensors2mqtt-glo2/esp32/status/as5600";
+    "sensors2mqtt-glo2/esp32/status/as5600";
 
 static const char *STATUS_TOPIC_IR_RPM =
-  "sensors2mqtt-glo2/esp32/status/ir_rpm";
+    "sensors2mqtt-glo2/esp32/status/ir_rpm";
 
-static const char *STATUS_TOPIC_GPS =
-  "sensors2mqtt-glo2/esp32/status/gps";
+static const char *STATUS_TOPIC_GPS = "sensors2mqtt-glo2/esp32/status/gps";
 
 static const uint16_t MQTT_BUFFER_SIZE = 768;
 static const uint16_t MQTT_KEEPALIVE_SECONDS = 20;
@@ -260,8 +256,7 @@ struct GpsState {
 
 static GpsState gps;
 
-static portMUX_TYPE gpsMux =
-  portMUX_INITIALIZER_UNLOCKED;
+static portMUX_TYPE gpsMux = portMUX_INITIALIZER_UNLOCKED;
 
 // ============================================================
 // OGGETTI
@@ -288,24 +283,19 @@ double safeDouble(const char *text, double fallback = 0.0) {
   return endPtr == text ? fallback : value;
 }
 
-double knotsToKmph(double knots) {
-  return knots * 1.852;
-}
+double knotsToKmph(double knots) { return knots * 1.852; }
 
 double nmeaCoordinateToDecimal(double value) {
   int degrees = static_cast<int>(value / 100.0);
 
-  double minutes =
-    value - (degrees * 100.0);
+  double minutes = value - (degrees * 100.0);
 
   return degrees + (minutes / 60.0);
 }
 
 void updateValidFix() {
   gps.validFix =
-    (gps.rmcStatus == 'A') ||
-    (gps.fixQuality > 0) ||
-    (gps.fixType > 1);
+      (gps.rmcStatus == 'A') || (gps.fixQuality > 0) || (gps.fixType > 1);
 }
 
 // ============================================================
@@ -319,30 +309,20 @@ float readNtcTemperatureC() {
     sumMillivolts += analogReadMilliVolts(NTC_PIN);
   }
 
-  float voltage =
-    (sumMillivolts /
-     static_cast<float>(NTC_SAMPLES)) / 1000.0f;
+  float voltage = (sumMillivolts / static_cast<float>(NTC_SAMPLES)) / 1000.0f;
 
-  if (
-    voltage < 0.03f ||
-    voltage > (NTC_VCC - 0.03f)
-  ) {
+  if (voltage < 0.03f || voltage > (NTC_VCC - 0.03f)) {
     return NAN;
   }
 
-  float rNtc =
-    NTC_R_FIXED *
-    ((NTC_VCC / voltage) - 1.0f);
+  float rNtc = NTC_R_FIXED * ((NTC_VCC / voltage) - 1.0f);
 
   if (rNtc <= 0.0f || isnan(rNtc)) {
     return NAN;
   }
 
-  float inverseKelvin =
-    (1.0f /
-      (NTC_T_NOMINAL_C + 273.15f)) +
-    (log(rNtc / NTC_R_NOMINAL) /
-      NTC_BETA);
+  float inverseKelvin = (1.0f / (NTC_T_NOMINAL_C + 273.15f)) +
+                        (log(rNtc / NTC_R_NOMINAL) / NTC_BETA);
 
   return (1.0f / inverseKelvin) - 273.15f;
 }
@@ -350,17 +330,13 @@ float readNtcTemperatureC() {
 void updateTemperature() {
   uint32_t now = millis();
 
-  if (
-    now - lastTemperatureReadMs <
-    NTC_READ_INTERVAL_MS
-  ) {
+  if (now - lastTemperatureReadMs < NTC_READ_INTERVAL_MS) {
     return;
   }
 
   lastTemperatureReadMs = now;
 
-  float rawTemperature =
-    readNtcTemperatureC();
+  float rawTemperature = readNtcTemperatureC();
 
   if (isnan(rawTemperature)) {
     temperatureValid = false;
@@ -373,10 +349,8 @@ void updateTemperature() {
   if (!temperatureValid || isnan(temperatureC)) {
     temperatureC = rawTemperature;
   } else {
-    temperatureC =
-      NTC_FILTER_ALPHA * rawTemperature +
-      (1.0f - NTC_FILTER_ALPHA) *
-      temperatureC;
+    temperatureC = NTC_FILTER_ALPHA * rawTemperature +
+                   (1.0f - NTC_FILTER_ALPHA) * temperatureC;
   }
 
   temperatureValid = true;
@@ -386,11 +360,7 @@ void updateTemperature() {
 // AS5600
 // ============================================================
 
-bool as5600ReadBytes(
-  uint8_t startRegister,
-  uint8_t *buffer,
-  uint8_t length
-) {
+bool as5600ReadBytes(uint8_t startRegister, uint8_t *buffer, uint8_t length) {
   Wire.beginTransmission(AS5600_ADDRESS);
 
   Wire.write(startRegister);
@@ -399,11 +369,7 @@ bool as5600ReadBytes(
     return false;
   }
 
-  uint8_t received =
-    Wire.requestFrom(
-      AS5600_ADDRESS,
-      length
-    );
+  uint8_t received = Wire.requestFrom(AS5600_ADDRESS, length);
 
   if (received != length) {
     return false;
@@ -425,10 +391,7 @@ bool detectAS5600() {
 void updateAS5600() {
   uint32_t nowMs = millis();
 
-  if (
-    nowMs - lastAs5600ReadMs <
-    AS5600_READ_INTERVAL_MS
-  ) {
+  if (nowMs - lastAs5600ReadMs < AS5600_READ_INTERVAL_MS) {
     return;
   }
 
@@ -437,11 +400,7 @@ void updateAS5600() {
   uint8_t statusBuffer[1];
   uint8_t angleBuffer[2];
 
-  if (!as5600ReadBytes(
-        AS5600_REG_STATUS,
-        statusBuffer,
-        1
-      )) {
+  if (!as5600ReadBytes(AS5600_REG_STATUS, statusBuffer, 1)) {
 
     as5600Present = false;
 
@@ -462,20 +421,13 @@ void updateAS5600() {
 
   as5600Status = statusBuffer[0];
 
-  as5600MagnetDetected =
-    (as5600Status & 0x20) != 0;
+  as5600MagnetDetected = (as5600Status & 0x20) != 0;
 
-  as5600MagnetTooWeak =
-    (as5600Status & 0x10) != 0;
+  as5600MagnetTooWeak = (as5600Status & 0x10) != 0;
 
-  as5600MagnetTooStrong =
-    (as5600Status & 0x08) != 0;
+  as5600MagnetTooStrong = (as5600Status & 0x08) != 0;
 
-  if (!as5600ReadBytes(
-        AS5600_REG_RAW_ANGLE,
-        angleBuffer,
-        2
-      )) {
+  if (!as5600ReadBytes(AS5600_REG_RAW_ANGLE, angleBuffer, 2)) {
 
     as5600Present = false;
 
@@ -488,19 +440,14 @@ void updateAS5600() {
     return;
   }
 
-  as5600RawAngle =
-    (
-      (static_cast<uint16_t>(angleBuffer[0]) << 8) |
-      static_cast<uint16_t>(angleBuffer[1])
-    ) & 0x0FFF;
+  as5600RawAngle = ((static_cast<uint16_t>(angleBuffer[0]) << 8) |
+                    static_cast<uint16_t>(angleBuffer[1])) &
+                   0x0FFF;
 
-  as5600AngleDeg =
-    as5600RawAngle * 360.0f / 4096.0f;
+  as5600AngleDeg = as5600RawAngle * 360.0f / 4096.0f;
 
   bool fieldValid =
-    as5600MagnetDetected &&
-    !as5600MagnetTooWeak &&
-    !as5600MagnetTooStrong;
+      as5600MagnetDetected && !as5600MagnetTooWeak && !as5600MagnetTooStrong;
 
   if (!fieldValid) {
     as5600Rpm = 0.0f;
@@ -513,8 +460,7 @@ void updateAS5600() {
   uint32_t nowUs = micros();
 
   if (as5600FirstReading) {
-    as5600PreviousRawAngle =
-      as5600RawAngle;
+    as5600PreviousRawAngle = as5600RawAngle;
 
     as5600PreviousReadUs = nowUs;
 
@@ -523,18 +469,14 @@ void updateAS5600() {
     return;
   }
 
-  uint32_t deltaTimeUs =
-    nowUs - as5600PreviousReadUs;
+  uint32_t deltaTimeUs = nowUs - as5600PreviousReadUs;
 
   if (deltaTimeUs == 0) {
     return;
   }
 
-  int32_t deltaRaw =
-    static_cast<int32_t>(as5600RawAngle) -
-    static_cast<int32_t>(
-      as5600PreviousRawAngle
-    );
+  int32_t deltaRaw = static_cast<int32_t>(as5600RawAngle) -
+                     static_cast<int32_t>(as5600PreviousRawAngle);
 
   if (deltaRaw > 2048) {
     deltaRaw -= 4096;
@@ -544,16 +486,11 @@ void updateAS5600() {
     deltaRaw += 4096;
   }
 
-  float instantaneousRpm =
-    (deltaRaw * 60000000.0f) /
-    (4096.0f * deltaTimeUs);
+  float instantaneousRpm = (deltaRaw * 60000000.0f) / (4096.0f * deltaTimeUs);
 
-  as5600Rpm =
-    0.35f * instantaneousRpm +
-    0.65f * as5600Rpm;
+  as5600Rpm = 0.35f * instantaneousRpm + 0.65f * as5600Rpm;
 
-  as5600PreviousRawAngle =
-    as5600RawAngle;
+  as5600PreviousRawAngle = as5600RawAngle;
 
   as5600PreviousReadUs = nowUs;
 }
@@ -573,8 +510,7 @@ void IRAM_ATTR onIrPulse() {
     return;
   }
 
-  uint32_t periodUs =
-    nowUs - irLastEdgeUs;
+  uint32_t periodUs = nowUs - irLastEdgeUs;
 
   if (periodUs < IR_MIN_VALID_PERIOD_US) {
     return;
@@ -594,8 +530,7 @@ void updateIrRpm() {
 
   // Controlla se il pin digitale è vivo:
   // è la migliore verifica possibile senza muovere l'albero.
-  int currentDigitalState =
-    digitalRead(IR_RPM_PIN);
+  int currentDigitalState = digitalRead(IR_RPM_PIN);
 
   if (currentDigitalState != irLastDigitalState) {
     irLastDigitalState = currentDigitalState;
@@ -605,10 +540,7 @@ void updateIrRpm() {
     irLastStateChangeMs = nowMs;
   }
 
-  if (
-    nowMs - lastIrRpmUpdateMs <
-    IR_RPM_UPDATE_INTERVAL_MS
-  ) {
+  if (nowMs - lastIrRpmUpdateMs < IR_RPM_UPDATE_INTERVAL_MS) {
     return;
   }
 
@@ -634,16 +566,11 @@ void updateIrRpm() {
   interrupts();
 
   if (hasNewPeriod && periodUs > 0) {
-    irRpm =
-      60000000.0f /
-      (periodUs * IR_PULSES_PER_REVOLUTION);
+    irRpm = 60000000.0f / (periodUs * IR_PULSES_PER_REVOLUTION);
   }
 
-  if (
-    lastEdgeUs == 0 ||
-    (uint32_t)(micros() - lastEdgeUs) >
-    IR_STOP_TIMEOUT_US
-  ) {
+  if (lastEdgeUs == 0 ||
+      (uint32_t)(micros() - lastEdgeUs) > IR_STOP_TIMEOUT_US) {
     irRpm = 0.0f;
   }
 }
@@ -652,11 +579,8 @@ void updateIrRpm() {
 // STATUS MQTT: PAYLOAD INDIVIDUALE
 // ============================================================
 
-bool publishComponentStatus(
-  const char *topic,
-  const char *component,
-  bool present
-) {
+bool publishComponentStatus(const char *topic, const char *component,
+                            bool present) {
   if (!mqttClient.connected()) {
     return false;
   }
@@ -669,58 +593,29 @@ bool publishComponentStatus(
 
   char buffer[128];
 
-  size_t length =
-    serializeJson(
-      doc,
-      buffer,
-      sizeof(buffer)
-    );
+  size_t length = serializeJson(doc, buffer, sizeof(buffer));
 
   if (length == 0) {
     return false;
   }
 
-  bool ok = mqttClient.publish(
-    topic,
-    reinterpret_cast<const uint8_t *>(buffer),
-    length,
-    true
-  );
+  bool ok = mqttClient.publish(topic, reinterpret_cast<const uint8_t *>(buffer),
+                               length, true);
 
   if (ok) {
-    Serial.printf(
-      "[STATUS] %s -> %s\n",
-      component,
-      present ? "true" : "false"
-    );
+    Serial.printf("[STATUS] %s -> %s\n", component, present ? "true" : "false");
   } else {
-    Serial.printf(
-      "[STATUS] Publish fallito: %s\n",
-      component
-    );
+    Serial.printf("[STATUS] Publish fallito: %s\n", component);
   }
 
   return ok;
 }
 
-void publishStatusIfChanged(
-  const char *topic,
-  const char *component,
-  bool value,
-  int8_t &lastPublished
-) {
-  if (
-    forcePublishAllStatuses ||
-    lastPublished == -1 ||
-    lastPublished != (value ? 1 : 0)
-  ) {
-    if (
-      publishComponentStatus(
-        topic,
-        component,
-        value
-      )
-    ) {
+void publishStatusIfChanged(const char *topic, const char *component,
+                            bool value, int8_t &lastPublished) {
+  if (forcePublishAllStatuses || lastPublished == -1 ||
+      lastPublished != (value ? 1 : 0)) {
+    if (publishComponentStatus(topic, component, value)) {
       lastPublished = value ? 1 : 0;
     }
   }
@@ -729,20 +624,15 @@ void publishStatusIfChanged(
 void updateAndPublishComponentStatuses() {
   // Questo metodo è chiamato solo quando MQTT è connesso.
 
-  currentStatus.hotspot =
-    WiFi.status() == WL_CONNECTED;
+  currentStatus.hotspot = WiFi.status() == WL_CONNECTED;
 
-  currentStatus.mqtt =
-    mqttClient.connected();
+  currentStatus.mqtt = mqttClient.connected();
 
-  currentStatus.ntc =
-    temperatureValid &&
-    !isnan(temperatureC);
+  currentStatus.ntc = temperatureValid && !isnan(temperatureC);
 
   // “AS5600 presente” significa che il chip risponde I2C.
   // Il magnete può essere non allineato, ma il chip è presente.
-  currentStatus.as5600 =
-    as5600Present;
+  currentStatus.as5600 = as5600Present;
 
   /*
     Il sensore IR non ha un chip interrogabile.
@@ -755,8 +645,7 @@ void updateAndPublishComponentStatuses() {
     finché non fai passare almeno una volta il marker.
   */
   currentStatus.irRpm =
-    irStateChangedAtLeastOnce ||
-    (digitalRead(IR_RPM_PIN) == LOW);
+      irStateChangedAtLeastOnce || (digitalRead(IR_RPM_PIN) == LOW);
 
   /*
     GPS presente = Garmin Bluetooth collegato E almeno una
@@ -765,52 +654,26 @@ void updateAndPublishComponentStatuses() {
   uint32_t lastNmeaCopy = lastNmeaSentenceMs;
 
   currentStatus.gps =
-    btConnected &&
-    lastNmeaCopy > 0 &&
-    (uint32_t)(millis() - lastNmeaCopy) <=
-      GPS_NMEA_TIMEOUT_MS;
+      btConnected && lastNmeaCopy > 0 &&
+      (uint32_t)(millis() - lastNmeaCopy) <= GPS_NMEA_TIMEOUT_MS;
 
-  publishStatusIfChanged(
-    STATUS_TOPIC_HOTSPOT,
-    "hotspot",
-    currentStatus.hotspot,
-    publishedHotspot
-  );
+  publishStatusIfChanged(STATUS_TOPIC_HOTSPOT, "hotspot", currentStatus.hotspot,
+                         publishedHotspot);
 
-  publishStatusIfChanged(
-    STATUS_TOPIC_MQTT,
-    "mqtt",
-    currentStatus.mqtt,
-    publishedMqtt
-  );
+  publishStatusIfChanged(STATUS_TOPIC_MQTT, "mqtt", currentStatus.mqtt,
+                         publishedMqtt);
 
-  publishStatusIfChanged(
-    STATUS_TOPIC_NTC,
-    "ntc",
-    currentStatus.ntc,
-    publishedNtc
-  );
+  publishStatusIfChanged(STATUS_TOPIC_NTC, "ntc", currentStatus.ntc,
+                         publishedNtc);
 
-  publishStatusIfChanged(
-    STATUS_TOPIC_AS5600,
-    "as5600",
-    currentStatus.as5600,
-    publishedAs5600
-  );
+  publishStatusIfChanged(STATUS_TOPIC_AS5600, "as5600", currentStatus.as5600,
+                         publishedAs5600);
 
-  publishStatusIfChanged(
-    STATUS_TOPIC_IR_RPM,
-    "ir_rpm",
-    currentStatus.irRpm,
-    publishedIrRpm
-  );
+  publishStatusIfChanged(STATUS_TOPIC_IR_RPM, "ir_rpm", currentStatus.irRpm,
+                         publishedIrRpm);
 
-  publishStatusIfChanged(
-    STATUS_TOPIC_GPS,
-    "gps",
-    currentStatus.gps,
-    publishedGps
-  );
+  publishStatusIfChanged(STATUS_TOPIC_GPS, "gps", currentStatus.gps,
+                         publishedGps);
 
   // Dopo il primo giro completo di pubblicazioni,
   // i payload verranno mandati solo se cambia lo stato.
@@ -847,8 +710,7 @@ void parseRMC(const char *line) {
   token = strtok(nullptr, ","); // N/S
 
   if (rawLatitude != 0.0) {
-    gps.latitude =
-      nmeaCoordinateToDecimal(rawLatitude);
+    gps.latitude = nmeaCoordinateToDecimal(rawLatitude);
 
     if (token && token[0] == 'S') {
       gps.latitude = -gps.latitude;
@@ -861,8 +723,7 @@ void parseRMC(const char *line) {
   token = strtok(nullptr, ","); // E/W
 
   if (rawLongitude != 0.0) {
-    gps.longitude =
-      nmeaCoordinateToDecimal(rawLongitude);
+    gps.longitude = nmeaCoordinateToDecimal(rawLongitude);
 
     if (token && token[0] == 'W') {
       gps.longitude = -gps.longitude;
@@ -874,8 +735,7 @@ void parseRMC(const char *line) {
   if (token && token[0]) {
     gps.speedKnots = safeDouble(token);
 
-    gps.speedKmph =
-      knotsToKmph(gps.speedKnots);
+    gps.speedKmph = knotsToKmph(gps.speedKnots);
   }
 
   token = strtok(nullptr, ","); // track true
@@ -908,8 +768,7 @@ void parseGGA(const char *line) {
   token = strtok(nullptr, ","); // N/S
 
   if (rawLatitude != 0.0) {
-    gps.latitude =
-      nmeaCoordinateToDecimal(rawLatitude);
+    gps.latitude = nmeaCoordinateToDecimal(rawLatitude);
 
     if (token && token[0] == 'S') {
       gps.latitude = -gps.latitude;
@@ -922,8 +781,7 @@ void parseGGA(const char *line) {
   token = strtok(nullptr, ","); // E/W
 
   if (rawLongitude != 0.0) {
-    gps.longitude =
-      nmeaCoordinateToDecimal(rawLongitude);
+    gps.longitude = nmeaCoordinateToDecimal(rawLongitude);
 
     if (token && token[0] == 'W') {
       gps.longitude = -gps.longitude;
@@ -932,17 +790,11 @@ void parseGGA(const char *line) {
 
   token = strtok(nullptr, ","); // fix quality
 
-  gps.fixQuality =
-    token ?
-      static_cast<uint8_t>(atoi(token)) :
-      0;
+  gps.fixQuality = token ? static_cast<uint8_t>(atoi(token)) : 0;
 
   token = strtok(nullptr, ","); // satellites
 
-  gps.satellitesUsed =
-    token ?
-      static_cast<uint8_t>(atoi(token)) :
-      0;
+  gps.satellitesUsed = token ? static_cast<uint8_t>(atoi(token)) : 0;
 
   token = strtok(nullptr, ","); // HDOP
 
@@ -968,8 +820,7 @@ void parseGSA(const char *line) {
   token = strtok(nullptr, ","); // fix type
 
   if (token && token[0]) {
-    gps.fixType =
-      static_cast<uint8_t>(atoi(token));
+    gps.fixType = static_cast<uint8_t>(atoi(token));
   }
 
   updateValidFix();
@@ -1018,25 +869,13 @@ void processNmeaLine(const String &line) {
 
   portENTER_CRITICAL(&gpsMux);
 
-  if (
-    line.startsWith("$GPRMC") ||
-    line.startsWith("$GNRMC")
-  ) {
+  if (line.startsWith("$GPRMC") || line.startsWith("$GNRMC")) {
     parseRMC(line.c_str());
-  } else if (
-    line.startsWith("$GPGGA") ||
-    line.startsWith("$GNGGA")
-  ) {
+  } else if (line.startsWith("$GPGGA") || line.startsWith("$GNGGA")) {
     parseGGA(line.c_str());
-  } else if (
-    line.startsWith("$GPGSA") ||
-    line.startsWith("$GNGSA")
-  ) {
+  } else if (line.startsWith("$GPGSA") || line.startsWith("$GNGSA")) {
     parseGSA(line.c_str());
-  } else if (
-    line.startsWith("$GPVTG") ||
-    line.startsWith("$GNVTG")
-  ) {
+  } else if (line.startsWith("$GPVTG") || line.startsWith("$GNVTG")) {
     parseVTG(line.c_str());
   }
 
@@ -1087,8 +926,7 @@ void readBluetoothNmeaNonBlocking() {
       continue;
     }
 
-    char character =
-      static_cast<char>(value);
+    char character = static_cast<char>(value);
 
     if (character == '\n') {
       nmeaLine.trim();
@@ -1106,15 +944,10 @@ void readBluetoothNmeaNonBlocking() {
       continue;
     }
 
-    if (
-      nmeaLine.length() <
-      MAX_NMEA_LINE_LENGTH
-    ) {
+    if (nmeaLine.length() < MAX_NMEA_LINE_LENGTH) {
       nmeaLine += character;
     } else {
-      Serial.println(
-        "[NMEA] Riga troppo lunga: buffer resettato."
-      );
+      Serial.println("[NMEA] Riga troppo lunga: buffer resettato.");
 
       nmeaLine = "";
     }
@@ -1131,19 +964,12 @@ void gpsBluetoothTask(void *parameter) {
 
         clearGpsState();
 
-        Serial.println(
-          "[GPS] Connessione Garmin GLO2 persa."
-        );
+        Serial.println("[GPS] Connessione Garmin GLO2 persa.");
       }
 
-      Serial.println(
-        "[BT] Tentativo connessione Garmin GLO2 in background..."
-      );
+      Serial.println("[BT] Tentativo connessione Garmin GLO2 in background...");
 
-      SerialBT.setPin(
-        PAIRING_PIN,
-        PAIRING_PIN_LEN
-      );
+      SerialBT.setPin(PAIRING_PIN, PAIRING_PIN_LEN);
 
       // Questa chiamata può bloccare, ma soltanto
       // la task GPS: loop, sensori e MQTT restano vivi.
@@ -1156,9 +982,7 @@ void gpsBluetoothTask(void *parameter) {
 
         lastNmeaSentenceMs = 0;
 
-        Serial.println(
-          "[OK] GPS Garmin GLO2 connesso via Bluetooth."
-        );
+        Serial.println("[OK] GPS Garmin GLO2 connesso via Bluetooth.");
       } else {
         SerialBT.disconnect();
 
@@ -1166,16 +990,10 @@ void gpsBluetoothTask(void *parameter) {
 
         clearGpsState();
 
-        Serial.println(
-          "[!!] GPS Garmin GLO2 non raggiungibile; "
-          "telemetria locale continua."
-        );
+        Serial.println("[!!] GPS Garmin GLO2 non raggiungibile; "
+                       "telemetria locale continua.");
 
-        vTaskDelay(
-          pdMS_TO_TICKS(
-            GPS_RECONNECT_INTERVAL_MS
-          )
-        );
+        vTaskDelay(pdMS_TO_TICKS(GPS_RECONNECT_INTERVAL_MS));
 
         continue;
       }
@@ -1191,59 +1009,43 @@ void gpsBluetoothTask(void *parameter) {
 // WIFI
 // ============================================================
 
-void onWiFiEvent(
-  WiFiEvent_t event,
-  WiFiEventInfo_t info
-) {
+void onWiFiEvent(WiFiEvent_t event, WiFiEventInfo_t info) {
   switch (event) {
-    case ARDUINO_EVENT_WIFI_STA_GOT_IP:
-      wifiConnected = true;
+  case ARDUINO_EVENT_WIFI_STA_GOT_IP:
+    wifiConnected = true;
 
-      wifiRetryDelayMs =
-        WIFI_RETRY_MIN_MS;
+    wifiRetryDelayMs = WIFI_RETRY_MIN_MS;
 
-      nextWifiRetryMs = 0;
+    nextWifiRetryMs = 0;
 
-      // Nuova connessione Wi-Fi:
-      // quando MQTT si riconnetterà, ripubblichiamo tutto.
-      forcePublishAllStatuses = true;
+    // Nuova connessione Wi-Fi:
+    // quando MQTT si riconnetterà, ripubblichiamo tutto.
+    forcePublishAllStatuses = true;
 
-      Serial.printf(
-        "[OK] Hotspot Wi-Fi connesso | IP=%s | RSSI=%d dBm\n",
-        WiFi.localIP().toString().c_str(),
-        WiFi.RSSI()
-      );
+    Serial.printf("[OK] Hotspot Wi-Fi connesso | IP=%s | RSSI=%d dBm\n",
+                  WiFi.localIP().toString().c_str(), WiFi.RSSI());
 
-      break;
+    break;
 
-    case ARDUINO_EVENT_WIFI_STA_DISCONNECTED:
-      wifiConnected = false;
+  case ARDUINO_EVENT_WIFI_STA_DISCONNECTED:
+    wifiConnected = false;
 
-      mqttClient.disconnect();
+    mqttClient.disconnect();
 
-      forcePublishAllStatuses = true;
+    forcePublishAllStatuses = true;
 
-      Serial.printf(
-        "[WIFI] Disconnesso | motivo=%d | retry=%lu ms\n",
-        info.wifi_sta_disconnected.reason,
-        static_cast<unsigned long>(
-          wifiRetryDelayMs
-        )
-      );
+    Serial.printf("[WIFI] Disconnesso | motivo=%d | retry=%lu ms\n",
+                  info.wifi_sta_disconnected.reason,
+                  static_cast<unsigned long>(wifiRetryDelayMs));
 
-      nextWifiRetryMs =
-        millis() + wifiRetryDelayMs;
+    nextWifiRetryMs = millis() + wifiRetryDelayMs;
 
-      wifiRetryDelayMs =
-        min(
-          wifiRetryDelayMs * 2,
-          WIFI_RETRY_MAX_MS
-        );
+    wifiRetryDelayMs = min(wifiRetryDelayMs * 2, WIFI_RETRY_MAX_MS);
 
-      break;
+    break;
 
-    default:
-      break;
+  default:
+    break;
   }
 }
 
@@ -1264,32 +1066,21 @@ void maintainWiFi() {
 
   WiFi.disconnect(false, false);
 
-  WiFi.begin(
-    WIFI_SSID,
-    WIFI_PASSWORD
-  );
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
 
-  nextWifiRetryMs =
-    millis() + wifiRetryDelayMs;
+  nextWifiRetryMs = millis() + wifiRetryDelayMs;
 }
 
 // ============================================================
 // MQTT
 // ============================================================
 
-void mqttCallback(
-  char *topic,
-  byte *payload,
-  unsigned int length
-) {
+void mqttCallback(char *topic, byte *payload, unsigned int length) {
   // Progetto solo publishing.
 }
 
 void maintainMqtt() {
-  if (
-    !wifiConnected ||
-    WiFi.status() != WL_CONNECTED
-  ) {
+  if (!wifiConnected || WiFi.status() != WL_CONNECTED) {
     return;
   }
 
@@ -1303,20 +1094,16 @@ void maintainMqtt() {
     return;
   }
 
-  String clientId =
-    "ESP32-KART-" +
-    WiFi.macAddress();
+  String clientId = "ESP32-KART-" + WiFi.macAddress();
 
   clientId.replace(":", "");
 
   Serial.println("[MQTT] Riconnessione broker...");
 
-  bool ok =
-    mqttClient.connect(clientId.c_str());
+  bool ok = mqttClient.connect(clientId.c_str());
 
   if (ok) {
-    mqttRetryDelayMs =
-      MQTT_RETRY_MIN_MS;
+    mqttRetryDelayMs = MQTT_RETRY_MIN_MS;
 
     nextMqttRetryMs = 0;
 
@@ -1331,26 +1118,15 @@ void maintainMqtt() {
     publishedIrRpm = -1;
     publishedGps = -1;
 
-    Serial.println(
-      "[OK] MQTT broker connesso."
-    );
+    Serial.println("[OK] MQTT broker connesso.");
   } else {
-    Serial.printf(
-      "[MQTT] Connessione fallita | stato=%d | retry=%lu ms\n",
-      mqttClient.state(),
-      static_cast<unsigned long>(
-        mqttRetryDelayMs
-      )
-    );
+    Serial.printf("[MQTT] Connessione fallita | stato=%d | retry=%lu ms\n",
+                  mqttClient.state(),
+                  static_cast<unsigned long>(mqttRetryDelayMs));
 
-    nextMqttRetryMs =
-      millis() + mqttRetryDelayMs;
+    nextMqttRetryMs = millis() + mqttRetryDelayMs;
 
-    mqttRetryDelayMs =
-      min(
-        mqttRetryDelayMs * 2,
-        MQTT_RETRY_MAX_MS
-      );
+    mqttRetryDelayMs = min(mqttRetryDelayMs * 2, MQTT_RETRY_MAX_MS);
   }
 }
 
@@ -1359,24 +1135,17 @@ void maintainMqtt() {
 // ============================================================
 
 void publishTelemetryPayload() {
-  if (
-    !wifiConnected ||
-    !mqttClient.connected()
-  ) {
+  if (!wifiConnected || !mqttClient.connected()) {
     return;
   }
 
   int rssi = WiFi.RSSI();
 
   if (rssi < WIFI_MIN_RSSI_DBM) {
-    if (
-      millis() - lastWeakWifiLogMs >=
-      WIFI_WEAK_LOG_INTERVAL_MS
-    ) {
+    if (millis() - lastWeakWifiLogMs >= WIFI_WEAK_LOG_INTERVAL_MS) {
       Serial.printf(
-        "[WIFI] Segnale debole (%d dBm), invio telemetria rimandato.\n",
-        rssi
-      );
+          "[WIFI] Segnale debole (%d dBm), invio telemetria rimandato.\n",
+          rssi);
 
       lastWeakWifiLogMs = millis();
     }
@@ -1400,16 +1169,12 @@ void publishTelemetryPayload() {
 
   interrupts();
 
-  bool as5600FieldValid =
-    as5600Present &&
-    as5600MagnetDetected &&
-    !as5600MagnetTooWeak &&
-    !as5600MagnetTooStrong;
+  bool as5600FieldValid = as5600Present && as5600MagnetDetected &&
+                          !as5600MagnetTooWeak && !as5600MagnetTooStrong;
 
   StaticJsonDocument<512> doc;
 
-  doc["satellites_used"] =
-    gpsCopy.satellitesUsed;
+  doc["satellites_used"] = gpsCopy.satellitesUsed;
 
   doc["latitude"] = gpsCopy.latitude;
   doc["longitude"] = gpsCopy.longitude;
@@ -1418,88 +1183,58 @@ void publishTelemetryPayload() {
 
   doc["fix_valid"] = gpsCopy.validFix;
 
-  doc["fix_quality"] =
-    gpsCopy.fixQuality;
+  doc["fix_quality"] = gpsCopy.fixQuality;
 
   doc["fix_type"] = gpsCopy.fixType;
 
   doc["hdop"] = gpsCopy.hdop;
 
-  if (
-    temperatureValid &&
-    !isnan(temperatureC)
-  ) {
-    doc["temperature_c"] =
-      temperatureC;
+  if (temperatureValid && !isnan(temperatureC)) {
+    doc["temperature_c"] = temperatureC;
   } else {
-    doc["temperature_c"] =
-      nullptr;
+    doc["temperature_c"] = nullptr;
   }
 
-  if (
-    as5600Present &&
-    !isnan(as5600AngleDeg)
-  ) {
-    doc["as5600_angle_deg"] =
-      as5600AngleDeg;
+  if (as5600Present && !isnan(as5600AngleDeg)) {
+    doc["as5600_angle_deg"] = as5600AngleDeg;
   } else {
-    doc["as5600_angle_deg"] =
-      nullptr;
+    doc["as5600_angle_deg"] = nullptr;
   }
 
   if (as5600FieldValid) {
-    doc["as5600_rpm"] =
-      as5600Rpm;
+    doc["as5600_rpm"] = as5600Rpm;
   } else {
-    doc["as5600_rpm"] =
-      nullptr;
+    doc["as5600_rpm"] = nullptr;
   }
 
-  doc["as5600_magnet_ok"] =
-    as5600FieldValid;
+  doc["as5600_magnet_ok"] = as5600FieldValid;
 
   doc["ir_rpm"] = irRpm;
 
-  doc["ir_total_pulses"] =
-    irPulsesCopy;
+  doc["ir_total_pulses"] = irPulsesCopy;
 
   char jsonBuffer[512];
 
-  size_t jsonLength =
-    serializeJson(
-      doc,
-      jsonBuffer,
-      sizeof(jsonBuffer)
-    );
+  size_t jsonLength = serializeJson(doc, jsonBuffer, sizeof(jsonBuffer));
 
   if (jsonLength == 0) {
-    Serial.println(
-      "[MQTT] Errore serializzazione telemetria."
-    );
+    Serial.println("[MQTT] Errore serializzazione telemetria.");
 
     return;
   }
 
   bool published = mqttClient.publish(
-    MQTT_TOPIC,
-    reinterpret_cast<const uint8_t *>(
-      jsonBuffer
-    ),
-    jsonLength,
-    false
-  );
+      MQTT_TOPIC, reinterpret_cast<const uint8_t *>(jsonBuffer), jsonLength,
+      false);
 
   if (!published) {
-    Serial.println(
-      "[MQTT] Publish telemetria fallito."
-    );
+    Serial.println("[MQTT] Publish telemetria fallito.");
 
     mqttClient.disconnect();
 
     nextMqttRetryMs = millis() + 250;
 
-    mqttRetryDelayMs =
-      MQTT_RETRY_MIN_MS;
+    mqttRetryDelayMs = MQTT_RETRY_MIN_MS;
   }
 }
 
@@ -1507,90 +1242,50 @@ void publishTelemetryPayload() {
 // CHECK AVVIO
 // ============================================================
 
-void printCheck(
-  const char *label,
-  bool ok,
-  const char *okText,
-  const char *failText
-) {
-  Serial.printf(
-    "%s %-18s %s\n",
-    ok ? "[OK]" : "[!!]",
-    label,
-    ok ? okText : failText
-  );
+void printCheck(const char *label, bool ok, const char *okText,
+                const char *failText) {
+  Serial.printf("%s %-18s %s\n", ok ? "[OK]" : "[!!]", label,
+                ok ? okText : failText);
 }
 
 void initialHardwareCheck() {
   Serial.println();
-  Serial.println(
-    "===================================================="
-  );
-  Serial.println(
-    "         KART TELEMETRY - STARTUP CHECK"
-  );
-  Serial.println(
-    "===================================================="
-  );
+  Serial.println("====================================================");
+  Serial.println("         KART TELEMETRY - STARTUP CHECK");
+  Serial.println("====================================================");
 
-  float initialTemperature =
-    readNtcTemperatureC();
+  float initialTemperature = readNtcTemperatureC();
 
-  printCheck(
-    "NTC GPIO34",
-    !isnan(initialTemperature),
-    "presente",
-    "non valido / controlla cablaggio"
-  );
+  printCheck("NTC GPIO34", !isnan(initialTemperature), "presente",
+             "non valido / controlla cablaggio");
 
   if (!isnan(initialTemperature)) {
-    Serial.printf(
-      "     Temperatura iniziale: %.1f C\n",
-      initialTemperature
-    );
+    Serial.printf("     Temperatura iniziale: %.1f C\n", initialTemperature);
   }
 
   as5600Present = detectAS5600();
 
-  printCheck(
-    "AS5600 I2C",
-    as5600Present,
-    "trovato @ 0x36",
-    "non trovato"
-  );
+  printCheck("AS5600 I2C", as5600Present, "trovato @ 0x36", "non trovato");
 
   if (as5600Present) {
     updateAS5600();
 
     bool fieldValid =
-      as5600MagnetDetected &&
-      !as5600MagnetTooWeak &&
-      !as5600MagnetTooStrong;
+        as5600MagnetDetected && !as5600MagnetTooWeak && !as5600MagnetTooStrong;
 
-    printCheck(
-      "AS5600 magnete",
-      fieldValid,
-      "campo magnetico OK",
-      "centra / avvicina magnete"
-    );
+    printCheck("AS5600 magnete", fieldValid, "campo magnetico OK",
+               "centra / avvicina magnete");
   }
 
   Serial.printf(
-    "[--] IR RPM GPIO27      OUT=%d | verra confermato al primo trigger\n",
-    digitalRead(IR_RPM_PIN)
-  );
+      "[--] IR RPM GPIO27      OUT=%d | verra confermato al primo trigger\n",
+      digitalRead(IR_RPM_PIN));
 
-  Serial.println(
-    "[--] Garmin GLO2       verra verificato in background."
-  );
+  Serial.println("[--] Garmin GLO2       verra verificato in background.");
 
-  Serial.println(
-    "[--] Wi-Fi hotspot     verra verificato dopo setup."
-  );
+  Serial.println("[--] Wi-Fi hotspot     verra verificato dopo setup.");
 
-  Serial.println(
-    "===================================================="
-  );
+  Serial.println("====================================================");
 }
 
 // ============================================================
@@ -1614,22 +1309,13 @@ void printPeriodicLog() {
 
   portEXIT_CRITICAL(&gpsMux);
 
-  Serial.printf(
-    "[TEL] GPS=%.2f km/h | Fix=%d | sats=%u | Temp=%.1f C | "
-    "AS=%.1f deg | AS-RPM=%.1f | IR=%.1f rpm | "
-    "WiFi=%d dBm | GLO2=%s\n",
-    gpsCopy.speedKmph,
-    gpsCopy.validFix ? 1 : 0,
-    gpsCopy.satellitesUsed,
-    temperatureC,
-    as5600AngleDeg,
-    as5600Rpm,
-    irRpm,
-    WiFi.status() == WL_CONNECTED ?
-      WiFi.RSSI() :
-      -127,
-    btConnected ? "OK" : "OFF"
-  );
+  Serial.printf("[TEL] GPS=%.2f km/h | Fix=%d | sats=%u | Temp=%.1f C | "
+                "AS=%.1f deg | AS-RPM=%.1f | IR=%.1f rpm | "
+                "WiFi=%d dBm | GLO2=%s\n",
+                gpsCopy.speedKmph, gpsCopy.validFix ? 1 : 0,
+                gpsCopy.satellitesUsed, temperatureC, as5600AngleDeg, as5600Rpm,
+                irRpm, WiFi.status() == WL_CONNECTED ? WiFi.RSSI() : -127,
+                btConnected ? "OK" : "OFF");
 }
 
 // ============================================================
@@ -1658,29 +1344,17 @@ void setup() {
 
   analogReadResolution(12);
 
-  analogSetPinAttenuation(
-    NTC_PIN,
-    ADC_11db
-  );
+  analogSetPinAttenuation(NTC_PIN, ADC_11db);
 
   // IR RPM
   pinMode(IR_RPM_PIN, INPUT);
 
-  irLastDigitalState =
-    digitalRead(IR_RPM_PIN);
+  irLastDigitalState = digitalRead(IR_RPM_PIN);
 
-  attachInterrupt(
-    digitalPinToInterrupt(IR_RPM_PIN),
-    onIrPulse,
-    FALLING
-  );
+  attachInterrupt(digitalPinToInterrupt(IR_RPM_PIN), onIrPulse, FALLING);
 
   // AS5600 I2C
-  Wire.begin(
-    AS5600_SDA_PIN,
-    AS5600_SCL_PIN,
-    AS5600_I2C_CLOCK_HZ
-  );
+  Wire.begin(AS5600_SDA_PIN, AS5600_SCL_PIN, AS5600_I2C_CLOCK_HZ);
 
   initialHardwareCheck();
 
@@ -1695,36 +1369,20 @@ void setup() {
 
   WiFi.onEvent(onWiFiEvent);
 
-  Serial.println(
-    "[WIFI] Avvio connessione hotspot..."
-  );
+  Serial.println("[WIFI] Avvio connessione hotspot...");
 
-  WiFi.begin(
-    WIFI_SSID,
-    WIFI_PASSWORD
-  );
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
 
   // MQTT
-  mqttClient.setServer(
-    MQTT_BROKER,
-    MQTT_PORT
-  );
+  mqttClient.setServer(MQTT_BROKER, MQTT_PORT);
 
-  mqttClient.setKeepAlive(
-    MQTT_KEEPALIVE_SECONDS
-  );
+  mqttClient.setKeepAlive(MQTT_KEEPALIVE_SECONDS);
 
-  mqttClient.setSocketTimeout(
-    MQTT_SOCKET_TIMEOUT_SECONDS
-  );
+  mqttClient.setSocketTimeout(MQTT_SOCKET_TIMEOUT_SECONDS);
 
-  if (!mqttClient.setBufferSize(
-        MQTT_BUFFER_SIZE
-      )) {
+  if (!mqttClient.setBufferSize(MQTT_BUFFER_SIZE)) {
 
-    Serial.println(
-      "[MQTT] Errore: impossibile allocare buffer."
-    );
+    Serial.println("[MQTT] Errore: impossibile allocare buffer.");
 
     while (true) {
       delay(1000);
@@ -1735,48 +1393,31 @@ void setup() {
 
   // Bluetooth Classic Garmin GLO 2
   if (!SerialBT.begin("ESP32-GLO2", true)) {
-    Serial.println(
-      "[BT] BluetoothSerial.begin() fallita."
-    );
+    Serial.println("[BT] BluetoothSerial.begin() fallita.");
 
     while (true) {
       delay(1000);
     }
   }
 
-  Serial.println(
-    "[OK] Bluetooth Classic inizializzato."
-  );
+  Serial.println("[OK] Bluetooth Classic inizializzato.");
 
   // Task GPS separata: GPS non blocca mai MQTT/sensori.
-  BaseType_t taskCreated =
-    xTaskCreatePinnedToCore(
-      gpsBluetoothTask,
-      "GarminGpsTask",
-      GPS_TASK_STACK_SIZE,
-      nullptr,
-      GPS_TASK_PRIORITY,
-      &gpsTaskHandle,
-      0
-    );
+  BaseType_t taskCreated = xTaskCreatePinnedToCore(
+      gpsBluetoothTask, "GarminGpsTask", GPS_TASK_STACK_SIZE, nullptr,
+      GPS_TASK_PRIORITY, &gpsTaskHandle, 0);
 
   if (taskCreated != pdPASS) {
-    Serial.println(
-      "[BT] Errore: impossibile avviare task Garmin."
-    );
+    Serial.println("[BT] Errore: impossibile avviare task Garmin.");
 
     while (true) {
       delay(1000);
     }
   }
 
-  Serial.println(
-    "[OK] Task Garmin GPS avviata in background."
-  );
+  Serial.println("[OK] Task Garmin GPS avviata in background.");
 
-  Serial.println(
-    "[SYS] Telemetria locale + status MQTT pronta."
-  );
+  Serial.println("[SYS] Telemetria locale + status MQTT pronta.");
 }
 
 // ============================================================
@@ -1795,16 +1436,13 @@ void loop() {
   /*
     Quando MQTT è connesso:
     1) invia eventuali cambiamenti status individuali;
-    2) invia la telemetria aggregata ogni 200 m.
+    2) invia la telemetria aggregata ogni 200 ms.
   */
   if (mqttClient.connected()) {
     updateAndPublishComponentStatuses();
   }
 
-  if (
-    millis() - lastPublishMs >=
-    MQTT_PUBLISH_INTERVAL_MS
-  ) {
+  if (millis() - lastPublishMs >= MQTT_PUBLISH_INTERVAL_MS) {
     publishTelemetryPayload();
 
     lastPublishMs = millis();

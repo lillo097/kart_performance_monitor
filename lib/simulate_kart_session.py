@@ -4,6 +4,8 @@ import argparse
 import json
 import math
 import time
+import urllib.request
+import urllib.error
 from pathlib import Path
 
 import paho.mqtt.client as mqtt
@@ -11,8 +13,8 @@ import yaml
 
 
 BASE_DIR = Path(__file__).resolve().parent
-APP_CONFIG_PATH = BASE_DIR / "config" / "app.yaml"
-TRACK_CONFIG_PATH = BASE_DIR / "config" / "tracks" / "prima-pista.yaml"
+APP_CONFIG_PATH = BASE_DIR.parent / "config" / "app.yaml"
+TRACK_CONFIG_PATH = BASE_DIR.parent / "config" / "tracks" / "prima-pista.yaml"
 
 A = (41.273531, 13.154795)
 B = (41.272110, 13.155612)
@@ -442,6 +444,14 @@ def publish(route, mqtt_config, hz, multiplier):
     client.connect(broker, port, keepalive=60)
     client.loop_start()
 
+    for component in ["gps", "ntc", "ir_rpm", "as5600", "hotspot", "mqtt"]:
+        client.publish(
+            f"sensors2mqtt-glo2/esp32/status/{component}",
+            json.dumps({"sensor": component, "present": True}),
+            qos=0,
+            retain=False
+        )
+
     started_at = time.time()
 
     while not connected:
@@ -486,6 +496,10 @@ def publish(route, mqtt_config, hz, multiplier):
                 "fix_quality": 1,
                 "fix_type": 3,
                 "hdop": 0.75,
+                "temperature_c": round(70.0 + item["speed_kmph"] * 0.2, 1),
+                "ir_rpm": int(item["speed_kmph"] * 120),
+                "as5600_rpm": int(item["speed_kmph"] * 120),
+                "as5600_magnet_ok": True,
                 "simulated": True,
                 "simulation_phase": phase,
             }
@@ -541,6 +555,28 @@ def main():
 
     app_config = load_yaml(APP_CONFIG_PATH)
     track_config = load_yaml(TRACK_CONFIG_PATH)
+
+    # Prova ad avviare automaticamente la sessione su app.py
+    app_url = app_config.get("server", {})
+    host = app_url.get("host", "127.0.0.1")
+    port = int(app_url.get("port", 8080))
+    # Prendi il primo driver disponibile
+    drivers_cfg = load_yaml(BASE_DIR.parent / "config" / "drivers.yaml")
+    driver_id = (drivers_cfg.get("drivers") or [{}])[0].get("id", "driver-01")
+    try:
+        req = urllib.request.Request(
+            f"http://{host}:{port}/api/session/start",
+            data=json.dumps({"driver_id": driver_id}).encode(),
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=3) as resp:
+            body = json.loads(resp.read())
+            print(f"[SIM] Sessione avviata: {body.get('session', {}).get('status')}")
+    except urllib.error.HTTPError as e:
+        print(f"[SIM] Sessione non avviata (già attiva?): {e.code}")
+    except Exception as e:
+        print(f"[SIM] Impossibile contattare app.py per avviare sessione: {e}")
 
     route = build_route(track_config, args.hz)
 
