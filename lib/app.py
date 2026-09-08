@@ -88,7 +88,6 @@ sensor_status = {
 
 SENSOR_OFFLINE_TIMEOUT_S = 5 * 60
 
-# Aggiunta mappatura tipi di fix GPS
 FIX_TYPE_LABELS = {
     0: "No Fix",
     1: "GPS",
@@ -168,6 +167,7 @@ def new_session_state():
         "previous_track_state": None,
         "pit_lane_exit_seen": False,
         "warmup_started_at": None,
+        "cooldown_active": False,
         "current_lap_number": 0,
         "current_lap_start_epoch": None,
         "current_lap_start_index": None,
@@ -184,6 +184,7 @@ def new_session_state():
         "ideal_lap_time_s": None,
         "last_completed_lap_time_s": None,
         "last_completed_lap_at_epoch": None,
+        "last_completed_lap_sectors_s": [None] * count,
         "last_aborted_lap": None,
         "pit_lane_entry_detected_at_epoch": None,
         "last_sector_result": None,
@@ -1076,6 +1077,59 @@ def abort_current_lap(reason, at_epoch):
     append_event("lap_aborted", **aborted)
 
 
+def stop_timing_for_cooldown(at_epoch, sample=None):
+    if session.get("current_lap_timer_running"):
+        abort_current_lap(
+            "cooldown_requested",
+            at_epoch,
+        )
+
+    session["last_line_crossing_epochs"].pop("SF", None)
+
+    session["previous_track_state"] = session.get(
+        "track_state"
+    )
+    session["cooldown_active"] = True
+    session["track_state"] = "cooldown"
+    session["current_lap_timer_running"] = False
+    session["current_lap_start_epoch"] = None
+    session["current_lap_start_index"] = None
+    session["sector_started_epoch"] = None
+    session["current_sector_number"] = 1
+    session["current_lap_sectors_s"] = [None] * sector_count()
+    session["current_lap_track_points"] = []
+    session["current_lap_distance_m"] = 0.0
+    session["delta_live_s"] = None
+
+    event_data = {
+        "reason": "mqtt_cooldown",
+    }
+
+    if sample and valid_coordinates(sample):
+        event_data.update(
+            latitude=round(float(sample["latitude"]), 7),
+            longitude=round(float(sample["longitude"]), 7),
+        )
+
+    append_event("cooldown_started", **event_data)
+
+
+def resume_timing_after_cooldown(sample):
+    session["cooldown_active"] = False
+    session["track_state"] = "on_track"
+    session["previous_track_state"] = "cooldown"
+    session["warmup_started_at"] = None
+    session["pit_lane_exit_seen"] = True
+    session["current_sector_number"] = 1
+
+    append_event(
+        "cooldown_ended",
+        reason="crossed_start_finish",
+        latitude=round(float(sample["latitude"]), 7),
+        longitude=round(float(sample["longitude"]), 7),
+    )
+
+
 def set_track_state(next_state, reason=None, sample=None):
     previous_state = session.get("track_state")
 
@@ -1103,6 +1157,9 @@ def set_track_state(next_state, reason=None, sample=None):
 
 
 def update_position_state(previous_sample, sample):
+    if session.get("cooldown_active"):
+        return "cooldown"
+
     inside_box, box_distance_m = is_inside_box(sample)
     current_state = session.get("track_state", "pitlane")
 
@@ -1247,36 +1304,72 @@ def ideal_lap_time_s():
 def build_sector_result(
     sector_number,
     sector_time_s,
-    reference_time_s,
+    best_sector_s,
+    reference_sector_s,
 ):
-    if reference_time_s is None:
+    """
+    Logica stile F1 per i colori dei settori:
+
+    - best (fucsia):   nuovo record assoluto del settore (batte best_sector_s)
+    - improved (verde): più veloce del riferimento (ultimo giro), ma non record
+    - slower (giallo):  più lento o uguale al riferimento
+    """
+
+    if best_sector_s is None:
         return {
             "sector_number": sector_number,
             "sector_time_s": round(sector_time_s, 3),
-            "delta_s": None,
+            "delta_to_best_s": None,
+            "delta_to_reference_s": None,
             "status": "best",
             "label": "BEST SETTORE",
             "completed_at_epoch": time.time(),
         }
 
-    delta_s = sector_time_s - reference_time_s
+    delta_to_best = sector_time_s - float(best_sector_s)
 
-    if delta_s < -0.001:
-        status = "improved"
-        label = "MIGLIORATO"
-    elif delta_s > 0.001:
-        status = "slower"
-        label = "PIÙ LENTO"
-    else:
-        status = "equal"
-        label = "UGUALE"
+    if delta_to_best < -0.001:
+        return {
+            "sector_number": sector_number,
+            "sector_time_s": round(sector_time_s, 3),
+            "delta_to_best_s": round(delta_to_best, 3),
+            "delta_to_reference_s": None,
+            "status": "best",
+            "label": "BEST SETTORE",
+            "completed_at_epoch": time.time(),
+        }
+
+    if reference_sector_s is not None:
+        delta_to_reference = sector_time_s - float(reference_sector_s)
+
+        if delta_to_reference < -0.001:
+            return {
+                "sector_number": sector_number,
+                "sector_time_s": round(sector_time_s, 3),
+                "delta_to_best_s": round(delta_to_best, 3),
+                "delta_to_reference_s": round(delta_to_reference, 3),
+                "status": "improved",
+                "label": "MIGLIORATO",
+                "completed_at_epoch": time.time(),
+            }
+        else:
+            return {
+                "sector_number": sector_number,
+                "sector_time_s": round(sector_time_s, 3),
+                "delta_to_best_s": round(delta_to_best, 3),
+                "delta_to_reference_s": round(delta_to_reference, 3),
+                "status": "slower",
+                "label": "PIÙ LENTO",
+                "completed_at_epoch": time.time(),
+            }
 
     return {
         "sector_number": sector_number,
         "sector_time_s": round(sector_time_s, 3),
-        "delta_s": round(delta_s, 3),
-        "status": status,
-        "label": label,
+        "delta_to_best_s": round(delta_to_best, 3),
+        "delta_to_reference_s": None,
+        "status": "slower",
+        "label": "PIÙ LENTO",
         "completed_at_epoch": time.time(),
     }
 
@@ -1306,14 +1399,24 @@ def close_current_sector(
     while len(values) < sector_count():
         values.append(None)
 
-    previous_best = session["best_sector_times_s"][
+    best_sector_s = session["best_sector_times_s"][
         completed_sector_number - 1
     ]
+
+    reference_sector_s = session["last_completed_lap_sectors_s"][
+        completed_sector_number - 1
+    ]
+
+    is_new_best = (
+        best_sector_s is None
+        or sector_time_s < float(best_sector_s) - 0.001
+    )
 
     result = build_sector_result(
         completed_sector_number,
         sector_time_s,
-        previous_best,
+        best_sector_s,
+        reference_sector_s,
     )
 
     values[completed_sector_number - 1] = round(
@@ -1323,10 +1426,7 @@ def close_current_sector(
 
     session["current_lap_sectors_s"] = values
 
-    if (
-        previous_best is None
-        or sector_time_s < float(previous_best)
-    ):
+    if is_new_best:
         session["best_sector_times_s"][
             completed_sector_number - 1
         ] = round(sector_time_s, 3)
@@ -1342,9 +1442,12 @@ def close_current_sector(
         "sector_completed",
         sector_number=completed_sector_number,
         sector_time_s=round(sector_time_s, 3),
-        previous_best_s=previous_best,
-        delta_s=result["delta_s"],
+        best_sector_s=best_sector_s,
+        reference_sector_s=reference_sector_s,
+        delta_to_best_s=result["delta_to_best_s"],
+        delta_to_reference_s=result["delta_to_reference_s"],
         status=result["status"],
+        is_new_best=is_new_best,
     )
 
     return True
@@ -1488,6 +1591,8 @@ def finish_current_lap(
     )
     session["last_completed_lap_at_epoch"] = time.time()
 
+    session["last_completed_lap_sectors_s"] = list(sectors_s)
+
     if lap_is_valid:
         best_lap = session.get("best_lap_time_s")
 
@@ -1600,90 +1705,91 @@ def process_timing(sample):
     if not start_finish:
         return
 
-    pit_position = pit_lane_position(sample)
+    if state != "cooldown":
+        pit_position = pit_lane_position(sample)
 
-    if (
-        state == "pitlane"
-        and pit_position is not None
-        and pit_position["distance_m"] <= 20.0
-        and pit_position["fraction"] >= 0.78
-    ):
-        mark_warmup(
-            sample,
-            "reached_pit_lane_end",
-        )
-
-    for split_index, sector_config in enumerate(sectors):
-        crossing = line_crossing_event(
-            previous,
-            sample,
-            sector_config,
-        )
-
-        if crossing is None:
-            continue
-
-        line_id = sector_config.get(
-            "id",
-            f"S{split_index + 1}",
-        )
-
-        crossing_epoch = float(
-            crossing["crossing_epoch"]
-        )
-
-        if not crossing_allowed(line_id, crossing_epoch):
-            continue
-
-        current_state = session.get("track_state")
-        completed_sector_number = split_index + 1
-
-        if current_state in {"pitlane", "box"}:
+        if (
+            state == "pitlane"
+            and pit_position is not None
+            and pit_position["distance_m"] <= 20.0
+            and pit_position["fraction"] >= 0.78
+        ):
             mark_warmup(
                 sample,
-                f"crossed_{line_id}",
-            )
-            return
-
-        if current_state == "warmup":
-            advance_warmup_sector(
-                completed_sector_number
-            )
-            return
-
-        if current_state == "on_track":
-            expected_sector_number = session.get(
-                "current_sector_number"
+                "reached_pit_lane_end",
             )
 
-            if (
-                expected_sector_number
-                != completed_sector_number
+        for split_index, sector_config in enumerate(sectors):
+            crossing = line_crossing_event(
+                previous,
+                sample,
+                sector_config,
+            )
+
+            if crossing is None:
+                continue
+
+            line_id = sector_config.get(
+                "id",
+                f"S{split_index + 1}",
+            )
+
+            crossing_epoch = float(
+                crossing["crossing_epoch"]
+            )
+
+            if not crossing_allowed(
+                line_id,
+                crossing_epoch,
             ):
-                append_event(
-                    "sector_cross_ignored",
-                    crossed_split=line_id,
-                    expected_sector_number=(
-                        expected_sector_number
-                    ),
+                continue
+
+            current_state = session.get("track_state")
+            completed_sector_number = split_index + 1
+
+            if current_state in {"pitlane", "box"}:
+                mark_warmup(
+                    sample,
+                    f"crossed_{line_id}",
                 )
                 return
 
-            append_crossing_point(
-                crossing,
-                crossing_epoch,
-            )
+            if current_state == "warmup":
+                advance_warmup_sector(
+                    completed_sector_number
+                )
+                return
 
-            if close_current_sector(
-                crossing_epoch,
-                completed_sector_number,
-            ):
-                if completed_sector_number < sector_count():
-                    session["current_sector_number"] = (
-                        completed_sector_number + 1
+            if current_state == "on_track":
+                expected_sector_number = session.get(
+                    "current_sector_number"
+                )
+
+                if expected_sector_number != completed_sector_number:
+                    append_event(
+                        "sector_cross_ignored",
+                        crossed_split=line_id,
+                        expected_sector_number=(
+                            expected_sector_number
+                        ),
                     )
+                    return
 
-            return
+                append_crossing_point(
+                    crossing,
+                    crossing_epoch,
+                )
+
+                if close_current_sector(
+                    crossing_epoch,
+                    completed_sector_number,
+                ):
+                    if completed_sector_number < sector_count():
+                        session["current_sector_number"] = (
+                            completed_sector_number + 1
+                        )
+
+                return
 
     finish_crossing = line_crossing_event(
         previous,
@@ -1709,10 +1815,24 @@ def process_timing(sample):
         finish_crossing["crossing_epoch"]
     )
 
-    if not crossing_allowed("SF", crossing_epoch):
+    current_state = session.get("track_state")
+
+    if current_state == "cooldown":
+        session["last_line_crossing_epochs"]["SF"] = (
+            crossing_epoch
+        )
+
+        resume_timing_after_cooldown(sample)
+
+        start_new_lap(
+            crossing_epoch,
+            sample_index,
+            session.get("current_lap_number", 0) + 1,
+        )
         return
 
-    current_state = session.get("track_state")
+    if not crossing_allowed("SF", crossing_epoch):
+        return
 
     if current_state == "warmup":
         session["current_sector_number"] = 1
@@ -1731,7 +1851,6 @@ def process_timing(sample):
             sample_index,
             1,
         )
-
         return
 
     if current_state == "on_track":
@@ -1856,7 +1975,7 @@ def serializable_session():
     track_points = session["track_points"]
 
     return {
-        "schema_version": 9,
+        "schema_version": 10,
         "saved_at": now_iso(),
         "status": session["status"],
         "driver": deepcopy(session["driver"]),
@@ -1897,6 +2016,7 @@ def serializable_session():
         ),
         "ideal_lap_time_s": session["ideal_lap_time_s"],
         "track_state": session["track_state"],
+        "cooldown_active": session["cooldown_active"],
         "current_lap_number": session[
             "current_lap_number"
         ],
@@ -2123,6 +2243,7 @@ def live_snapshot():
                     session["track_points"]
                 ),
                 "track_state": session["track_state"],
+                "cooldown_active": session["cooldown_active"],
                 "current_lap_number": session[
                     "current_lap_number"
                 ],
@@ -2275,6 +2396,7 @@ def on_mqtt_message(client, userdata, message):
         if not isinstance(payload, dict):
             return
 
+        cooldown_requested = payload.get("cooldown") is True
         sample = normalise_payload(payload)
 
         sample["received_at"] = now_iso()
@@ -2328,6 +2450,12 @@ def on_mqtt_message(client, userdata, message):
                 session_elapsed_s(),
                 3,
             )
+
+            if cooldown_requested:
+                stop_timing_for_cooldown(
+                    now_epoch,
+                    sample,
+                )
 
             should_save, reason, distance_m = (
                 decide_track_point(sample)
@@ -2417,7 +2545,7 @@ def start_mqtt():
     return client
 
 
-HTML = r'''
+HTML = r"""
 <!doctype html>
 <html lang="it">
 <head>
@@ -2523,6 +2651,9 @@ body{
     white-space:nowrap;
     font-size:12px;
     font-weight:800;
+    display:flex;
+    align-items:center;
+    gap:6px;
 }
 
 .left-panel{
@@ -2576,7 +2707,7 @@ body{
     width:calc(100% - 34px);
     height:100px;
     min-height:100px;
-    margin:auto 0;          /* centrato verticalmente */
+    margin:auto 0;
     padding:10px 13px 13px;
 }
 
@@ -2648,7 +2779,6 @@ body{
     display:grid;
     gap:7px;
     margin-bottom:11px;
-    /* margin-top:auto rimosso per permettere il centramento */
 }
 
 .mode{
@@ -2833,7 +2963,7 @@ body{
 }
 
 .right-panel{
-    padding:29px 13px;   /* bilanciato sopra e sotto */
+    padding:29px 13px;
     display:flex;
     flex-direction:column;
     gap:7px;
@@ -2929,7 +3059,7 @@ body{
     }
 
     .right-panel{
-        padding:25px 13px;  /* bilanciato anche nella media query */
+        padding:25px 13px;
     }
 
     #speed{
@@ -3215,7 +3345,10 @@ body{
 
     <section class="column">
         <div class="panel right-panel">
-            <div class="panel-title">LAP</div>
+            <div class="panel-title">
+                LAP
+                <span id="lapCountTitle" class="lap-count-badge">0</span>
+            </div>
 
             <div class="box lap-box">
                 <h2 class="box-title">CURRENT LAP</h2>
@@ -3390,7 +3523,12 @@ function updateModes(trackState) {
         );
 
     document.getElementById("modeCooldown").className =
-        "mode";
+        "mode"
+        + (
+            trackState === "cooldown"
+            ? " active"
+            : ""
+        );
 }
 
 function updateStatusBadges(location) {
@@ -3461,7 +3599,7 @@ function sectorValue(value) {
         return "--";
     }
 
-    return Number(value).toFixed(2) + " s";
+    return Number(value).toFixed(3) + " s";
 }
 
 async function refresh() {
@@ -3517,6 +3655,9 @@ async function refresh() {
             "idealLap"
         ).textContent = fmt(data.ideal_lap);
 
+        document.getElementById("lapCountTitle").textContent =
+            data.lap_count || 0;
+
         const trackState = data.track_state || "pitlane";
 
         const currentSector = Number(
@@ -3561,7 +3702,7 @@ setInterval(refresh, 250);
 </script>
 </body>
 </html>
-'''
+"""
 
 
 @app.get("/")
@@ -3589,14 +3730,30 @@ def api_telemetry():
         delta = calculate_delta_live(now_epoch)
         session["delta_live_s"] = delta
 
-        sectors = session.get(
-            "current_lap_sectors_s",
-            [None, None, None],
+        sectors = list(
+            session.get("current_lap_sectors_s", [])
         )
 
-        if not isinstance(sectors, list):
-            sectors = [None, None, None]
+        while len(sectors) < sector_count():
+            sectors.append(None)
 
+        # Live sector time for the current sector if timer is running
+        if (
+            session.get("current_lap_timer_running")
+            and session.get("sector_started_epoch") is not None
+        ):
+            current_sector_idx = (
+                session.get("current_sector_number", 1) - 1
+            )
+
+            if 0 <= current_sector_idx < sector_count():
+                live_time = now_epoch - float(
+                    session["sector_started_epoch"]
+                )
+
+                sectors[current_sector_idx] = round(live_time, 3)
+
+        # Ensure at least 3 entries for the frontend (assuming 3 sectors)
         while len(sectors) < 3:
             sectors.append(None)
 
@@ -3650,7 +3807,6 @@ def api_telemetry():
             0,
         )
 
-        # Calcolo label tipo fix
         fix_valid = latest_sensors.get("fix_valid", False)
         fix_type = latest_sensors.get("fix_type", 0)
         if not fix_valid:
@@ -3664,13 +3820,26 @@ def api_telemetry():
         sector_event_data = None
 
         if session.get("last_sector_result"):
+            internal_status = session["last_sector_result"]["status"]
+            if internal_status == "best":
+                event_type = "best"
+            elif internal_status == "improved":
+                event_type = "improved"
+            else:
+                event_type = "slower"
+
             sector_event_data = {
                 "id": session.get("sector_event_id", 0),
-                "type": session["last_sector_result"]["status"],
-                "delta": session["last_sector_result"]["delta_s"],
+                "type": event_type,
+                "delta": (
+                    session["last_sector_result"]["delta_to_reference_s"]
+                    or session["last_sector_result"]["delta_to_best_s"]
+                ),
             }
 
         location = dashboard_location_flags(latest_sensors)
+
+        lap_count = len(session.get("laps", []))
 
         return jsonify({
             "speed": int(speed) if speed else 0,
@@ -3703,6 +3872,10 @@ def api_telemetry():
                 "track_state",
                 "pitlane",
             ),
+            "cooldown_active": session.get(
+                "cooldown_active",
+                False,
+            ),
             "location": {
                 "in_box": location["in_box"],
                 "in_pit_lane": location["in_pit_lane"],
@@ -3718,6 +3891,7 @@ def api_telemetry():
                 ),
             },
             "sector_event": sector_event_data,
+            "lap_count": lap_count,
         })
 
 
