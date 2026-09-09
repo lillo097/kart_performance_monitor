@@ -174,6 +174,7 @@ def new_session_state():
         "sector_started_epoch": None,
         "current_sector_number": 1,
         "current_lap_sectors_s": [],
+        "current_lap_sector_statuses": [None] * count,  # NEW
         "current_lap_timer_running": False,
         "current_lap_track_points": [],
         "current_lap_distance_m": 0.0,
@@ -1073,6 +1074,7 @@ def abort_current_lap(reason, at_epoch):
     session["current_lap_track_points"] = []
     session["current_lap_distance_m"] = 0.0
     session["delta_live_s"] = None
+    session["current_lap_sector_statuses"] = [None] * sector_count()  # Reset
 
     append_event("lap_aborted", **aborted)
 
@@ -1097,6 +1099,7 @@ def stop_timing_for_cooldown(at_epoch, sample=None):
     session["sector_started_epoch"] = None
     session["current_sector_number"] = 1
     session["current_lap_sectors_s"] = [None] * sector_count()
+    session["current_lap_sector_statuses"] = [None] * sector_count()
     session["current_lap_track_points"] = []
     session["current_lap_distance_m"] = 0.0
     session["delta_live_s"] = None
@@ -1272,6 +1275,7 @@ def start_new_lap(crossing_epoch, sample_index, lap_number):
     session["sector_started_epoch"] = crossing_epoch
     session["current_sector_number"] = 1
     session["current_lap_sectors_s"] = [None] * sector_count()
+    session["current_lap_sector_statuses"] = [None] * sector_count()  # NEW
     session["current_lap_timer_running"] = True
     session["current_lap_track_points"] = []
     session["current_lap_distance_m"] = 0.0
@@ -1425,6 +1429,9 @@ def close_current_sector(
     )
 
     session["current_lap_sectors_s"] = values
+
+    # Store status for the sector
+    session["current_lap_sector_statuses"][completed_sector_number - 1] = result["status"]
 
     if is_new_best:
         session["best_sector_times_s"][
@@ -2026,6 +2033,9 @@ def serializable_session():
         "current_lap_sectors_s": deepcopy(
             session["current_lap_sectors_s"]
         ),
+        "current_lap_sector_statuses": deepcopy(
+            session.get("current_lap_sector_statuses", [])
+        ),
         "current_lap_distance_m": round(
             session["current_lap_distance_m"],
             3,
@@ -2260,6 +2270,9 @@ def live_snapshot():
                 ),
                 "current_lap_sectors_s": deepcopy(
                     session["current_lap_sectors_s"]
+                ),
+                "current_lap_sector_statuses": deepcopy(
+                    session.get("current_lap_sector_statuses", [])
                 ),
                 "current_lap_distance_m": round(
                     session["current_lap_distance_m"],
@@ -2656,6 +2669,21 @@ body{
     gap:6px;
 }
 
+.lap-count-badge{
+    display:inline-block;
+    min-width:24px;
+    height:24px;
+    padding:0 6px;
+    background:#000;
+    color:#fff;
+    border:2px solid #fff;
+    border-radius:50%;
+    text-align:center;
+    line-height:20px;
+    font-size:12px;
+    font-weight:800;
+}
+
 .left-panel{
     display:flex;
     flex-direction:column;
@@ -2681,6 +2709,20 @@ body{
 .delta-box{
     width:100%;
     margin:0;
+    transition: background-color .3s ease;
+}
+
+.delta-box-negative{
+    background-color: var(--green);
+}
+
+.delta-box-positive{
+    background-color: var(--yellow);
+}
+
+.delta-box-negative .box-title,
+.delta-box-positive .box-title{
+    color:#000;
 }
 
 #delta{
@@ -2689,6 +2731,11 @@ body{
     font-size:18px;
     font-weight:800;
     font-variant-numeric:tabular-nums;
+}
+
+.delta-box-negative #delta,
+.delta-box-positive #delta{
+    color:#000;
 }
 
 .delta-positive{
@@ -2739,6 +2786,7 @@ body{
     border:2px solid var(--white);
     border-radius:7px;
     background:#000;
+    transition: background-color .3s;
 }
 
 .sector-badge .sector-fill{
@@ -2763,6 +2811,21 @@ body{
     color:#000;
 }
 
+.sector-badge.best .sector-fill{
+    background:var(--purple);
+    color:#000;
+}
+
+.sector-badge.improved .sector-fill{
+    background:var(--green);
+    color:#000;
+}
+
+.sector-badge.slower .sector-fill{
+    background:var(--yellow);
+    color:#000;
+}
+
 .sector-time{
     display:block;
     width:100%;
@@ -2772,6 +2835,19 @@ body{
     font-weight:800;
     font-variant-numeric:tabular-nums;
     white-space:nowrap;
+    transition: color .3s;
+}
+
+.sector-time.best{
+    color:var(--purple);
+}
+
+.sector-time.improved{
+    color:var(--green);
+}
+
+.sector-time.slower{
+    color:var(--yellow);
 }
 
 .modes{
@@ -3204,7 +3280,7 @@ body{
         <div class="panel left-panel">
             <div class="panel-title">SECTOR</div>
 
-            <div class="box delta-box">
+            <div class="box delta-box" id="deltaBox">
                 <h2 class="box-title">
                     DELTA TIME
                     <span style="font-size:8px;letter-spacing:.6px">
@@ -3425,7 +3501,12 @@ let lastEventId = 0;
 let popupTimer = null;
 
 function updateDelta(value) {
+    const deltaBox = document.getElementById("deltaBox");
     const delta = document.getElementById("delta");
+
+    // Reset classes
+    deltaBox.classList.remove("delta-box-negative", "delta-box-positive");
+    delta.className = "delta-neutral";
 
     if (
         value === null ||
@@ -3433,7 +3514,6 @@ function updateDelta(value) {
         !Number.isFinite(Number(value))
     ) {
         delta.textContent = "--";
-        delta.className = "delta-neutral";
         return;
     }
 
@@ -3445,16 +3525,15 @@ function updateDelta(value) {
         + " s";
 
     if (numericValue < -0.005) {
+        deltaBox.classList.add("delta-box-negative");
         delta.className = "delta-negative";
-        return;
-    }
-
-    if (numericValue > 0.005) {
+    } else if (numericValue > 0.005) {
+        deltaBox.classList.add("delta-box-positive");
         delta.className = "delta-positive";
-        return;
+    } else {
+        // Neutral: no special background
+        delta.className = "delta-neutral";
     }
-
-    delta.className = "delta-neutral";
 }
 
 function showPopup(event) {
@@ -3555,7 +3634,7 @@ function updateStatusBadges(location) {
         );
 }
 
-function updateSectorBadges(trackState, currentSector) {
+function updateSectorBadges(trackState, currentSector, sectorStatuses) {
     const normalizedState = String(
         trackState || ""
     ).toLowerCase();
@@ -3568,15 +3647,21 @@ function updateSectorBadges(trackState, currentSector) {
         sectorNumber++
     ) {
         const badge = document.getElementById(
-            "sector"
-            + sectorNumber
-            + "Badge"
+            "sector" + sectorNumber + "Badge"
+        );
+        const timeSpan = document.getElementById(
+            "s" + sectorNumber
         );
 
-        if (!badge) {
+        if (!badge || !timeSpan) {
             continue;
         }
 
+        // Reset status classes
+        badge.classList.remove("best", "improved", "slower");
+        timeSpan.classList.remove("best", "improved", "slower");
+
+        // Apply active state
         const shouldBeActive =
             (
                 normalizedState === "warmup"
@@ -3584,10 +3669,16 @@ function updateSectorBadges(trackState, currentSector) {
             )
             && numericSector === sectorNumber;
 
-        badge.classList.toggle(
-            "active",
-            shouldBeActive
-        );
+        badge.classList.toggle("active", shouldBeActive);
+
+        // Apply sector status color only if available (completed sector)
+        if (sectorStatuses && sectorStatuses[sectorNumber - 1]) {
+            const status = sectorStatuses[sectorNumber - 1];
+            if (status === "best" || status === "improved" || status === "slower") {
+                badge.classList.add(status);
+                timeSpan.classList.add(status);
+            }
+        }
     }
 }
 
@@ -3664,13 +3755,16 @@ async function refresh() {
             data.current_sector_number || 1
         );
 
+        const sectorStatuses = data.sector_statuses || [null, null, null];
+
         updateModes(trackState);
 
         updateStatusBadges(data.location);
 
         updateSectorBadges(
             trackState,
-            currentSector
+            currentSector,
+            sectorStatuses
         );
 
         gauge(
@@ -3841,12 +3935,18 @@ def api_telemetry():
 
         lap_count = len(session.get("laps", []))
 
+        # Directly use stored statuses for completed sectors
+        sector_statuses = list(session.get("current_lap_sector_statuses", []))
+        while len(sector_statuses) < 3:
+            sector_statuses.append(None)
+
         return jsonify({
             "speed": int(speed) if speed else 0,
             "rpm": int(rpm) if rpm else 0,
             "temp": temp,
             "delta": delta,
             "sectors": sectors[:3],
+            "sector_statuses": sector_statuses[:3],
             "current_sector_number": session.get(
                 "current_sector_number"
             ),
