@@ -5,6 +5,8 @@ server:
 mqtt:
   broker: "broker.hivemq.com"
   port: 1883
+  websocket_port: 8000
+  websocket_path: "/mqtt"
   topic: "sensors2mqtt-glo2/esp32/location"
   keepalive_s: 60
 
@@ -17,6 +19,7 @@ session:
   autosave_interval_s: 10
   sessions_dir: "../sessions"
   current_dir: "../current"
+  default_driver_id: "livio"
 
 timing:
   expected_gps_rate_hz: 10

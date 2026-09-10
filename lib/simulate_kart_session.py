@@ -4,8 +4,8 @@ import argparse
 import json
 import math
 import time
-import urllib.request
 import urllib.error
+import urllib.request
 from pathlib import Path
 
 import paho.mqtt.client as mqtt
@@ -22,6 +22,11 @@ C = (41.272289, 13.156320)
 D = (41.273787, 13.155719)
 
 
+# Il payload viene pubblicato sul topic MQTT principale della telemetria.
+# È lo stesso topic sottoscritto da app.py tramite MQTT_CONFIG["topic"].
+COOLDOWN_PAYLOAD = {"cooldown": True}
+
+
 def load_yaml(path):
     with path.open("r", encoding="utf-8") as file:
         return yaml.safe_load(file) or {}
@@ -30,31 +35,25 @@ def load_yaml(path):
 def yaml_point(value):
     if not isinstance(value, dict):
         return None
-
     if value.get("lat") is None or value.get("lon") is None:
         return None
-
     return float(value["lat"]), float(value["lon"])
 
 
 def distance_m(point_a, point_b):
     earth_radius_m = 6371000.0
-
     latitude_a = math.radians(point_a[0])
     longitude_a = math.radians(point_a[1])
     latitude_b = math.radians(point_b[0])
     longitude_b = math.radians(point_b[1])
-
     delta_latitude = latitude_b - latitude_a
     delta_longitude = longitude_b - longitude_a
-
     value = (
         math.sin(delta_latitude / 2.0) ** 2
         + math.cos(latitude_a)
         * math.cos(latitude_b)
         * math.sin(delta_longitude / 2.0) ** 2
     )
-
     return 2.0 * earth_radius_m * math.asin(math.sqrt(value))
 
 
@@ -70,9 +69,7 @@ def bearing(point_a, point_b):
     longitude_a = math.radians(point_a[1])
     latitude_b = math.radians(point_b[0])
     longitude_b = math.radians(point_b[1])
-
     delta_longitude = longitude_b - longitude_a
-
     x = math.sin(delta_longitude) * math.cos(latitude_b)
     y = (
         math.cos(latitude_a) * math.sin(latitude_b)
@@ -80,25 +77,21 @@ def bearing(point_a, point_b):
         * math.cos(latitude_b)
         * math.cos(delta_longitude)
     )
-
     return (math.degrees(math.atan2(x, y)) + 360.0) % 360.0
 
 
 def destination(origin, heading_deg, distance_meters):
     earth_radius_m = 6371000.0
-
     latitude_1 = math.radians(origin[0])
     longitude_1 = math.radians(origin[1])
     heading = math.radians(heading_deg)
     angular_distance = distance_meters / earth_radius_m
-
     latitude_2 = math.asin(
         math.sin(latitude_1) * math.cos(angular_distance)
         + math.cos(latitude_1)
         * math.sin(angular_distance)
         * math.cos(heading)
     )
-
     longitude_2 = longitude_1 + math.atan2(
         math.sin(heading)
         * math.sin(angular_distance)
@@ -106,7 +99,6 @@ def destination(origin, heading_deg, distance_meters):
         math.cos(angular_distance)
         - math.sin(latitude_1) * math.sin(latitude_2),
     )
-
     return math.degrees(latitude_2), math.degrees(longitude_2)
 
 
@@ -120,7 +112,6 @@ def midpoint(point_a, point_b):
 def crossing_pair(line_a, line_b, incoming, outgoing, offset_m=14.0):
     line_center = midpoint(line_a, line_b)
     line_heading = bearing(line_a, line_b)
-
     normal_1 = (line_heading + 90.0) % 360.0
     normal_2 = (line_heading - 90.0) % 360.0
     route_heading = bearing(incoming, outgoing)
@@ -133,19 +124,16 @@ def crossing_pair(line_a, line_b, incoming, outgoing, offset_m=14.0):
         if angular_error(normal_1) <= angular_error(normal_2)
         else normal_2
     )
-
     before = destination(
         line_center,
         (crossing_heading + 180.0) % 360.0,
         offset_m,
     )
-
     after = destination(
         line_center,
         crossing_heading,
         offset_m,
     )
-
     return before, after
 
 
@@ -153,17 +141,14 @@ def append_straight(route, start, end, speed_kmph, hz, phase, minimum=3):
     length_m = distance_m(start, end)
     duration_s = length_m / max(speed_kmph / 3.6, 0.5)
     count = max(minimum, math.ceil(duration_s * hz))
-
     for index in range(1, count + 1):
         point = interpolate(start, end, index / count)
-
         route.append({
             "latitude": point[0],
             "longitude": point[1],
             "speed_kmph": speed_kmph,
             "phase": phase,
         })
-
     return end
 
 
@@ -183,7 +168,6 @@ def append_line_crossing(
         start,
         next_waypoint,
     )
-
     append_straight(
         route,
         start,
@@ -192,7 +176,6 @@ def append_line_crossing(
         hz,
         phase + "_approach",
     )
-
     append_straight(
         route,
         before,
@@ -202,7 +185,6 @@ def append_line_crossing(
         phase + "_cross",
         minimum=16,
     )
-
     append_straight(
         route,
         after,
@@ -211,7 +193,6 @@ def append_line_crossing(
         hz,
         phase + "_exit",
     )
-
     return next_waypoint
 
 
@@ -220,12 +201,8 @@ def get_geometry(track_config):
     sectors = track_config.get("sectors", [])
     pit_box = track_config.get("pit_box", {})
     pit_lane = track_config.get("pit_lane", {})
-
     if len(sectors) < 2:
-        raise RuntimeError(
-            "Il simulatore richiede almeno S1 e S2 nel YAML."
-        )
-
+        raise RuntimeError("Il simulatore richiede almeno S1 e S2 nel YAML.")
     geometry = {
         "box": yaml_point(pit_box.get("center")),
         "pit_lane_start": yaml_point(pit_lane.get("start")),
@@ -243,7 +220,6 @@ def get_geometry(track_config):
             yaml_point(sectors[1].get("b")),
         ),
     }
-
     required = [
         geometry["box"],
         geometry["pit_lane_start"],
@@ -255,18 +231,15 @@ def get_geometry(track_config):
         geometry["s2"][0],
         geometry["s2"][1],
     ]
-
     if not all(required):
         raise RuntimeError(
             "Geometria YAML incompleta: servono box, pit_lane.start, "
             "pit_lane.end, SF, S1 e S2."
         )
-
     if distance_m(geometry["pit_lane_end"], A) > 3.0:
         raise RuntimeError(
             "pit_lane.end deve coincidere con Corner A per questa simulazione."
         )
-
     return geometry
 
 
@@ -346,7 +319,6 @@ def build_route(track_config, hz):
         hz=hz,
         phase="pit_lane_exit_box_to_start",
     )
-
     append_straight(
         route,
         geometry["pit_lane_start"],
@@ -356,43 +328,83 @@ def build_route(track_config, hz):
         phase="pit_lane_exit_start_to_A",
     )
 
+    # Warmup: giro lentissimo, nessun colore significativo
     append_lap(
         route,
         geometry,
         hz,
         phase="warmup",
-        speeds={
-            "s1": 44.0,
-            "b_to_c": 46.0,
-            "s2": 45.0,
-            "finish": 50.0,
-        },
+        speeds={"s1": 35.0, "b_to_c": 37.0, "s2": 34.0, "finish": 40.0},
     )
 
+    # Lap 1: primo giro "vero" → tutti i settori diventano best (fucsia)
+    # Velocità base di riferimento
     append_lap(
         route,
         geometry,
         hz,
         phase="lap_1",
-        speeds={
-            "s1": 55.0,
-            "b_to_c": 57.0,
-            "s2": 54.0,
-            "finish": 61.0,
-        },
+        speeds={"s1": 50.0, "b_to_c": 52.0, "s2": 49.0, "finish": 55.0},
     )
+    # Tempi attesi: S1≈12.0s, S2≈14.0s, S3≈9.0s
 
+    # Lap 2: RECORD ASSOLUTO → tutti best (fucsia)
+    # Molto più veloce di Lap 1
     append_lap(
         route,
         geometry,
         hz,
-        phase="lap_2_fast",
-        speeds={
-            "s1": 59.0,
-            "b_to_c": 61.0,
-            "s2": 58.0,
-            "finish": 65.0,
-        },
+        phase="lap_2_record",
+        speeds={"s1": 65.0, "b_to_c": 67.0, "s2": 64.0, "finish": 70.0},
+    )
+    # Tempi attesi: S1≈9.0s (best), S2≈11.0s (best), S3≈7.0s (best)
+
+    # Lap 3: GIRO LENTO → tutti slower (giallo)
+    # Molto più lento di Lap 2, peggiora anche rispetto a Lap 1
+    append_lap(
+        route,
+        geometry,
+        hz,
+        phase="lap_3_lento",
+        speeds={"s1": 48.0, "b_to_c": 50.0, "s2": 47.0, "finish": 52.0},
+    )
+    # Tempi attesi: S1≈13.0s (giallo, ref=9.0s), S2≈15.0s (giallo), S3≈9.5s (giallo)
+
+    # Lap 4: GIRO VERDE!
+    # Migliore di Lap 3 (reference), ma non batte il record di Lap 2 (best)
+    append_lap(
+        route,
+        geometry,
+        hz,
+        phase="lap_4_verde",
+        speeds={"s1": 60.0, "b_to_c": 62.0, "s2": 59.0, "finish": 64.0},
+    )
+    # Tempi attesi:
+    #   S1≈10.0s → VERDE! (10.0 > 9.0 best, ma 10.0 < 13.0 reference)
+    #   S2≈12.0s → VERDE! (12.0 > 11.0 best, ma 12.0 < 15.0 reference)
+    #   S3≈7.5s  → VERDE! (7.5 > 7.0 best, ma 7.5 < 9.5 reference)
+
+    # Lap 5: Altro giro verde (per confermare)
+    # Leggermente più lento di Lap 4, ma ancora migliore di Lap 3
+    append_lap(
+        route,
+        geometry,
+        hz,
+        phase="lap_5_verde2",
+        speeds={"s1": 58.0, "b_to_c": 60.0, "s2": 57.0, "finish": 62.0},
+    )
+    # Tempi attesi:
+    #   S1≈10.5s → VERDE! (10.5 > 9.0 best, ma 10.5 < 10.0 reference... no, giallo!)
+    # Aspetta, 10.5 > 10.0, quindi è giallo. Correggiamo:
+    # In realtà Lap 5 sarà giallo perché peggiora rispetto a Lap 4.
+
+    # Cooldown: giro lentissimo, tutti gialli
+    append_lap(
+        route,
+        geometry,
+        hz,
+        phase="cooldown",
+        speeds={"s1": 40.0, "b_to_c": 42.0, "s2": 40.0, "finish": 45.0},
     )
 
     append_straight(
@@ -403,7 +415,6 @@ def build_route(track_config, hz):
         hz=hz,
         phase="pit_lane_entry_A_to_start",
     )
-
     append_straight(
         route,
         geometry["pit_lane_start"],
@@ -412,7 +423,6 @@ def build_route(track_config, hz):
         hz=hz,
         phase="pit_lane_entry_start_to_box",
     )
-
     append_stationary(
         route,
         geometry["box"],
@@ -424,11 +434,18 @@ def build_route(track_config, hz):
     return route
 
 
+def publish_cooldown(client, topic):
+    payload = json.dumps(COOLDOWN_PAYLOAD)
+    result = client.publish(topic, payload, qos=0, retain=False)
+    if result.rc != mqtt.MQTT_ERR_SUCCESS:
+        raise RuntimeError(f"Errore MQTT publish cooldown: {result.rc}")
+    print(f"[SIM] Cooldown inviato via MQTT su {topic}: {payload}")
+
+
 def publish(route, mqtt_config, hz, multiplier):
     broker = mqtt_config["broker"]
     port = int(mqtt_config.get("port", 1883))
     topic = mqtt_config["topic"]
-
     connected = False
 
     def on_connect(client, userdata, flags, reason_code, properties=None):
@@ -439,7 +456,6 @@ def publish(route, mqtt_config, hz, multiplier):
         mqtt.CallbackAPIVersion.VERSION2,
         client_id=f"kart-sim-{int(time.time())}",
     )
-
     client.on_connect = on_connect
     client.connect(broker, port, keepalive=60)
     client.loop_start()
@@ -449,36 +465,40 @@ def publish(route, mqtt_config, hz, multiplier):
             f"sensors2mqtt-glo2/esp32/status/{component}",
             json.dumps({"sensor": component, "present": True}),
             qos=0,
-            retain=False
+            retain=False,
         )
 
     started_at = time.time()
-
     while not connected:
         if time.time() - started_at > 8.0:
             client.loop_stop()
             client.disconnect()
             raise RuntimeError("Connessione MQTT non riuscita.")
-
         time.sleep(0.05)
 
     print()
     print("=== SIMULATORE KART PERFORMANCE MONITOR ===")
-    print("BOX -> pit_lane.start -> A -> S1 -> B -> C -> S2 -> D -> SF -> A")
-    print("warmup, lap_1, lap_2_fast, poi rientro A -> pit lane -> BOX")
+    print("Sequenza colori:")
+    print("  Lap 1: tutti fucsia (primo giro)")
+    print("  Lap 2: tutti fucsia (record assoluto)")
+    print("  Lap 3: tutti gialli (molto lento)")
+    print("  Lap 4: tutti verdi! (migliore di Lap 3, ma non batte Lap 2)")
+    print("  Lap 5: gialli (peggiore di Lap 4)")
+    print("  Cooldown: tutti gialli")
     print()
     print(f"Campioni: {len(route)}")
     print(f"Frequenza: {hz:.1f} Hz")
     print(f"Moltiplicatore: {multiplier:.2f}x")
+    print(f"Topic MQTT telemetria/cooldown: {topic}")
     print()
 
     interval_s = 1.0 / hz / multiplier
     last_phase = None
+    cooldown_sent = False
 
     try:
         for index, item in enumerate(route, start=1):
             phase = item["phase"]
-
             if phase != last_phase:
                 print(
                     f"[{index:04d}/{len(route):04d}] "
@@ -486,6 +506,10 @@ def publish(route, mqtt_config, hz, multiplier):
                     f"{item['speed_kmph']:5.1f} km/h"
                 )
                 last_phase = phase
+
+            if phase == "cooldown" and not cooldown_sent:
+                publish_cooldown(client, topic)
+                cooldown_sent = True
 
             payload = {
                 "latitude": round(item["latitude"], 7),
@@ -510,17 +534,13 @@ def publish(route, mqtt_config, hz, multiplier):
                 qos=0,
                 retain=False,
             )
-
             if result.rc != mqtt.MQTT_ERR_SUCCESS:
-                raise RuntimeError(
-                    f"Errore MQTT publish: {result.rc}"
-                )
+                raise RuntimeError(f"Errore MQTT publish: {result.rc}")
 
             time.sleep(interval_s)
 
     except KeyboardInterrupt:
         print("\nSimulazione interrotta.")
-
     finally:
         client.loop_stop()
         client.disconnect()
@@ -530,39 +550,34 @@ def publish(route, mqtt_config, hz, multiplier):
 
 def main():
     parser = argparse.ArgumentParser()
-
     parser.add_argument(
         "--hz",
         type=float,
         default=10.0,
         help="Frequenza GPS simulata in Hz.",
     )
-
     parser.add_argument(
         "--speed",
         type=float,
-        default=1.0,
+        default=2.0,
         help="Moltiplicatore simulazione: 1=realtime, 2=doppia velocità.",
     )
-
     args = parser.parse_args()
 
     if args.hz <= 0.0:
         raise SystemExit("--hz deve essere maggiore di zero.")
-
     if args.speed <= 0.0:
         raise SystemExit("--speed deve essere maggiore di zero.")
 
     app_config = load_yaml(APP_CONFIG_PATH)
     track_config = load_yaml(TRACK_CONFIG_PATH)
 
-    # Prova ad avviare automaticamente la sessione su app.py
     app_url = app_config.get("server", {})
     host = app_url.get("host", "127.0.0.1")
     port = int(app_url.get("port", 8080))
-    # Prendi il primo driver disponibile
     drivers_cfg = load_yaml(BASE_DIR.parent / "config" / "drivers.yaml")
     driver_id = (drivers_cfg.get("drivers") or [{}])[0].get("id", "driver-01")
+
     try:
         req = urllib.request.Request(
             f"http://{host}:{port}/api/session/start",
@@ -573,13 +588,12 @@ def main():
         with urllib.request.urlopen(req, timeout=3) as resp:
             body = json.loads(resp.read())
             print(f"[SIM] Sessione avviata: {body.get('session', {}).get('status')}")
-    except urllib.error.HTTPError as e:
-        print(f"[SIM] Sessione non avviata (già attiva?): {e.code}")
-    except Exception as e:
-        print(f"[SIM] Impossibile contattare app.py per avviare sessione: {e}")
+    except urllib.error.HTTPError as error:
+        print(f"[SIM] Sessione non avviata (già attiva?): {error.code}")
+    except Exception as error:
+        print(f"[SIM] Impossibile contattare app.py per avviare sessione: {error}")
 
     route = build_route(track_config, args.hz)
-
     publish(
         route=route,
         mqtt_config=app_config["mqtt"],

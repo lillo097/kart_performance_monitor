@@ -1,0 +1,78 @@
+track:
+  id: prima-pista11
+  name: Prima Pista
+timing:
+  minimum_lap_time_s: 15
+  crossing_cooldown_s: 12
+  crossing_minimum_speed_kmph: 5
+  min_satellites: 4
+  max_hdop: 3.5
+  min_fix_type: 3
+pit_box:
+  exit_hysteresis_m: 4
+  minimum_samples_to_confirm: 3
+  polygon:
+  - lat: 41.405733
+    lon: 12.983857
+  - lat: 41.405858
+    lon: 12.984323
+  - lat: 41.405799
+    lon: 12.984364
+  - lat: 41.405684
+    lon: 12.98388
+pit_lane:
+  start:
+    lat: 41.405931
+    lon: 12.984923
+  end:
+    lat: 41.405399
+    lon: 12.983477
+  path:
+  - lat: 41.405931
+    lon: 12.984923
+  - lat: 41.405553
+    lon: 12.983538
+  - lat: 41.405399
+    lon: 12.983477
+start_finish:
+  id: SF
+  name: Start / Finish
+  direction: forward
+  line_extension_each_side_m: 18
+  crossing_tolerance_m: 12
+  a:
+    lat: 41.405647
+    lon: 12.98433
+  b:
+    lat: 41.405557
+    lon: 12.984375
+  direction_reference:
+    before:
+      lat: 41.40562
+      lon: 12.984428
+    after:
+      lat: 41.405578
+      lon: 12.984275
+sectors:
+- id: S1
+  name: Settore 1
+  direction: forward
+  line_extension_each_side_m: 16
+  crossing_tolerance_m: 12
+  a:
+    lat: 41.403776
+    lon: 12.98471
+  b:
+    lat: 41.403717
+    lon: 12.984772
+- id: S2
+  name: Settore 2
+  direction: forward
+  line_extension_each_side_m: 16
+  crossing_tolerance_m: 12
+  a:
+    lat: 41.405002
+    lon: 12.98437
+  b:
+    lat: 41.405052
+    lon: 12.984464

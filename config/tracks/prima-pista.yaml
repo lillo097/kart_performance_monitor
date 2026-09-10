@@ -3,7 +3,7 @@ track:
   name: "Prima Pista"
 
 timing:
-  minimum_lap_time_s: 30.0
+  minimum_lap_time_s: 15.0
   crossing_cooldown_s: 12.0
   crossing_minimum_speed_kmph: 5.0
   min_satellites: 4
