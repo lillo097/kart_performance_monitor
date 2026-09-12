@@ -25,6 +25,9 @@ APP_CONFIG = load_yaml("../config/app.yaml")
 DRIVERS_CONFIG = load_yaml("../config/drivers.yaml")
 TRACK_CONFIG = load_yaml("../config/tracks/prima-pista.yaml")
 
+TRACKS_DIR = BASE_DIR.parent / "config" / "tracks"
+current_track_id = "prima-pista"
+
 SERVER_CONFIG = APP_CONFIG["server"]
 MQTT_CONFIG = APP_CONFIG["mqtt"]
 SESSION_CONFIG = APP_CONFIG["session"]
@@ -212,6 +215,72 @@ def get_driver(driver_id):
         if driver.get("id") == driver_id:
             return driver
     return None
+
+
+def list_available_tracks():
+    """Elenca i file .yaml dentro config/tracks/ con id, name, location."""
+    tracks = []
+    seen_ids = set()
+
+    for path in sorted(TRACKS_DIR.glob("*.yaml")):
+        try:
+            with path.open("r", encoding="utf-8") as file:
+                config = yaml.safe_load(file) or {}
+        except Exception as error:
+            print(f"[TRACKS] Failed to load {path}: {error}")
+            continue
+
+        info = config.get("track", {}) or {}
+        track_id = info.get("id") or path.stem
+
+        if track_id in seen_ids:
+            continue
+
+        seen_ids.add(track_id)
+
+        tracks.append({
+            "id": track_id,
+            "name": info.get("name", track_id),
+            "location": info.get("location", ""),
+            "file": path.name,
+        })
+
+    return tracks
+
+
+def find_track_path(track_id):
+    for path in TRACKS_DIR.glob("*.yaml"):
+        try:
+            with path.open("r", encoding="utf-8") as file:
+                config = yaml.safe_load(file) or {}
+        except Exception:
+            continue
+
+        info = config.get("track", {}) or {}
+        candidate_id = info.get("id") or path.stem
+
+        if candidate_id == track_id:
+            return path
+
+    return None
+
+
+def set_active_track(track_id):
+    """Riassegna TRACK_CONFIG. Chiamare SOLO a sessione ferma."""
+    global TRACK_CONFIG, current_track_id
+
+    if not track_id:
+        return
+
+    path = find_track_path(track_id)
+
+    if path is None:
+        raise ValueError(f"Track '{track_id}' non trovata")
+
+    with path.open("r", encoding="utf-8") as file:
+        TRACK_CONFIG = yaml.safe_load(file) or {}
+
+    current_track_id = track_id
 
 
 def sector_count():
@@ -1918,7 +1987,7 @@ def stop_recording_session(reason=None):
         )
 
         track_id = TRACK_CONFIG.get("track", {}).get(
-            "id", "unknown-track"
+            "id", current_track_id or "unknown-track"
         )
 
         stamp = now_local().strftime("%Y-%m-%d_%H-%M-%S")
@@ -2300,6 +2369,461 @@ def start_mqtt():
 
     return client
 
+
+# =============================================================
+# HTML — SETUP PAGE (intro, scelta driver e pista)
+# =============================================================
+
+HTML_SETUP = r"""
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<title>Kart Performance Monitor — Setup</title>
+
+<style>
+:root{
+    --white:#f4f4f4;
+    --muted:#c8c8c8;
+    --purple:#d500f9;
+    --green:#00a651;
+    --yellow:#d9a300;
+    --red:#ff2222;
+}
+
+*{box-sizing:border-box;}
+
+html,
+body{
+    margin:0;
+    width:100%;
+    height:100%;
+    overflow:hidden;
+    background:#000;
+    color:#fff;
+    font-family:Arial,Helvetica,sans-serif;
+}
+
+body{display:grid;place-items:center;}
+
+.setup{
+    width:100vw;
+    height:100vh;
+    max-width:932px;
+    max-height:430px;
+    padding:10px 20px 12px;
+    display:grid;
+    grid-template-columns:1fr 1fr 1fr;
+    grid-template-rows:21px minmax(0,1fr);
+    gap:12px;
+    background:#000;
+}
+
+.topbar{
+    grid-column:1/-1;
+    height:21px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    font-size:11px;
+    font-weight:700;
+    white-space:nowrap;
+}
+
+.topbar-left{margin-left:10px;}
+
+.topbar-right{
+    margin-right:10px;
+    display:flex;
+    align-items:center;
+    gap:8px;
+}
+
+.column{
+    grid-row:2;
+    min-width:0;
+    min-height:0;
+    display:flex;
+    flex-direction:column;
+}
+
+.panel{
+    position:relative;
+    min-height:0;
+    height:100%;
+    border:2px solid var(--white);
+    border-radius:23px;
+    display:flex;
+    flex-direction:column;
+    padding:24px 18px 16px;
+}
+
+.panel-title{
+    position:absolute;
+    z-index:3;
+    top:-10px;
+    left:50%;
+    transform:translateX(-50%);
+    padding:0 10px;
+    background:#000;
+    white-space:nowrap;
+    font-size:12px;
+    font-weight:800;
+}
+
+.panel-body{
+    flex:1;
+    min-height:0;
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    align-items:stretch;
+    gap:10px;
+}
+
+.black-select{
+    width:100%;
+    background:#000;
+    color:#fff;
+    border:2px solid #fff;
+    border-radius:16px;
+    padding:10px 34px 10px 14px;
+    font-size:16px;
+    font-weight:800;
+    font-family:inherit;
+    appearance:none;
+    -webkit-appearance:none;
+    text-align:center;
+    text-align-last:center;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'><path d='M0 0 L5 6 L10 0' fill='none' stroke='white' stroke-width='1.5'/></svg>");
+    background-repeat:no-repeat;
+    background-position:right 12px center;
+    background-size:10px 6px;
+    text-overflow:ellipsis;
+}
+
+.black-select option{
+    background:#000;
+    color:#fff;
+    font-weight:800;
+}
+
+.big-button{
+    width:100%;
+    flex:1;
+    min-height:0;
+    background:#000;
+    color:#fff;
+    border:2px solid #fff;
+    border-radius:16px;
+    font-family:inherit;
+    font-size:18px;
+    font-weight:900;
+    letter-spacing:1px;
+    cursor:pointer;
+    padding:8px;
+    transition:background-color .15s, color .15s;
+}
+
+.big-button:active,
+.big-button:hover{
+    background:#fff;
+    color:#000;
+}
+
+.big-button:disabled{opacity:.55;}
+
+.small-button{
+    width:100%;
+    background:transparent;
+    color:var(--muted);
+    border:2px solid var(--muted);
+    border-radius:12px;
+    font-family:inherit;
+    font-size:11px;
+    font-weight:800;
+    letter-spacing:.5px;
+    padding:6px;
+    cursor:pointer;
+}
+
+.small-button:hover{
+    background:#fff;
+    color:#000;
+    border-color:#fff;
+}
+
+.hint{
+    font-size:10px;
+    color:var(--muted);
+    text-align:center;
+    font-weight:700;
+    letter-spacing:.4px;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+}
+
+.status-badge{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    padding:2px;
+    border:2px solid #fff;
+    border-radius:999px;
+    background:transparent;
+    line-height:1;
+}
+
+.status-badge .status-fill{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    padding:2px 8px;
+    border-radius:999px;
+    background:#000;
+    color:#fff;
+    font-size:11px;
+    line-height:1;
+    font-weight:800;
+    white-space:nowrap;
+    transition:background-color .25s, color .25s;
+}
+
+.status-badge.active .status-fill{
+    background:#fff;
+    color:#000;
+}
+
+@media(max-height:390px){
+    .setup{
+        padding-top:6px;
+        grid-template-rows:18px minmax(0,1fr);
+    }
+
+    .topbar{height:18px;}
+    .panel{padding-top:20px;}
+    .big-button{font-size:16px;}
+    .black-select{font-size:14px;}
+}
+
+@media(max-width:700px){
+    .setup{
+        padding-left:12px;
+        padding-right:12px;
+        gap:8px;
+    }
+
+    .topbar-left{margin-left:7px;}
+    .topbar-right{margin-right:7px;}
+}
+</style>
+</head>
+
+<body>
+<main class="setup">
+    <div class="topbar">
+        <div class="topbar-left">
+            <span>KART PERFORMANCE MONITOR &mdash; SETUP</span>
+        </div>
+
+        <div class="topbar-right">
+            <span class="status-badge" id="sessionBadge">
+                <span class="status-fill" id="sessionBadgeText">IDLE</span>
+            </span>
+        </div>
+    </div>
+
+    <section class="column">
+        <div class="panel">
+            <div class="panel-title">DRIVER</div>
+            <div class="panel-body">
+                <select id="driverSelect" class="black-select"></select>
+                <div class="hint" id="driverHint">Seleziona il pilota</div>
+            </div>
+        </div>
+    </section>
+
+    <section class="column">
+        <div class="panel">
+            <div class="panel-title">TRACK</div>
+            <div class="panel-body">
+                <select id="trackSelect" class="black-select"></select>
+                <div class="hint" id="trackHint">Seleziona il circuito</div>
+            </div>
+        </div>
+    </section>
+
+    <section class="column">
+        <div class="panel">
+            <div class="panel-title">READY</div>
+            <div class="panel-body">
+                <button id="startBtn" class="big-button">START SESSION</button>
+                <button id="stopBtn" class="small-button" style="display:none">
+                    STOP CURRENT SESSION
+                </button>
+            </div>
+        </div>
+    </section>
+</main>
+
+<script>
+const driverSelect = document.getElementById("driverSelect");
+const trackSelect  = document.getElementById("trackSelect");
+const startBtn     = document.getElementById("startBtn");
+const stopBtn      = document.getElementById("stopBtn");
+const badge        = document.getElementById("sessionBadge");
+const badgeText    = document.getElementById("sessionBadgeText");
+const driverHint   = document.getElementById("driverHint");
+const trackHint    = document.getElementById("trackHint");
+
+let sessionStatus = "idle";
+
+async function loadDrivers(){
+    const res  = await fetch("/api/drivers", {cache:"no-store"});
+    const data = await res.json();
+
+    driverSelect.innerHTML = "";
+
+    (data.drivers || []).forEach(function(d){
+        const opt = document.createElement("option");
+        opt.value = d.id;
+        opt.textContent = d.name || d.id;
+        driverSelect.appendChild(opt);
+    });
+
+    const freeOpt = document.createElement("option");
+    freeOpt.value = "__free__";
+    freeOpt.textContent = "Free Practice (no driver)";
+    driverSelect.appendChild(freeOpt);
+
+    if (driverSelect.options.length){
+        driverSelect.selectedIndex = 0;
+    }
+}
+
+async function loadTracks(){
+    const res  = await fetch("/api/tracks", {cache:"no-store"});
+    const data = await res.json();
+
+    trackSelect.innerHTML = "";
+
+    (data.tracks || []).forEach(function(t){
+        const opt = document.createElement("option");
+        opt.value = t.id;
+        opt.textContent = t.name + (t.location ? " · " + t.location : "");
+        trackSelect.appendChild(opt);
+    });
+
+    if (trackSelect.options.length){
+        trackSelect.selectedIndex = 0;
+    }
+}
+
+function applySessionStatus(status){
+    sessionStatus = status || "idle";
+
+    const running = (sessionStatus === "running" || sessionStatus === "paused");
+
+    badge.classList.toggle("active", running);
+    badgeText.textContent = sessionStatus.toUpperCase();
+
+    if (running){
+        startBtn.textContent = "GO TO DASHBOARD";
+        stopBtn.style.display = "";
+    } else {
+        startBtn.textContent = "START SESSION";
+        stopBtn.style.display = "none";
+    }
+}
+
+async function refreshStatus(){
+    try{
+        const res  = await fetch("/api/live", {cache:"no-store"});
+        const data = await res.json();
+        applySessionStatus(data.session && data.session.status);
+    }catch(e){
+        console.error(e);
+    }
+}
+
+async function handleStart(){
+    // Se già in corso → vai direttamente alla dashboard
+    if (sessionStatus === "running" || sessionStatus === "paused"){
+        window.location.href = "/dashboard";
+        return;
+    }
+
+    startBtn.disabled = true;
+    const old = startBtn.textContent;
+    startBtn.textContent = "STARTING...";
+
+    try{
+        const driverVal = driverSelect.value;
+        const trackVal  = trackSelect.value;
+
+        const res = await fetch("/api/session/start", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({
+                driver_id: driverVal === "__free__" ? null : driverVal,
+                track_id:  trackVal || null
+            })
+        });
+
+        const data = await res.json();
+
+        if (data.ok){
+            window.location.href = "/dashboard";
+        } else {
+            startBtn.disabled = false;
+            startBtn.textContent = old;
+            alert("Errore: " + (data.error || "unknown"));
+        }
+    }catch(e){
+        startBtn.disabled = false;
+        startBtn.textContent = old;
+        alert("Errore di rete: " + e.message);
+    }
+}
+
+async function handleStop(){
+    if (!confirm("Fermare la sessione corrente?")) return;
+
+    try{
+        await fetch("/api/session/stop", {method:"POST"});
+        await refreshStatus();
+    }catch(e){
+        alert("Errore di rete: " + e.message);
+    }
+}
+
+startBtn.addEventListener("click", handleStart);
+stopBtn.addEventListener("click", handleStop);
+
+(async function init(){
+    try{
+        await Promise.all([loadDrivers(), loadTracks()]);
+    }catch(e){
+        console.error(e);
+    }
+
+    await refreshStatus();
+
+    // aggiorna lo stato ogni 2s (utile se apri due tab)
+    setInterval(refreshStatus, 2000);
+})();
+</script>
+</body>
+</html>
+"""
+
+
+# =============================================================
+# HTML — DASHBOARD (identico all'originale)
+# =============================================================
 
 HTML = r"""
 <!doctype html>
@@ -3592,8 +4116,19 @@ setInterval(refresh, 250);
 """
 
 
+# =============================================================
+# ROUTES
+# =============================================================
+
 @app.get("/")
+def setup_page():
+    """Pagina di intro: scelta driver + pista, poi start sessione."""
+    return render_template_string(HTML_SETUP)
+
+
+@app.get("/dashboard")
 def dashboard_page():
+    """Dashboard principale (accessibile anche senza sessione attiva)."""
     return render_template_string(HTML)
 
 
@@ -3785,6 +4320,49 @@ def api_drivers():
     return jsonify({"drivers": drivers})
 
 
+@app.get("/api/tracks")
+def api_tracks():
+    return jsonify({"tracks": list_available_tracks()})
+
+
+@app.post("/api/session/start")
+def api_session_start():
+    data = request.get_json(silent=True) or {}
+    driver_id = data.get("driver_id")
+    track_id = data.get("track_id")
+
+    with lock:
+        if session["status"] in ("running", "paused"):
+            return jsonify({
+                "ok": False,
+                "error": "Una sessione è già in corso. Fermala prima.",
+            }), 409
+
+        # 1) Cambio pista PRIMA di reset (new_session_state usa sector_count)
+        if track_id:
+            try:
+                set_active_track(track_id)
+            except ValueError as error:
+                return jsonify({"ok": False, "error": str(error)}), 400
+
+        # 2) Risolvi driver (None → Free Practice)
+        if driver_id:
+            driver = get_driver(driver_id)
+            if not driver:
+                return jsonify({
+                    "ok": False,
+                    "error": f"Driver '{driver_id}' non trovato",
+                }), 400
+        else:
+            driver = {"id": "free", "name": "Free Practice"}
+
+        # 3) Reset + start
+        reset_session()
+        start_recording_session(driver, source="web")
+
+    return jsonify({"ok": True})
+
+
 @app.post("/api/session/pause")
 def api_session_pause():
     with lock:
@@ -3858,16 +4436,22 @@ if __name__ == "__main__":
 
     print()
     print("=== Kart Performance Monitor ===")
-    print(f"Dashboard: http://127.0.0.1:{SERVER_CONFIG['port']}")
+    print(f"Setup:     http://127.0.0.1:{SERVER_CONFIG['port']}/")
+    print(f"Dashboard: http://127.0.0.1:{SERVER_CONFIG['port']}/dashboard")
     print("Apri da iPhone usando l'IP locale del Mac e la stessa porta.")
     print()
     print(
-        "REGISTRAZIONE sessione: pubblica su MQTT il payload "
-        '{"session_toggle": true}'
+        "SETUP da browser: scegli driver + pista e premi START SESSION."
     )
     print(
         "La dashboard e il timing giri/settori/delta funzionano SEMPRE, "
         "anche senza registrazione attiva."
+    )
+    print()
+    print(
+        "REGISTRAZIONE da MQTT (legacy): pubblica il payload "
+        '{"session_toggle": true} per avviare/fermare con il driver '
+        "di default definito in app.yaml."
     )
     print()
     print(
