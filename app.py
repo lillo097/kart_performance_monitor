@@ -33,7 +33,7 @@ DRIVERS_CONFIG = load_yaml("config/drivers.yaml")
 TRACK_CONFIG = {}
 current_track_id = None
 
-TRACKS_DIR = BASE_DIR.parent / "config" / "tracks"
+TRACKS_DIR = BASE_DIR / "config" / "tracks"
 
 SERVER_CONFIG = APP_CONFIG["server"]
 MQTT_CONFIG = APP_CONFIG["mqtt"]

@@ -17,7 +17,7 @@ dashboard:
 
 session:
   autosave_interval_s: 10
-  sessions_dir: "../sessions"
+  sessions_dir: "sessions"
   current_dir: "../current"
   default_driver_id: "livio"
 

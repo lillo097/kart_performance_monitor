@@ -9,7 +9,7 @@ import yaml
 from dotenv import load_dotenv
 from flask import Flask, jsonify, render_template_string
 
-BASE_DIR = Path(__file__).resolve().parent.parent
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
 TRACK_FILE = BASE_DIR / "config" / "tracks" / "milano-edolo.yaml"
 APP_CONFIG_FILE = BASE_DIR / "config" / "app.yaml"
 

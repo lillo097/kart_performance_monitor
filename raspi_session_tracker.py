@@ -691,10 +691,13 @@ def on_mqtt_connect(client, userdata, flags, reason_code, properties=None):
         log.error(f"[mqtt] connect failed rc={rc_val}")
         _last_mqtt_state = False
 
-def on_mqtt_disconnect(client, userdata, rc, properties=None):
+def on_mqtt_disconnect(
+    client, userdata, disconnect_flags, reason_code=None, properties=None
+):
     global mqtt_connected, mqtt_disconnect_count, _last_mqtt_state
     mqtt_connected = False
     mqtt_disconnect_count += 1
+    rc = reason_code if reason_code is not None else disconnect_flags
     rc_val = rc if isinstance(rc, int) else getattr(rc, "value", rc)
     meaning = {
         1: "unacceptable_protocol", 2: "identifier_rejected",
