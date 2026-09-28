@@ -1,0 +1,3 @@
+sudo systemctl restart kart-telemetry.service
+sudo systemctl status kart-telemetry.service --no-pager
+journalctl -u kart-telemetry.service -f
