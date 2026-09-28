@@ -1,2 +1,0 @@
-{"ts_epoch": 1790635579.799, "ts_iso": "2026-09-29T00:46:19.799+02:00", "event": "test_event", "value": 42}
-{"ts_epoch": 1790635579.806, "ts_iso": "2026-09-29T00:46:19.806+02:00", "event": "service_stop", "reason": "shutdown", "uptime_s": 0.018, "samples_published": 1}

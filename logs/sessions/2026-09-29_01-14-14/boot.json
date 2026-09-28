@@ -1,27 +1,27 @@
 {
   "schema_version": 12,
   "client_side": true,
-  "saved_at": "2026-09-29T00:46:19.806+02:00",
+  "saved_at": "2026-09-29T01:17:06.889+02:00",
   "status": "stopped",
-  "driver": null,
-  "track": null,
+  "driver": {},
+  "track": {},
   "track_config": {},
   "track_id": null,
-  "mqtt_topic": null,
-  "started_at": "2026-09-29T00:46:19.787+02:00",
+  "mqtt_topic": "sensors2mqtt-glo2/esp32/location",
+  "started_at": "2026-09-29T01:14:14.977+02:00",
   "paused_at": null,
   "paused_total_s": 0.0,
-  "ended_at": "2026-09-29T00:46:19.805+02:00",
+  "ended_at": "2026-09-29T01:17:06.888+02:00",
   "data_age_at_start_s": null,
   "data_age_samples": {
     "at_epoch": [],
     "data_age_s": []
   },
-  "session_elapsed_s": 0.019,
+  "session_elapsed_s": 171.912,
   "summary": {
-    "raw_samples_received": 1,
+    "raw_samples_received": 845,
     "track_points_saved": 0,
-    "valid_gps_samples": 1,
+    "valid_gps_samples": 0,
     "filtered_out_samples": 0,
     "laps_completed": 0,
     "laps_aborted": 0,
@@ -54,20 +54,38 @@
     "hostname": "raspberrypi",
     "python_version": "3.13.5",
     "app_version": "2.1.0",
-    "mqtt_client_id": null,
-    "wifi": {},
-    "gps": {},
-    "sensors_at_boot": {},
-    "sensors_now": {},
+    "mqtt_client_id": "RPi-KART-2ccf677d1465",
+    "wifi": {
+      "ssid": "iPhone di Livio",
+      "ip": "172.20.10.2",
+      "mac": "2c:cf:67:7d:14:65",
+      "rssi": null
+    },
+    "gps": {
+      "mac": "14:13:0B:C0:B2:1E",
+      "rfcomm_channel": 1
+    },
+    "sensors_at_boot": {
+      "ntc": false,
+      "as5600": false,
+      "ir_rpm": false,
+      "gps": false
+    },
+    "sensors_now": {
+      "ntc": false,
+      "as5600": false,
+      "gps": true
+    },
     "counters": {
-      "samples_published": 1,
-      "valid_gps_samples": 1,
+      "samples_published": 845,
+      "valid_gps_samples": 0,
       "mqtt_reconnects": 0,
-      "bt_reconnects": 0,
+      "bt_reconnects": 1,
       "nmea_timeouts": 0,
       "raw_rotations": 0
     }
   },
-  "raw_stream_file": "2026-09-29_00-46-19_raw.jsonl",
-  "events_file": "2026-09-29_00-46-19_events.jsonl"
+  "raw_stream_file": "raw.jsonl",
+  "events_file": "events.jsonl",
+  "log_file": "glo2-telemetry.log"
 }
