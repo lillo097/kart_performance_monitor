@@ -12,7 +12,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
-LOGS_DIR = BASE_DIR / "logs"
+LOGS_DIR = BASE_DIR / "system_logs"
 SESSIONS_DIR = LOGS_DIR / "sessions"
 
 RETENTION_DAYS = 30

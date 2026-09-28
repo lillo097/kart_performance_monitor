@@ -9,7 +9,7 @@ from pathlib import Path
 
 # src/logging/logging_setup.py -> risale di 3 livelli fino alla root del progetto
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
-LOGS_DIR = BASE_DIR / "logs"
+LOGS_DIR = BASE_DIR / "system_logs"
 LOG_FILE = LOGS_DIR / "glo2-telemetry.log"
 
 LOG_LEVEL = os.environ.get("GLO2_LOG_LEVEL", "INFO").upper()
