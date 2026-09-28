@@ -22,8 +22,8 @@ def load_yaml(relative_path):
         return yaml.safe_load(file) or {}
 
 
-APP_CONFIG = load_yaml("../config/app.yaml")
-DRIVERS_CONFIG = load_yaml("../config/drivers.yaml")
+APP_CONFIG = load_yaml("config/app.yaml")
+DRIVERS_CONFIG = load_yaml("config/drivers.yaml")
 
 # -------------------------------------------------------------
 # Nessuna pista di default.

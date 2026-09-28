@@ -15,7 +15,7 @@ pit_box:
     lat: 41.274350
     lon: 13.154050
 
-  radius_m: 20.0
+  radius_m: 40.0
   exit_hysteresis_m: 4.0
   minimum_samples_to_confirm: 3
 
@@ -76,12 +76,15 @@ sectors:
     direction: "forward"
 
     a:
-      lat: 41.272907
-      lon: 13.156021
-
+      lat: 41.272900
+      lon: 13.156050
     b:
-      lat: 41.272918
-      lon: 13.156094
+      lat: 41.272920
+      lon: 13.156150
 
-    line_extension_each_side_m: 16.0
-    crossing_tolerance_m: 12.0
+    line_extension_each_side_m: 25.0
+    crossing_tolerance_m: 15.0
+
+      # ⚠️ NUOVI per S2
+    proximity_tolerance_m: 10.0
+    crossing_minimum_speed_kmph: 2.0
