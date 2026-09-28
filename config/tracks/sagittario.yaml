@@ -1,6 +1,6 @@
 track:
-  id: prima-pista11
-  name: Prima Pista
+  id: sagittario
+  name: CI Sagittario
 timing:
   minimum_lap_time_s: 15
   crossing_cooldown_s: 12
@@ -12,14 +12,14 @@ pit_box:
   exit_hysteresis_m: 4
   minimum_samples_to_confirm: 3
   polygon:
-  - lat: 41.405733
-    lon: 12.983857
-  - lat: 41.405858
-    lon: 12.984323
-  - lat: 41.405799
-    lon: 12.984364
-  - lat: 41.405684
-    lon: 12.98388
+  - lat: 41.405906
+    lon: 12.983263
+  - lat: 41.406506
+    lon: 12.984147
+  - lat: 41.405969
+    lon: 12.984873
+  - lat: 41.405612
+    lon: 12.983577
 pit_lane:
   start:
     lat: 41.405931
@@ -38,7 +38,7 @@ start_finish:
   id: SF
   name: Start / Finish
   direction: forward
-  line_extension_each_side_m: 18
+  line_extension_each_side_m: 5
   crossing_tolerance_m: 12
   a:
     lat: 41.405647

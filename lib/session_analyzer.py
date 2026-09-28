@@ -232,8 +232,22 @@ input[type="text"]:focus{border-color:var(--accent);}
 .map-wrap{
     position:relative;height:520px;border-radius:12px;overflow:hidden;
     background:#0e1116;border:1px solid var(--border);margin-bottom:16px;
+    transition:border-radius .2s;
 }
 #map{position:absolute;inset:0;}
+
+/* Modalità schermo intero mappa */
+.map-wrap.fullscreen{
+    position:fixed;
+    inset:0;
+    height:100vh;
+    width:100vw;
+    margin:0;
+    border-radius:0;
+    border:none;
+    z-index:9999;
+}
+
 .map-overlay{
     position:absolute;inset:0;background:rgba(11,13,16,.92);
     display:flex;flex-direction:column;align-items:center;justify-content:center;
@@ -247,19 +261,91 @@ input[type="text"]:focus{border-color:var(--accent);}
     font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;
 }
 
+.map-fs-btn{
+    position:absolute;top:12px;left:12px;z-index:6;
+    width:36px;height:36px;padding:0;
+    display:flex;align-items:center;justify-content:center;
+    background:rgba(11,13,16,.75);border:1px solid var(--border);
+    border-radius:8px;cursor:pointer;font-size:16px;line-height:1;
+    backdrop-filter:blur(6px);color:var(--text);
+    transition:background .15s,border-color .15s;
+}
+.map-fs-btn:hover{background:rgba(35,42,51,.9);border-color:#333c47;}
+
 .legend{
     position:absolute;bottom:12px;left:12px;
     background:rgba(11,13,16,.85);border:1px solid var(--border);border-radius:8px;
     padding:8px 10px;display:flex;flex-direction:column;gap:4px;z-index:4;
     max-height:180px;overflow-y:auto;font-size:12px;backdrop-filter:blur(6px);
+    min-width:200px;
 }
+.map-wrap.fullscreen .legend{max-height:60vh;}
 .legend-item{display:flex;align-items:center;gap:8px;}
 .legend-item .swatch{width:14px;height:3px;border-radius:2px;}
 
+/* =====================================================
+   CHART
+   ===================================================== */
+
 .charts-grid{display:grid;grid-template-columns:1fr;gap:16px;}
-.chart-panel{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:14px;}
-.chart-title{font-size:12px;text-transform:uppercase;letter-spacing:1.1px;color:var(--muted);margin-bottom:10px;}
-.chart-container{position:relative;height:280px;}
+
+.chart-panel{
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:12px;
+    padding:14px;
+    display:flex;
+    flex-direction:column;
+    transition:border-radius .2s;
+    min-height:0;
+}
+
+.chart-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:8px;
+    margin-bottom:10px;
+    flex:0 0 auto;
+}
+
+.chart-title{
+    font-size:12px;
+    text-transform:uppercase;
+    letter-spacing:1.1px;
+    color:var(--muted);
+    margin:0;
+}
+
+.chart-fs-btn{
+    width:30px;height:30px;padding:0;
+    display:flex;align-items:center;justify-content:center;
+    background:var(--panel-2);border:1px solid var(--border);
+    border-radius:6px;cursor:pointer;font-size:14px;line-height:1;
+    color:var(--text);
+    transition:background .15s,border-color .15s;
+    flex:0 0 auto;
+}
+.chart-fs-btn:hover{background:#232a33;border-color:#333c47;}
+
+.chart-container{position:relative;height:280px;flex:0 0 auto;min-height:0;}
+
+/* Modalità schermo intero grafico */
+.chart-panel.fullscreen{
+    position:fixed;
+    inset:0;
+    z-index:9999;
+    border-radius:0;
+    border:none;
+    background:var(--bg);
+    padding:20px;
+    margin:0;
+}
+.chart-panel.fullscreen .chart-container{
+    flex:1 1 auto;
+    height:auto;
+    min-height:0;
+}
 
 .tables-grid{display:grid;grid-template-columns:1fr;gap:16px;}
 table{width:100%;border-collapse:collapse;font-size:13px;}
@@ -404,8 +490,9 @@ tr.lap-row.selected{background:rgba(124,92,255,.08);}
                 </div>
             </div>
 
-            <div class="map-wrap">
+            <div class="map-wrap" id="mapWrap">
                 <div id="map"></div>
+                <button class="map-fs-btn" id="mapFsBtn" title="Schermo intero (ESC per uscire)">⛶</button>
                 <div class="legend" id="legend" style="display:none;"></div>
                 <div class="map-overlay" id="mapOverlay">
                     <h3>Caricamento…</h3>
@@ -414,17 +501,58 @@ tr.lap-row.selected{background:rgba(124,92,255,.08);}
             </div>
 
             <div class="charts-grid">
-                <div class="chart-panel">
-                    <div class="chart-title">Velocità (km/h) vs distanza (m)</div>
+                <div class="chart-panel" id="chartPanelSpeed">
+                    <div class="chart-header">
+                        <div class="chart-title">Velocità (km/h) vs distanza (m)</div>
+                        <button class="chart-fs-btn" data-chart="speed" title="Schermo intero (ESC per uscire)">⛶</button>
+                    </div>
                     <div class="chart-container"><canvas id="speedChart"></canvas></div>
                 </div>
-                <div class="chart-panel">
-                    <div class="chart-title">RPM vs distanza (m)</div>
+                <div class="chart-panel" id="chartPanelRpm">
+                    <div class="chart-header">
+                        <div class="chart-title">RPM vs distanza (m)</div>
+                        <button class="chart-fs-btn" data-chart="rpm" title="Schermo intero (ESC per uscire)">⛶</button>
+                    </div>
                     <div class="chart-container"><canvas id="rpmChart"></canvas></div>
                 </div>
-                <div class="chart-panel">
-                    <div class="chart-title">Delta live (s) vs distanza (m)</div>
+                <div class="chart-panel" id="chartPanelDelta">
+                    <div class="chart-header">
+                        <div class="chart-title">Delta live (s) vs distanza (m)</div>
+                        <button class="chart-fs-btn" data-chart="delta" title="Schermo intero (ESC per uscire)">⛶</button>
+                    </div>
                     <div class="chart-container"><canvas id="deltaChart"></canvas></div>
+                </div>
+            </div>
+
+            <div class="chart-panel" id="chartPanelDataAge" style="margin-top:16px;">
+                <div class="chart-header">
+                    <div class="chart-title">Età del dato MQTT (s) vs tempo sessione</div>
+                    <button class="chart-fs-btn" data-chart="dataAge" title="Schermo intero (ESC per uscire)">⛶</button>
+                </div>
+                <div id="dataAgeSummary" class="muted" style="margin-bottom:10px;">
+                    Carica una sessione per vedere i campioni MQTT.
+                </div>
+                <div class="chart-container"><canvas id="dataAgeChart"></canvas></div>
+            </div>
+
+            <div class="panel" style="margin-top:16px;">
+                <div class="panel-head">
+                    <span>Intervalli MQTT superiori a 1 secondo</span>
+                    <span id="dataAgeAnomalyCount" style="text-transform:none;letter-spacing:0;color:var(--muted);font-weight:400;">—</span>
+                </div>
+                <div class="panel-body" style="padding:0;max-height:340px;overflow:auto;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th style="width:220px;">Orario</th>
+                                <th style="width:160px;">Tempo sessione</th>
+                                <th>Età del dato</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dataAgeAnomaliesBody">
+                            <tr><td colspan="3" class="empty-state">Nessuna sessione caricata.</td></tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
 
@@ -504,8 +632,9 @@ const state = {
     mapboxReady: false,
     map: null,
     mapLoaded: false,
-    charts: { speed: null, rpm: null, delta: null },
+    charts: { speed: null, rpm: null, delta: null, dataAge: null },
     config: null,
+    isMapFullscreen: false,
 };
 
 function $(id){ return document.getElementById(id); }
@@ -564,6 +693,148 @@ function escapeHtml(s){
         .replace(/>/g, "&gt;")
         .replace(/"/g, "&quot;");
 }
+
+/* ============================================================
+   FULLSCREEN — mappa + grafici
+   ============================================================ */
+
+function toggleMapFullscreen(){
+    const wrap = $("mapWrap");
+
+    if (!state.isMapFullscreen){
+        if (wrap.requestFullscreen){
+            wrap.requestFullscreen().catch(() => applyMapFullscreenClass(true));
+        } else if (wrap.webkitRequestFullscreen){
+            wrap.webkitRequestFullscreen();
+        } else {
+            applyMapFullscreenClass(true);
+        }
+    } else {
+        if (document.exitFullscreen){
+            document.exitFullscreen().catch(() => applyMapFullscreenClass(false));
+        } else if (document.webkitExitFullscreen){
+            document.webkitExitFullscreen();
+        } else {
+            applyMapFullscreenClass(false);
+        }
+    }
+}
+
+function applyMapFullscreenClass(on){
+    const wrap = $("mapWrap");
+    const btn = $("mapFsBtn");
+    state.isMapFullscreen = on;
+    if (on){
+        wrap.classList.add("fullscreen");
+        btn.textContent = "✕";
+        btn.title = "Esci da schermo intero (ESC)";
+    } else {
+        wrap.classList.remove("fullscreen");
+        btn.textContent = "⛶";
+        btn.title = "Schermo intero (ESC per uscire)";
+    }
+    setTimeout(() => {
+        if (state.map) state.map.resize();
+    }, 120);
+}
+
+function toggleChartFullscreen(panelEl){
+    if (panelEl.classList.contains("fullscreen")){
+        if (document.exitFullscreen){
+            document.exitFullscreen().catch(() => applyChartFullscreenClass(panelEl, false));
+        } else if (document.webkitExitFullscreen){
+            document.webkitExitFullscreen();
+        } else {
+            applyChartFullscreenClass(panelEl, false);
+        }
+    } else {
+        if (panelEl.requestFullscreen){
+            panelEl.requestFullscreen().catch(() => applyChartFullscreenClass(panelEl, true));
+        } else if (panelEl.webkitRequestFullscreen){
+            panelEl.webkitRequestFullscreen();
+        } else {
+            applyChartFullscreenClass(panelEl, true);
+        }
+    }
+}
+
+function applyChartFullscreenClass(panelEl, on){
+    document.querySelectorAll(".chart-panel").forEach(p => {
+        const isTarget = (p === panelEl) && on;
+        p.classList.toggle("fullscreen", isTarget);
+        const b = p.querySelector(".chart-fs-btn");
+        if (b){
+            b.textContent = isTarget ? "✕" : "⛶";
+            b.title = isTarget ? "Esci da schermo intero (ESC)"
+                               : "Schermo intero (ESC per uscire)";
+        }
+    });
+    // Fai ridimensionare Chart.js dopo la transizione
+    setTimeout(() => {
+        Object.keys(state.charts).forEach(k => {
+            const c = state.charts[k];
+            if (c) c.resize();
+        });
+    }, 150);
+}
+
+function onFullscreenChange(){
+    const fsEl = document.fullscreenElement || document.webkitFullscreenElement;
+
+    // --- Mappa ---
+    const wrap = $("mapWrap");
+    const mapIsFs = (fsEl === wrap);
+    if (mapIsFs && !state.isMapFullscreen){
+        applyMapFullscreenClass(true);
+    } else if (!mapIsFs && state.isMapFullscreen && !fsEl){
+        applyMapFullscreenClass(false);
+    }
+
+    // --- Grafici ---
+    const chartPanels = document.querySelectorAll(".chart-panel");
+    let anyChartFs = false;
+    chartPanels.forEach(p => {
+        if (fsEl === p){
+            anyChartFs = true;
+            if (!p.classList.contains("fullscreen")){
+                applyChartFullscreenClass(p, true);
+            }
+        } else if (p.classList.contains("fullscreen") && fsEl !== p){
+            // Se era in fullscreen e non lo è più, ripristina
+            p.classList.remove("fullscreen");
+            const b = p.querySelector(".chart-fs-btn");
+            if (b){
+                b.textContent = "⛶";
+                b.title = "Schermo intero (ESC per uscire)";
+            }
+        }
+    });
+
+    // Se siamo usciti da fullscreen nativo e nessun chart è fullscreen, ridimensiona
+    if (!fsEl && !anyChartFs){
+        setTimeout(() => {
+            Object.keys(state.charts).forEach(k => {
+                const c = state.charts[k];
+                if (c) c.resize();
+            });
+            if (state.map) state.map.resize();
+        }, 150);
+    } else if (anyChartFs){
+        setTimeout(() => {
+            Object.keys(state.charts).forEach(k => {
+                const c = state.charts[k];
+                if (c) c.resize();
+            });
+        }, 150);
+    }
+}
+
+document.addEventListener("fullscreenchange", onFullscreenChange);
+document.addEventListener("webkitfullscreenchange", onFullscreenChange);
+
+/* ============================================================
+   CONFIG / MAPBOX
+   ============================================================ */
 
 async function loadConfig(){
     const r = await fetch("/api/config", { cache: "no-store" });
@@ -640,11 +911,122 @@ function initMapbox(token){
     }
 }
 
-function ensureSourceAndLayer(id, color){
+/* ============================================================
+   MAPPA — gestione layer giro singolo / multiplo
+   ============================================================ */
+
+function lerp(a, b, t){ return a + (b - a) * t; }
+
+function buildSpeedGradient(speeds){
+    const finite = speeds.filter(Number.isFinite);
+    if (!finite.length){
+        return "#7c5cff";
+    }
+    const min = Math.min.apply(null, finite);
+    const max = Math.max.apply(null, finite);
+    const range = (max - min) || 1;
+
+    const n = speeds.length;
+    const stops = [];
+    const maxStops = 80;
+    const step = Math.max(1, Math.floor(n / maxStops));
+
+    function pushStop(i){
+        const s = speeds[i];
+        if (!Number.isFinite(s)) return;
+        const t = (s - min) / range;
+        const progress = n > 1 ? i / (n - 1) : 0;
+
+        let r, g, b;
+        if (t < 0.5){
+            const k = t * 2;
+            r = lerp(239, 234, k);
+            g = lerp(68, 179, k);
+            b = lerp(68, 8, k);
+        } else {
+            const k = (t - 0.5) * 2;
+            r = lerp(234, 34, k);
+            g = lerp(179, 197, k);
+            b = lerp(8, 94, k);
+        }
+        stops.push(progress, "rgb(" + Math.round(r) + "," + Math.round(g) + "," + Math.round(b) + ")");
+    }
+
+    for (let i = 0; i < n; i += step) pushStop(i);
+    if ((n - 1) % step !== 0) pushStop(n - 1);
+
+    if (stops.length < 4){
+        stops.length = 0;
+        stops.push(0, "rgb(239,68,68)", 1, "rgb(34,197,94)");
+    }
+
+    return ["interpolate", ["linear"], ["line-progress"]].concat(stops);
+}
+
+function clearMapLayers(){
     const map = state.map;
-    if (!map) return;
+    if (!map || !state.mapLoaded) return;
+    const style = map.getStyle();
+    if (!style) return;
+    const layers = style.layers || [];
+    for (const l of layers){
+        if (l.id.startsWith("lap-layer-") && map.getLayer(l.id)){
+            map.removeLayer(l.id);
+        }
+    }
+    const sources = Object.keys(style.sources || {});
+    for (const s of sources){
+        if (s.startsWith("lap-src-") && map.getSource(s)){
+            map.removeSource(s);
+        }
+    }
+}
+
+function addGradientLap(lap, coords, speedAt){
+    const map = state.map;
+    const id = lap.lap_number;
     const srcId = "lap-src-" + id;
     const layerId = "lap-layer-" + id;
+
+    if (!map.getSource(srcId)){
+        map.addSource(srcId, {
+            type: "geojson",
+            lineMetrics: true,
+            data: { type: "FeatureCollection", features: [] },
+        });
+    }
+    if (!map.getLayer(layerId)){
+        map.addLayer({
+            id: layerId,
+            type: "line",
+            source: srcId,
+            layout: { "line-join": "round", "line-cap": "round" },
+            paint: {
+                "line-width": [
+                    "interpolate", ["linear"], ["zoom"],
+                    10, 3, 14, 5, 18, 8,
+                ],
+                "line-opacity": 0.95,
+                "line-gradient": buildSpeedGradient(speedAt),
+            },
+        });
+    }
+    map.getSource(srcId).setData({
+        type: "FeatureCollection",
+        features: [{
+            type: "Feature",
+            properties: { lap: lap.lap_number },
+            geometry: { type: "LineString", coordinates: coords },
+        }],
+    });
+}
+
+function addSolidLap(lap, coords, color){
+    const map = state.map;
+    const id = lap.lap_number;
+    const srcId = "lap-src-" + id;
+    const layerId = "lap-layer-" + id;
+
     if (!map.getSource(srcId)){
         map.addSource(srcId, {
             type: "geojson",
@@ -667,25 +1049,14 @@ function ensureSourceAndLayer(id, color){
             },
         });
     }
-}
-
-function clearMapLayers(){
-    const map = state.map;
-    if (!map || !state.mapLoaded) return;
-    const style = map.getStyle();
-    if (!style) return;
-    const layers = style.layers || [];
-    for (const l of layers){
-        if (l.id.startsWith("lap-layer-") && map.getLayer(l.id)){
-            map.removeLayer(l.id);
-        }
-    }
-    const sources = Object.keys(style.sources || {});
-    for (const s of sources){
-        if (s.startsWith("lap-src-") && map.getSource(s)){
-            map.removeSource(s);
-        }
-    }
+    map.getSource(srcId).setData({
+        type: "FeatureCollection",
+        features: [{
+            type: "Feature",
+            properties: { lap: lap.lap_number },
+            geometry: { type: "LineString", coordinates: coords },
+        }],
+    });
 }
 
 function renderMapLayers(){
@@ -701,25 +1072,29 @@ function renderMapLayers(){
         return;
     }
 
+    const selected = [];
+    session.laps.forEach((lap, idx) => {
+        if (state.selectedLaps.has(lap.lap_number)) selected.push({ lap, idx });
+    });
+
+    const gradientMode = selected.length === 1;
+
     let bbox = null;
 
-    session.laps.forEach((lap, idx) => {
-        if (!state.selectedLaps.has(lap.lap_number)) return;
-
+    selected.forEach(({ lap, idx }) => {
         const tp = lap.track_points || {};
         const lats = tp.latitude || [];
         const lons = tp.longitude || [];
+        const speeds = tp.speed_kmph || [];
         if (lats.length < 2 || lons.length < 2) return;
 
-        const color = PALETTE[idx % PALETTE.length];
-        const coordId = lap.lap_number;
-        ensureSourceAndLayer(coordId, color);
-
         const coords = [];
+        const speedAt = [];
         for (let i = 0; i < lats.length; i++){
             const la = lats[i], lo = lons[i];
             if (typeof la === "number" && typeof lo === "number" && !(la === 0 && lo === 0)){
                 coords.push([lo, la]);
+                speedAt.push(typeof speeds[i] === "number" ? speeds[i] : null);
                 if (!bbox) bbox = [lo, la, lo, la];
                 else {
                     bbox[0] = Math.min(bbox[0], lo);
@@ -731,14 +1106,12 @@ function renderMapLayers(){
         }
         if (coords.length < 2) return;
 
-        map.getSource("lap-src-" + coordId).setData({
-            type: "FeatureCollection",
-            features: [{
-                type: "Feature",
-                properties: { lap: lap.lap_number },
-                geometry: { type: "LineString", coordinates: coords },
-            }],
-        });
+        const hasSpeeds = gradientMode && speedAt.some(Number.isFinite);
+        if (hasSpeeds){
+            addGradientLap(lap, coords, speedAt);
+        } else {
+            addSolidLap(lap, coords, PALETTE[idx % PALETTE.length]);
+        }
     });
 
     if (bbox){
@@ -772,7 +1145,10 @@ function updateMapOverlay(){
         overlay.innerHTML =
             '<h3>Nessun giro selezionato</h3>' +
             '<p>Seleziona uno o più giri dalla barra laterale ' +
-            'per visualizzare le traiettorie sulla mappa.</p>';
+            'per visualizzare le traiettorie sulla mappa.</p>' +
+            '<p style="margin-top:12px;color:var(--muted);font-size:12px;">' +
+            '1 giro → colorazione per velocità (rosso=lento, verde=veloce)<br>' +
+            '2+ giri → colori distinti per confronto</p>';
         return;
     }
     overlay.classList.add("hidden");
@@ -784,20 +1160,65 @@ function updateLegend(){
         legend.style.display = "none";
         return;
     }
-    const items = [];
+
+    const selected = [];
     state.session.laps.forEach((lap, idx) => {
-        if (!state.selectedLaps.has(lap.lap_number)) return;
-        const color = PALETTE[idx % PALETTE.length];
-        items.push(
-            '<div class="legend-item">' +
-                '<span class="swatch" style="background:' + color + ';"></span>' +
-                '<span>Giro ' + lap.lap_number + ' — ' + fmtTime(lap.lap_time_s) + '</span>' +
-            '</div>'
-        );
+        if (state.selectedLaps.has(lap.lap_number)) selected.push({ lap, idx });
     });
+    if (!selected.length){
+        legend.style.display = "none";
+        return;
+    }
+
+    const items = [];
+
+    if (selected.length === 1){
+        const lap = selected[0].lap;
+        const speeds = (lap.track_points && lap.track_points.speed_kmph) || [];
+        const finite = speeds.filter(Number.isFinite);
+        if (finite.length){
+            const min = Math.round(Math.min.apply(null, finite));
+            const max = Math.round(Math.max.apply(null, finite));
+            items.push(
+                '<div class="legend-item"><strong>Giro ' + lap.lap_number +
+                ' — velocità (' + fmtTime(lap.lap_time_s) + ')</strong></div>' +
+                '<div style="display:flex;align-items:center;gap:6px;margin-top:6px;">' +
+                    '<span class="mono" style="font-size:10px;">' + min + '</span>' +
+                    '<span style="flex:1;min-width:90px;height:8px;border-radius:4px;' +
+                    'background:linear-gradient(to right,#ef4444,#eab308,#22c55e);"></span>' +
+                    '<span class="mono" style="font-size:10px;">' + max + '</span>' +
+                '</div>' +
+                '<div class="muted" style="font-size:10px;text-align:center;">' +
+                    'km/h · rosso=lento/freno · verde=veloce</div>'
+            );
+        } else {
+            items.push(
+                '<div class="legend-item">' +
+                    '<span class="swatch" style="background:' +
+                    PALETTE[selected[0].idx % PALETTE.length] + ';"></span>' +
+                    '<span>Giro ' + lap.lap_number + ' — ' + fmtTime(lap.lap_time_s) + '</span>' +
+                '</div>'
+            );
+        }
+    } else {
+        selected.forEach(({ lap, idx }) => {
+            const color = PALETTE[idx % PALETTE.length];
+            items.push(
+                '<div class="legend-item">' +
+                    '<span class="swatch" style="background:' + color + ';"></span>' +
+                    '<span>Giro ' + lap.lap_number + ' — ' + fmtTime(lap.lap_time_s) + '</span>' +
+                '</div>'
+            );
+        });
+    }
+
     legend.innerHTML = items.join("");
     legend.style.display = "flex";
 }
+
+/* ============================================================
+   CHART
+   ============================================================ */
 
 const chartCommonOptions = {
     responsive: true,
@@ -861,6 +1282,315 @@ function renderCharts(){
     renderChart("speed", "speedChart", selected, "speed_kmph", "km/h");
     renderChart("rpm", "rpmChart", selected, "as5600_rpm", "RPM");
     renderChart("delta", "deltaChart", selected, "delta_live_s", "Δ (s)");
+    renderDataAge();
+}
+
+function lapEventMarkers(lap){
+    const tp = lap.track_points || {};
+    const epochs = tp.received_at_epoch || [];
+    const elapsed = tp.lap_elapsed_s || [];
+    const distances = tp.lap_distance_m || [];
+    const pointCount = Math.min(epochs.length, elapsed.length, distances.length);
+    const points = [];
+    for (let i = 0; i < pointCount; i++){
+        const epoch = Number(epochs[i]);
+        const lapElapsed = Number(elapsed[i]);
+        const distance = Number(distances[i]);
+        if (Number.isFinite(epoch) && Number.isFinite(lapElapsed) && Number.isFinite(distance)){
+            points.push({ epoch, lapElapsed, distance });
+        }
+    }
+
+    const startEpoch = Number(lap.started_at_epoch);
+    const events = Array.isArray(lap.events) ? lap.events : [];
+    const markers = [];
+    let previousDistance = 0;
+    for (const event of events){
+        if (event.event !== "sector_completed" && event.event !== "lap_completed") continue;
+
+        const eventEpoch = event.at ? Date.parse(event.at) / 1000 : NaN;
+        if (!Number.isFinite(eventEpoch)) continue;
+
+        let distance;
+        if (
+            event.event === "lap_completed"
+            && lap.lap_distance_m != null
+            && Number.isFinite(Number(lap.lap_distance_m))
+        ){
+            distance = Number(lap.lap_distance_m);
+        } else {
+            if (points.length < 2) continue;
+            let afterIndex = points.findIndex(point => point.epoch >= eventEpoch);
+            if (afterIndex < 0) afterIndex = points.length - 1;
+            const beforeIndex = Math.max(0, afterIndex - 1);
+            const before = points[beforeIndex];
+            const after = points[afterIndex];
+            const span = after.epoch - before.epoch;
+            const fraction = span > 0
+                ? Math.max(0, Math.min(1, (eventEpoch - before.epoch) / span))
+                : 0;
+            distance = before.distance + (after.distance - before.distance) * fraction;
+        }
+
+        const isFinish = event.event === "lap_completed";
+        const intervalDistance = Math.max(0, distance - previousDistance);
+        const label = isFinish
+            ? "FIN " + distance.toFixed(0) + "m (+" + intervalDistance.toFixed(0) + "m)"
+            : "S" + event.sector_number + " " + distance.toFixed(0) +
+              "m (+" + intervalDistance.toFixed(0) + "m)";
+        const previousMarker = markers[markers.length - 1];
+        if (
+            isFinish
+            && previousMarker
+            && Math.abs(distance - previousMarker.x) <= 1
+        ){
+            previousMarker.label += " / FIN";
+        } else {
+            markers.push({ x: distance, label });
+        }
+        previousDistance = distance;
+    }
+    return markers;
+}
+
+function sessionEventMarkers(laps){
+    const session = state.session;
+    if (!session || !Array.isArray(session.laps)) return [];
+    const startEpoch = session.started_at ? Date.parse(session.started_at) / 1000 : NaN;
+    if (!Number.isFinite(startEpoch)) return [];
+
+    const markers = [];
+    for (const lap of laps){
+        const lapMarkers = [];
+        for (const event of Array.isArray(lap.events) ? lap.events : []){
+            if (event.event !== "sector_completed" && event.event !== "lap_completed") continue;
+            const eventEpoch = event.at ? Date.parse(event.at) / 1000 : NaN;
+            if (!Number.isFinite(eventEpoch)) continue;
+            const elapsed = Math.max(0, eventEpoch - startEpoch);
+            const isFinish = event.event === "lap_completed";
+            const previousMarker = lapMarkers[lapMarkers.length - 1];
+            if (
+                isFinish
+                && previousMarker
+                && Math.abs(elapsed - previousMarker.x) <= 0.25
+            ){
+                previousMarker.label += " / FIN";
+                continue;
+            }
+            lapMarkers.push({
+                x: elapsed,
+                label: (isFinish ? "FIN" : "S" + event.sector_number) +
+                    " @" + elapsed.toFixed(1) + "s",
+            });
+        }
+        markers.push(...lapMarkers);
+    }
+    return markers;
+}
+
+function eventMarkerPlugin(markers){
+    return {
+        id: "sessionEventMarkers",
+        afterDatasetsDraw(chart){
+            if (!markers.length) return;
+            const xScale = chart.scales.x;
+            const area = chart.chartArea;
+            const ctx = chart.ctx;
+            ctx.save();
+            ctx.font = "10px ui-monospace, Menlo, Consolas, monospace";
+            ctx.textBaseline = "top";
+            ctx.setLineDash([4, 4]);
+            for (let i = 0; i < markers.length; i++){
+                const marker = markers[i];
+                if (marker.x < xScale.min || marker.x > xScale.max) continue;
+                const x = xScale.getPixelForValue(marker.x);
+                ctx.strokeStyle = "rgba(234,179,8,0.7)";
+                ctx.fillStyle = "#eab308";
+                ctx.beginPath();
+                ctx.moveTo(x, area.top);
+                ctx.lineTo(x, area.bottom);
+                ctx.stroke();
+                ctx.fillText(marker.label, x + 3, area.top + 3 + (i % 4) * 11);
+            }
+            ctx.restore();
+        },
+    };
+}
+
+function dataAgeSamples(){
+    const samples = state.session && state.session.data_age_samples;
+    if (!samples || !Array.isArray(samples.at_epoch) || !Array.isArray(samples.data_age_s)){
+        return [];
+    }
+
+    const count = Math.min(samples.at_epoch.length, samples.data_age_s.length);
+    const points = [];
+    for (let i = 0; i < count; i++){
+        if (samples.at_epoch[i] == null || samples.data_age_s[i] == null) continue;
+        const at = Number(samples.at_epoch[i]);
+        const age = Number(samples.data_age_s[i]);
+        if (Number.isFinite(at) && Number.isFinite(age)){
+            points.push({ at, age });
+        }
+    }
+    return points;
+}
+
+function renderDataAge(){
+    const allLaps = state.session && Array.isArray(state.session.laps)
+        ? state.session.laps
+        : [];
+    const selectedLaps = allLaps.filter(lap =>
+        state.selectedLaps.has(lap.lap_number)
+    );
+    const showFullSession = (
+        allLaps.length === 0
+        || selectedLaps.length === allLaps.length
+    );
+    const rawPoints = dataAgeSamples();
+    const threshold = 1;
+    const startEpoch = state.session && state.session.started_at
+        ? Date.parse(state.session.started_at) / 1000
+        : NaN;
+    const origin = Number.isFinite(startEpoch)
+        ? startEpoch
+        : (rawPoints.length ? rawPoints[0].at : 0);
+    const plottedSeries = showFullSession
+        ? [{
+            label: "Età del dato MQTT",
+            color: "#22d3ee",
+            points: rawPoints,
+        }]
+        : selectedLaps.map(({ lap_number, started_at_epoch, ended_at_epoch }, index) => {
+            const lapStart = Number(started_at_epoch);
+            const lapEnd = Number(ended_at_epoch);
+            const points = Number.isFinite(lapStart) && Number.isFinite(lapEnd)
+                ? rawPoints.filter(point => point.at >= lapStart && point.at <= lapEnd)
+                : [];
+            return {
+                label: "Giro " + lap_number,
+                color: PALETTE[index % PALETTE.length],
+                points,
+            };
+        });
+    const plottedPoints = plottedSeries.flatMap(series => series.points);
+    const chartDatasets = plottedSeries.map(series => ({
+        label: series.label,
+        data: series.points.map(point => ({
+            x: Math.max(0, point.at - origin),
+            y: point.age,
+        })),
+        borderColor: series.color,
+        backgroundColor: series.color + "22",
+        borderWidth: 1.5,
+        pointRadius: series.points.map(point => point.age > threshold ? 3 : 0),
+        pointHoverRadius: 4,
+        pointBackgroundColor: series.points.map(
+            point => point.age > threshold ? "#ef4444" : series.color
+        ),
+        tension: 0,
+    }));
+    const chartPoints = chartDatasets.flatMap(dataset => dataset.data);
+    const points = plottedPoints;
+    const anomalies = points.filter(point => point.age > threshold);
+    const maxAge = points.reduce(
+        (maximum, point) => Math.max(maximum, point.age),
+        0
+    );
+
+    $("dataAgeSummary").textContent = points.length
+        ? (showFullSession
+            ? "Intera sessione · "
+            : selectedLaps.length === 1
+                ? "Giro " + selectedLaps[0].lap_number + " · "
+                : selectedLaps.length + " giri selezionati · ") +
+          points.length.toLocaleString("it-IT") + " campioni · massimo " +
+          maxAge.toFixed(3) + " s · " + anomalies.length.toLocaleString("it-IT") +
+          " campioni oltre 1 s"
+        : selectedLaps.length === 0 && allLaps.length
+            ? "Seleziona almeno un giro per vedere i relativi campioni."
+            : "Questa sessione non contiene campioni di età del dato nei giri selezionati.";
+    $("dataAgeAnomalyCount").textContent = anomalies.length
+        ? anomalies.length.toLocaleString("it-IT") + " superamenti"
+        : "nessun superamento";
+    $("dataAgeAnomaliesBody").innerHTML = anomalies.length
+        ? anomalies.map(point =>
+            '<tr>' +
+                '<td class="mono">' + new Date(point.at * 1000).toLocaleString("it-IT", { hour12: false }) + '</td>' +
+                '<td class="mono">' + Math.max(0, point.at - origin).toFixed(3) + ' s</td>' +
+                '<td class="mono" style="color:var(--red);font-weight:700;">' + point.age.toFixed(3) + ' s</td>' +
+            '</tr>'
+        ).join("")
+        : '<tr><td colspan="3" class="empty-state">' +
+          (points.length ? "Nessun campione oltre 1 secondo." : "Nessun dato disponibile.") +
+          '</td></tr>';
+
+    const canvas = $("dataAgeChart");
+    const chartData = [...chartDatasets];
+    if (chartPoints.length){
+        const lastX = chartPoints[chartPoints.length - 1].x;
+        chartData.push({
+            label: "Soglia 1 s",
+            data: [{ x: 0, y: threshold }, { x: lastX, y: threshold }],
+            borderColor: "#ef4444",
+            borderDash: [6, 4],
+            borderWidth: 1,
+            pointRadius: 0,
+        });
+    }
+    const eventMarkers = sessionEventMarkers(
+        showFullSession ? allLaps : selectedLaps
+    );
+    const lastSampleX = chartPoints.length
+        ? chartPoints[chartPoints.length - 1].x
+        : 0;
+    const lastMarkerX = eventMarkers.reduce(
+        (maximum, marker) => Math.max(maximum, marker.x),
+        0
+    );
+
+    const options = JSON.parse(JSON.stringify(chartCommonOptions));
+    options.interaction = { mode: "nearest", axis: "x", intersect: false };
+    options.plugins.tooltip.callbacks = {
+        title: items => {
+            if (!items.length) return "";
+            return "Tempo sessione: " + items[0].parsed.x.toFixed(3) + " s";
+        },
+    };
+    options.scales.x.title.text = "Tempo dalla partenza (s)";
+    if (!showFullSession && selectedLaps.length){
+        const lapStarts = selectedLaps.map(lap => Number(lap.started_at_epoch))
+            .filter(Number.isFinite);
+        const lapEnds = selectedLaps.map(lap => Number(lap.ended_at_epoch))
+            .filter(Number.isFinite);
+        if (lapStarts.length){
+            options.scales.x.min = Math.max(0, Math.min(...lapStarts) - origin);
+        } else {
+            options.scales.x.min = 0;
+        }
+        if (lapEnds.length){
+            options.scales.x.max = Math.max(...lapEnds) - origin;
+        }
+    } else {
+        options.scales.x.min = 0;
+    }
+    const dataMaxX = Math.max(lastSampleX, lastMarkerX);
+    if (dataMaxX > 0){
+        options.scales.x.max = Number.isFinite(options.scales.x.max)
+            ? Math.max(options.scales.x.max, dataMaxX)
+            : dataMaxX;
+    }
+    options.scales.y.title = { display: true, text: "Età del dato (s)", color: "#8b96a3" };
+    options.scales.y.beginAtZero = true;
+    options.plugins.legend.display = true;
+
+    if (state.charts.dataAge) state.charts.dataAge.destroy();
+    state.charts.dataAge = new Chart(canvas.getContext("2d"), {
+        type: "line",
+        data: { datasets: chartData },
+        options,
+        plugins: [eventMarkerPlugin(eventMarkers)],
+    });
 }
 
 function renderChart(id, canvasId, selected, keyY, yLabel){
@@ -874,6 +1604,9 @@ function renderChart(id, canvasId, selected, keyY, yLabel){
         }
         return ds;
     });
+    const eventMarkers = id === "speed"
+        ? selected.flatMap(({ lap }) => lapEventMarkers(lap))
+        : [];
 
     const options = JSON.parse(JSON.stringify(chartCommonOptions));
     options.scales.y.title = { display: true, text: yLabel, color: "#8b96a3" };
@@ -884,8 +1617,13 @@ function renderChart(id, canvasId, selected, keyY, yLabel){
         type: "line",
         data: { datasets },
         options,
+        plugins: [eventMarkerPlugin(eventMarkers)],
     });
 }
+
+/* ============================================================
+   TABELLE
+   ============================================================ */
 
 function renderLapsTable(){
     const tbody = $("lapsTableBody");
@@ -1045,6 +1783,10 @@ function clearAllLaps(){
     renderCharts();
 }
 
+/* ============================================================
+   SESSIONI
+   ============================================================ */
+
 async function loadSessionList(){
     const folder = $("folderInput").value.trim();
     if (!folder) return;
@@ -1196,6 +1938,16 @@ async function init(){
     });
     $("selectAllBtn").addEventListener("click", selectAllLaps);
     $("clearAllBtn").addEventListener("click", clearAllLaps);
+    $("mapFsBtn").addEventListener("click", toggleMapFullscreen);
+
+    // Pulsanti fullscreen per i grafici
+    document.querySelectorAll(".chart-fs-btn").forEach(btn => {
+        btn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            const panel = btn.closest(".chart-panel");
+            if (panel) toggleChartFullscreen(panel);
+        });
+    });
 
     try {
         await loadConfig();

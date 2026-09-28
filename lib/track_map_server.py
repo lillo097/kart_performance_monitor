@@ -10,16 +10,11 @@ from dotenv import load_dotenv
 from flask import Flask, jsonify, render_template_string
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-TRACK_FILE = BASE_DIR / "config" / "tracks" / "prima-pista.yaml"
+TRACK_FILE = BASE_DIR / "config" / "tracks" / "milano-edolo.yaml"
 APP_CONFIG_FILE = BASE_DIR / "config" / "app.yaml"
 
 MAIN_APP_API = "http://127.0.0.1:8080/api/live"
 
-BASE_DIR = Path(__file__).resolve().parent.parent
-TRACK_FILE = BASE_DIR / "config" / "tracks" / "prima-pista.yaml"
-APP_CONFIG_FILE = BASE_DIR / "config" / "app.yaml"
-
-# Carica variabili da .env nella root del progetto
 load_dotenv(BASE_DIR / ".env")
 
 HOST = "0.0.0.0"
@@ -199,6 +194,7 @@ def direction_arrow(before, after):
     )
 
     return {
+        "center": center,
         "tail": tail,
         "tip": tip,
         "heading_deg": heading,
@@ -543,6 +539,15 @@ MAP_HTML = r"""
       transform-origin: 50% 50%;
     }
 
+    /* Marker "center dot" per SF / settori / box: dimensione fissa in pixel,
+       serve solo come punto di riferimento per popup + tooltip. */
+    .center-dot {
+      border-radius: 50%;
+      border: 2px solid #fff;
+      box-shadow: 0 0 4px rgba(0, 0, 0, 0.8);
+      cursor: pointer;
+    }
+
     .command-row {
       margin-top: 10px;
       padding-top: 9px;
@@ -687,15 +692,11 @@ MAP_HTML = r"""
     mapboxgl.accessToken = "{{ MAPBOX_TOKEN }}";
     const USING_DEMO_TOKEN = {{ 'true' if USING_DEMO_TOKEN else 'false' }};
 
-    // ---- Configurazione MQTT passata dal server Flask ----
     const MQTT_BROKER = "{{ MQTT_BROKER }}";
     const MQTT_WS_PORT = {{ MQTT_WS_PORT }};
     const MQTT_WS_PATH = "{{ MQTT_WS_PATH }}";
     const MQTT_TOPIC = "{{ MQTT_TOPIC }}";
 
-    // Se il broker è "127.0.0.1" / "localhost", dal browser intendiamo
-    // l'host che serve la pagina. Per broker remoti (HiveMQ) usiamo il
-    // valore così com'è.
     const mqttHost =
       (MQTT_BROKER === "127.0.0.1" || MQTT_BROKER === "localhost")
         ? window.location.hostname
@@ -739,10 +740,7 @@ MAP_HTML = r"""
     }
 
     // =====================================================================
-    // MQTT over WebSocket — stesso canale / topic usato dall'ESP32 in futuro.
-    // I due pulsanti pubblicano direttamente i payload:
-    //   {"cooldown": true}
-    //   {"session_toggle": true}
+    // MQTT over WebSocket
     // =====================================================================
 
     let mqttClient = null;
@@ -894,26 +892,57 @@ MAP_HTML = r"""
       configurationLayers = [];
     }
 
+    // ------------------------------------------------------------------
+    // Line width espressa in modo che sia visivamente coerente su tutti
+    // gli zoom: sottile a zoom basso, più marcata a zoom alto (simula
+    // lo "spessore reale" di una riga tracciata a terra).
+    // ------------------------------------------------------------------
+    function zoomLineWidth(baseAtZoom16) {
+      const base = Number(baseAtZoom16) || 4;
+      return [
+        'interpolate', ['linear'], ['zoom'],
+        10, base * 0.35,
+        14, base * 0.7,
+        16, base * 1.0,
+        18, base * 1.6,
+        20, base * 2.4
+      ];
+    }
+
+    // ------------------------------------------------------------------
+    // FIX: la freccia di direzione viene ruotata tramite l'opzione
+    // `rotation` del Marker. NON usare style.transform (Mapbox lo
+    // sovrascrive per posizionare il marker sulla mappa).
+    // ------------------------------------------------------------------
     function drawArrow(arrow, color) {
       if (!arrow || !arrow.tail || !arrow.tip || arrow.heading_deg == null) return;
 
-      const center = [
-        (arrow.tail[0] + arrow.tip[0]) / 2,
-        (arrow.tail[1] + arrow.tip[1]) / 2
-      ];
+      const center = arrow.center
+        ? arrow.center
+        : [
+            (arrow.tail[0] + arrow.tip[0]) / 2,
+            (arrow.tail[1] + arrow.tip[1]) / 2
+          ];
 
       const el = document.createElement('div');
       el.className = 'direction-arrow';
-      el.style.transform = 'rotate(' + (arrow.heading_deg) + 'deg)';
+
       el.innerHTML =
         '<svg width="34" height="34" viewBox="0 0 34 34" xmlns="http://www.w3.org/2000/svg">' +
           '<line x1="17" y1="30" x2="17" y2="12" stroke="' + color + '" stroke-width="5" stroke-linecap="round"/>' +
           '<path d="M17 3 L27 18 L17 13.5 L7 18 Z" fill="' + color + '" stroke="#ffffff" stroke-width="1.2" stroke-linejoin="round"/>' +
         '</svg>';
 
-      const marker = new mapboxgl.Marker({ element: el, anchor: 'center', rotationAlignment: 'map', pitchAlignment: 'map' })
+      const marker = new mapboxgl.Marker({
+        element: el,
+        anchor: 'center',
+        rotationAlignment: 'map',
+        pitchAlignment: 'map',
+        rotation: arrow.heading_deg
+      })
         .setLngLat([center[1], center[0]])
         .addTo(map);
+
       addLayer(marker);
     }
 
@@ -923,6 +952,61 @@ MAP_HTML = r"""
       } else {
         map.addSource(id, { type: 'geojson', data });
       }
+    }
+
+    // ------------------------------------------------------------------
+    // FIX box: genera un poligono geografico che approssima un cerchio
+    // di raggio `radiusM` metri attorno a `center` = [lat, lon].
+    // In questo modo il cerchio scala correttamente con lo zoom.
+    // ------------------------------------------------------------------
+    function createCirclePolygon(centerLat, centerLon, radiusM, segments) {
+      const numSegments = Math.max(24, Math.floor(segments || 64));
+      const earthRadiusM = 6371000.0;
+      const latRad = centerLat * Math.PI / 180.0;
+      const lonRad = centerLon * Math.PI / 180.0;
+      const angularDistance = radiusM / earthRadiusM;
+
+      const coords = [];
+
+      for (let i = 0; i <= numSegments; i++) {
+        const bearing = (i / numSegments) * 2.0 * Math.PI;
+
+        const newLatRad = Math.asin(
+          Math.sin(latRad) * Math.cos(angularDistance) +
+          Math.cos(latRad) * Math.sin(angularDistance) * Math.cos(bearing)
+        );
+
+        const newLonRad = lonRad + Math.atan2(
+          Math.sin(bearing) * Math.sin(angularDistance) * Math.cos(latRad),
+          Math.cos(angularDistance) - Math.sin(latRad) * Math.sin(newLatRad)
+        );
+
+        // GeoJSON: [lon, lat]
+        coords.push([
+          newLonRad * 180.0 / Math.PI,
+          newLatRad * 180.0 / Math.PI
+        ]);
+      }
+
+      return coords;
+    }
+
+    function addCenterDot(center, color, sizePx, popupText) {
+      const el = document.createElement('div');
+      el.className = 'center-dot';
+      el.style.width = sizePx + 'px';
+      el.style.height = sizePx + 'px';
+      el.style.background = color;
+
+      const marker = new mapboxgl.Marker({ element: el })
+        .setLngLat([center[1], center[0]]);
+
+      if (popupText) {
+        marker.setPopup(new mapboxgl.Popup().setText(popupText));
+      }
+
+      marker.addTo(map);
+      addLayer(marker);
     }
 
     function drawConfig(config) {
@@ -941,47 +1025,52 @@ MAP_HTML = r"""
       document.getElementById("track-name").textContent =
         config.track && config.track.name ? config.track.name : "Pista non configurata";
 
+      // ---------------- START / FINISH ----------------
       if (sf && Array.isArray(sf.line) && sf.line.length === 2) {
         const lineCoords = sf.line.map(p => [p[1], p[0]]);
         const originalCoords = sf.original_line.map(p => [p[1], p[0]]);
 
-        safeAddSource('sf-extended', { type: 'Feature', geometry: { type: 'LineString', coordinates: lineCoords } });
+        safeAddSource('sf-extended', {
+          type: 'Feature',
+          geometry: { type: 'LineString', coordinates: lineCoords }
+        });
         if (!map.getLayer('sf-extended-layer')) {
           map.addLayer({
             id: 'sf-extended-layer',
             type: 'line',
             source: 'sf-extended',
-            paint: { 'line-color': '#ef4444', 'line-width': 7 }
+            paint: {
+              'line-color': '#ef4444',
+              'line-width': zoomLineWidth(7)
+            }
           });
         }
 
-        safeAddSource('sf-original', { type: 'Feature', geometry: { type: 'LineString', coordinates: originalCoords } });
+        safeAddSource('sf-original', {
+          type: 'Feature',
+          geometry: { type: 'LineString', coordinates: originalCoords }
+        });
         if (!map.getLayer('sf-original-layer')) {
           map.addLayer({
             id: 'sf-original-layer',
             type: 'line',
             source: 'sf-original',
-            paint: { 'line-color': '#ffffff', 'line-width': 2, 'line-dasharray': [1, 1] }
+            paint: {
+              'line-color': '#ffffff',
+              'line-width': zoomLineWidth(2),
+              'line-dasharray': [1, 1]
+            }
           });
         }
 
-        const centerEl = document.createElement('div');
-        centerEl.style.width = '12px';
-        centerEl.style.height = '12px';
-        centerEl.style.borderRadius = '50%';
-        centerEl.style.backgroundColor = '#ef4444';
-        centerEl.style.border = '2px solid #fff';
-        const centerMarker = new mapboxgl.Marker({ element: centerEl })
-          .setLngLat([sf.center[1], sf.center[0]])
-          .setPopup(new mapboxgl.Popup().setText("START / FINISH"))
-          .addTo(map);
-        addLayer(centerMarker);
-
+        addCenterDot(sf.center, '#ef4444', 12, 'START / FINISH');
         drawArrow(sf.direction_arrow, '#ef4444');
+
         bounds.extend(lineCoords[0]);
         bounds.extend(lineCoords[1]);
       }
 
+      // ---------------- SETTORI ----------------
       sectors.forEach((sector, index) => {
         const color = colors[index % colors.length];
         if (!Array.isArray(sector.line) || sector.line.length !== 2) return;
@@ -989,84 +1078,135 @@ MAP_HTML = r"""
         const lineCoords = sector.line.map(p => [p[1], p[0]]);
         const originalCoords = sector.original_line.map(p => [p[1], p[0]]);
 
-        safeAddSource(`sector-${index}-extended`, { type: 'Feature', geometry: { type: 'LineString', coordinates: lineCoords } });
+        safeAddSource(`sector-${index}-extended`, {
+          type: 'Feature',
+          geometry: { type: 'LineString', coordinates: lineCoords }
+        });
         if (!map.getLayer(`sector-${index}-extended-layer`)) {
           map.addLayer({
             id: `sector-${index}-extended-layer`,
             type: 'line',
             source: `sector-${index}-extended`,
-            paint: { 'line-color': color, 'line-width': 6 }
+            paint: {
+              'line-color': color,
+              'line-width': zoomLineWidth(6)
+            }
           });
         }
 
-        safeAddSource(`sector-${index}-original`, { type: 'Feature', geometry: { type: 'LineString', coordinates: originalCoords } });
+        safeAddSource(`sector-${index}-original`, {
+          type: 'Feature',
+          geometry: { type: 'LineString', coordinates: originalCoords }
+        });
         if (!map.getLayer(`sector-${index}-original-layer`)) {
           map.addLayer({
             id: `sector-${index}-original-layer`,
             type: 'line',
             source: `sector-${index}-original`,
-            paint: { 'line-color': '#ffffff', 'line-width': 2, 'line-dasharray': [1, 1] }
+            paint: {
+              'line-color': '#ffffff',
+              'line-width': zoomLineWidth(2),
+              'line-dasharray': [1, 1]
+            }
           });
         }
 
-        const centerEl = document.createElement('div');
-        centerEl.style.width = '10px';
-        centerEl.style.height = '10px';
-        centerEl.style.borderRadius = '50%';
-        centerEl.style.backgroundColor = color;
-        centerEl.style.border = '2px solid #fff';
-        const centerMarker = new mapboxgl.Marker({ element: centerEl })
-          .setLngLat([sector.center[1], sector.center[0]])
-          .setPopup(new mapboxgl.Popup().setText(sector.name))
-          .addTo(map);
-        addLayer(centerMarker);
+        addCenterDot(sector.center, color, 10, sector.name);
 
         bounds.extend(lineCoords[0]);
         bounds.extend(lineCoords[1]);
       });
 
+      // ---------------- PIT BOX ----------------
       if (pitBox) {
         if (pitBox.type === 'circle') {
-          const center = pitBox.center;
-          const radiusM = pitBox.radius_m;
-          const circleEl = document.createElement('div');
-          circleEl.style.width = (radiusM * 2) + 'px';
-          circleEl.style.height = (radiusM * 2) + 'px';
-          circleEl.style.borderRadius = '50%';
-          circleEl.style.backgroundColor = 'rgba(255, 152, 0, 0.35)';
-          circleEl.style.border = '3px solid ' + PIT_BOX_COLOR;
-          circleEl.style.boxShadow = '0 0 10px rgba(255, 152, 0, 0.7)';
-          const marker = new mapboxgl.Marker({ element: circleEl })
-            .setLngLat([center[1], center[0]])
-            .setPopup(new mapboxgl.Popup().setText("BOX"))
-            .addTo(map);
-          addLayer(marker);
-          bounds.extend([center[1], center[0]]);
-        } else if (pitBox.type === 'polygon' && Array.isArray(pitBox.polygon) && pitBox.polygon.length >= 3) {
+          const center = pitBox.center;   // [lat, lon]
+          const radiusM = Number(pitBox.radius_m) || 12;
+
+          const circleCoords = createCirclePolygon(
+            center[0], center[1], radiusM, 72
+          );
+
+          safeAddSource('pitbox-circle', {
+            type: 'Feature',
+            geometry: {
+              type: 'Polygon',
+              coordinates: [circleCoords]
+            }
+          });
+
+          if (!map.getLayer('pitbox-circle-fill')) {
+            map.addLayer({
+              id: 'pitbox-circle-fill',
+              type: 'fill',
+              source: 'pitbox-circle',
+              paint: {
+                'fill-color': PIT_BOX_COLOR,
+                'fill-opacity': 0.28
+              }
+            });
+          }
+
+          if (!map.getLayer('pitbox-circle-outline')) {
+            map.addLayer({
+              id: 'pitbox-circle-outline',
+              type: 'line',
+              source: 'pitbox-circle',
+              paint: {
+                'line-color': PIT_BOX_COLOR,
+                'line-width': zoomLineWidth(3)
+              }
+            });
+          }
+
+          // piccolo dot centrale (solo per popup)
+          addCenterDot(center, PIT_BOX_COLOR, 10, 'BOX');
+
+          // espandi i bounds lungo tutto il cerchio
+          circleCoords.forEach(c => bounds.extend(c));
+        }
+        else if (
+          pitBox.type === 'polygon' &&
+          Array.isArray(pitBox.polygon) &&
+          pitBox.polygon.length >= 3
+        ) {
           const polyCoords = pitBox.polygon.map(p => [p[1], p[0]]);
           polyCoords.push(polyCoords[0]);
-          safeAddSource('pitbox-poly', { type: 'Feature', geometry: { type: 'Polygon', coordinates: [polyCoords] } });
+
+          safeAddSource('pitbox-poly', {
+            type: 'Feature',
+            geometry: { type: 'Polygon', coordinates: [polyCoords] }
+          });
+
           if (!map.getLayer('pitbox-poly-layer')) {
             map.addLayer({
               id: 'pitbox-poly-layer',
               type: 'fill',
               source: 'pitbox-poly',
-              paint: { 'fill-color': PIT_BOX_COLOR, 'fill-opacity': 0.35 }
+              paint: {
+                'fill-color': PIT_BOX_COLOR,
+                'fill-opacity': 0.28
+              }
             });
           }
+
           if (!map.getLayer('pitbox-poly-outline')) {
             map.addLayer({
               id: 'pitbox-poly-outline',
               type: 'line',
               source: 'pitbox-poly',
-              paint: { 'line-color': PIT_BOX_COLOR, 'line-width': 3 }
+              paint: {
+                'line-color': PIT_BOX_COLOR,
+                'line-width': zoomLineWidth(3)
+              }
             });
           }
-          bounds.extend(polyCoords[0]);
-          bounds.extend(polyCoords[1]);
+
+          polyCoords.forEach(c => bounds.extend(c));
         }
       }
 
+      // ---------------- PIT LANE ----------------
       if (pitLane) {
         let laneCoords = null;
         if (Array.isArray(pitLane.path) && pitLane.path.length >= 2) {
@@ -1077,18 +1217,26 @@ MAP_HTML = r"""
             [pitLane.end[1], pitLane.end[0]]
           ];
         }
+
         if (laneCoords) {
-          safeAddSource('pitlane', { type: 'Feature', geometry: { type: 'LineString', coordinates: laneCoords } });
+          safeAddSource('pitlane', {
+            type: 'Feature',
+            geometry: { type: 'LineString', coordinates: laneCoords }
+          });
+
           if (!map.getLayer('pitlane-layer')) {
             map.addLayer({
               id: 'pitlane-layer',
               type: 'line',
               source: 'pitlane',
-              paint: { 'line-color': '#ec4899', 'line-width': 5 }
+              paint: {
+                'line-color': '#ec4899',
+                'line-width': zoomLineWidth(5)
+              }
             });
           }
-          bounds.extend(laneCoords[0]);
-          bounds.extend(laneCoords[laneCoords.length-1]);
+
+          laneCoords.forEach(c => bounds.extend(c));
         }
       }
 
@@ -1109,13 +1257,22 @@ MAP_HTML = r"""
 
     function updateGps(gps) {
       const gpsStatus = document.getElementById("gps-status");
-      const valid = gps && gps.fix_valid === true && Number.isFinite(Number(gps.latitude)) && Number.isFinite(Number(gps.longitude)) && !(Number(gps.latitude) === 0 && Number(gps.longitude) === 0);
+      const valid = gps && gps.fix_valid === true &&
+        Number.isFinite(Number(gps.latitude)) &&
+        Number.isFinite(Number(gps.longitude)) &&
+        !(Number(gps.latitude) === 0 && Number(gps.longitude) === 0);
 
-      gpsStatus.textContent = valid ? (Number(gps.fix_type) === 3 ? "FIX 3D" : "FIX") : "NO FIX";
+      gpsStatus.textContent = valid
+        ? (Number(gps.fix_type) === 3 ? "FIX 3D" : "FIX")
+        : "NO FIX";
       gpsStatus.className = "value " + (valid ? "good" : "bad");
-      document.getElementById("speed").textContent = Math.round(Number(gps && gps.speed_kmph) || 0) + " km/h";
-      document.getElementById("satellites").textContent = String(gps && gps.satellites_used != null ? gps.satellites_used : 0);
-      document.getElementById("hdop").textContent = gps && gps.hdop != null ? Number(gps.hdop).toFixed(2) : "—";
+
+      document.getElementById("speed").textContent =
+        Math.round(Number(gps && gps.speed_kmph) || 0) + " km/h";
+      document.getElementById("satellites").textContent =
+        String(gps && gps.satellites_used != null ? gps.satellites_used : 0);
+      document.getElementById("hdop").textContent =
+        gps && gps.hdop != null ? Number(gps.hdop).toFixed(2) : "—";
 
       if (!valid) return;
 
@@ -1136,13 +1293,20 @@ MAP_HTML = r"""
       if (gpsTrail.length > 1200) gpsTrail.shift();
 
       if (!gpsTrailLine) {
-        safeAddSource('gps-trail', { type: 'Feature', geometry: { type: 'LineString', coordinates: gpsTrail } });
+        safeAddSource('gps-trail', {
+          type: 'Feature',
+          geometry: { type: 'LineString', coordinates: gpsTrail }
+        });
         if (!map.getLayer('gps-trail-layer')) {
           map.addLayer({
             id: 'gps-trail-layer',
             type: 'line',
             source: 'gps-trail',
-            paint: { 'line-color': '#a855f7', 'line-width': 4, 'line-opacity': 0.85 }
+            paint: {
+              'line-color': '#a855f7',
+              'line-width': zoomLineWidth(4),
+              'line-opacity': 0.85
+            }
           });
         }
         gpsTrailLine = true;

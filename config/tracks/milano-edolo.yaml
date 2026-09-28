@@ -1,0 +1,71 @@
+track:
+  id: milano-edolo
+  name: Milano - Edolo
+timing:
+  minimum_lap_time_s: 15
+  crossing_cooldown_s: 12
+  crossing_minimum_speed_kmph: 5
+  min_satellites: 4
+  max_hdop: 3.5
+  min_fix_type: 3
+pit_box:
+  exit_hysteresis_m: 4
+  minimum_samples_to_confirm: 3
+  polygon:
+  - lat: 45.493679
+    lon: 9.206758
+  - lat: 45.493621
+    lon: 9.207138
+  - lat: 45.493887
+    lon: 9.207228
+  - lat: 45.493948
+    lon: 9.206852
+pit_lane:
+  start:
+    lat: 45.49562
+    lon: 9.208178
+  end:
+    lat: 45.49514
+    lon: 9.209147
+start_finish:
+  id: SF
+  name: Start / Finish
+  direction: forward
+  line_extension_each_side_m: 18
+  crossing_tolerance_m: 12
+  a:
+    lat: 45.494523
+    lon: 9.208823
+  b:
+    lat: 45.494424
+    lon: 9.209022
+  direction_reference:
+    before:
+      lat: 45.494335
+      lon: 9.208738
+    after:
+      lat: 45.494676
+      lon: 9.209118
+sectors:
+- id: S1
+  name: Settore 1
+  direction: forward
+  line_extension_each_side_m: 16
+  crossing_tolerance_m: 12
+  a:
+    lat: 45.494209
+    lon: 9.209512
+  b:
+    lat: 45.494165
+    lon: 9.209628
+- id: S2
+  name: Settore 2
+  direction: forward
+  line_extension_each_side_m: 16
+  crossing_tolerance_m: 12
+  a:
+    lat: 45.493297
+    lon: 9.208319
+  b:
+    lat: 45.493379
+    lon: 9.208412
