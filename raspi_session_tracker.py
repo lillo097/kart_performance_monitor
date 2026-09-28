@@ -5,6 +5,7 @@ Raspberry Pi Zero 2W
 """
 
 import json
+import logging
 import math
 import os
 import signal
@@ -28,7 +29,7 @@ if str(_SRC_LOGGING) not in sys.path:
 from logging_setup import setup_logging
 from session_logger import SessionLogger
 
-log = setup_logging()
+log = logging.getLogger("main")
 
 try:
     import sdnotify
@@ -918,16 +919,21 @@ def _handle_signal(signum, frame):
     _shutdown.set()
 
 def main():
-    global i2c_bus, mqtt_client, mqtt_connected, session_logger
+    global i2c_bus, mqtt_client, mqtt_connected, session_logger, log
 
     signal.signal(signal.SIGTERM, _handle_signal)
     signal.signal(signal.SIGINT, _handle_signal)
 
+    session_logger = SessionLogger(app_version=APP_VERSION)
+    log = setup_logging(session_logger.session_dir)
+
+    log.info(f"[SESSION] started id={session_logger.session_id}")
+    log.info(f"[SESSION] directory={session_logger.session_dir}")
+    log.info("[SESSION] files=glo2-telemetry.log, boot.json, raw.jsonl, events.jsonl")
     log.info(f"=== Kart Telemetry v{APP_VERSION} starting ===")
     log.info(f"[main] hostname={socket.gethostname()} pid={os.getpid()}")
     log.info(f"[main] mqtt_client_id={MQTT_CLIENT_ID} broker={MQTT_BROKER}:{MQTT_PORT}")
 
-    session_logger = SessionLogger(app_version=APP_VERSION)
     session_logger.set_mqtt(MQTT_BROKER, MQTT_PORT, MQTT_CLIENT_ID, MQTT_TOPIC)
     session_logger.set_gps(GLO2_MAC, RFCOMM_CHANNEL)
     session_logger.log_event("service_start",

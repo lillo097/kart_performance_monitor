@@ -19,23 +19,29 @@ _FMT_CONSOLE = "%(asctime)s [%(levelname)s] %(message)s"
 _DATE = "%Y-%m-%d %H:%M:%S"
 
 
-def setup_logging():
-    """Configura il logger root. Ritorna il logger 'main'."""
+def setup_logging(session_dir=None):
+    """Configura il logger root, scrivendo nel log della sessione se fornita."""
     LOGS_DIR.mkdir(parents=True, exist_ok=True)
 
     root = logging.getLogger()
     root.setLevel(getattr(logging, LOG_LEVEL, logging.INFO))
+    for handler in root.handlers[:]:
+        handler.close()
     root.handlers.clear()
 
-    # --- File handler con rotazione 5 MB x 5 ---
-    fh = logging.handlers.RotatingFileHandler(
-        str(LOG_FILE),
-        maxBytes=5 * 1024 * 1024,
-        backupCount=5,
-        encoding="utf-8",
-    )
-    fh.setFormatter(logging.Formatter(_FMT_FILE, datefmt=_DATE))
-    root.addHandler(fh)
+    if session_dir is not None:
+        session_dir = Path(session_dir)
+        session_dir.mkdir(parents=True, exist_ok=True)
+        session_log_file = session_dir / LOG_FILE.name
+
+        fh = logging.handlers.RotatingFileHandler(
+            str(session_log_file),
+            maxBytes=5 * 1024 * 1024,
+            backupCount=5,
+            encoding="utf-8",
+        )
+        fh.setFormatter(logging.Formatter(_FMT_FILE, datefmt=_DATE))
+        root.addHandler(fh)
 
     # --- Console handler (per journalctl) ---
     ch = logging.StreamHandler(sys.stdout)

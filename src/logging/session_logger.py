@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Session logger: boot.json + raw.jsonl + events.jsonl per ogni avvio."""
+"""Session logger: boot, raw, events, and application logs per each service run."""
 
 import json
 import logging
@@ -49,12 +49,26 @@ class SessionLogger:
         SESSIONS_DIR.mkdir(parents=True, exist_ok=True)
         self._cleanup_old_sessions()
 
-        stamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        created_at = datetime.now()
+        stamp = created_at.strftime("%Y-%m-%d_%H-%M-%S")
+        session_dir = SESSIONS_DIR / stamp
+        suffix = 1
+        while True:
+            try:
+                session_dir.mkdir()
+                break
+            except FileExistsError:
+                session_dir = SESSIONS_DIR / f"{stamp}_{suffix:02d}"
+                suffix += 1
+
+        stamp = session_dir.name
         self.session_id = stamp
 
-        self._boot_path = SESSIONS_DIR / f"{stamp}_boot.json"
-        self._raw_path = SESSIONS_DIR / f"{stamp}_raw.jsonl"
-        self._events_path = SESSIONS_DIR / f"{stamp}_events.jsonl"
+        self.session_dir = session_dir
+        self._boot_path = session_dir / "boot.json"
+        self._raw_path = session_dir / "raw.jsonl"
+        self._events_path = session_dir / "events.jsonl"
+        self._log_path = session_dir / "glo2-telemetry.log"
 
         self._raw_handle = open(self._raw_path, "a", encoding="utf-8", buffering=1)
         self._events_handle = open(self._events_path, "a", encoding="utf-8", buffering=1)
@@ -82,6 +96,7 @@ class SessionLogger:
         self._boot_status = "running"
 
         self._log.info(f"[SESSION] started id={stamp}")
+        self._log.info(f"[SESSION] directory={self.session_dir}")
         self._log.info(f"[SESSION] boot={self._boot_path.name}")
         self._log.info(f"[SESSION] raw={self._raw_path.name}")
         self._log.info(f"[SESSION] events={self._events_path.name}")
@@ -190,8 +205,8 @@ class SessionLogger:
                 "client_side": True,
                 "saved_at": _iso_now(),
                 "status": self._boot_status,
-                "driver": None,
-                "track": None,
+                "driver": {},
+                "track": {},
                 "track_config": {},
                 "track_id": None,
                 "mqtt_topic": self._mqtt_meta.get("topic"),
@@ -241,6 +256,7 @@ class SessionLogger:
                 },
                 "raw_stream_file": self._raw_path.name,
                 "events_file": self._events_path.name,
+                "log_file": self._log_path.name,
             }
 
     def update_boot_json(self, force=False):
@@ -263,15 +279,21 @@ class SessionLogger:
         removed = 0
         for path in SESSIONS_DIR.iterdir():
             try:
-                if not path.is_file():
-                    continue
                 if path.stat().st_mtime < cutoff.timestamp():
-                    path.unlink()
+                    if path.is_dir():
+                        shutil.rmtree(path)
+                    elif path.is_file():
+                        path.unlink()
+                    else:
+                        continue
                     removed += 1
-            except Exception:
-                pass
+            except OSError as error:
+                self._log.warning(f"[SESSION] could not clean old path {path}: {error}")
         if removed:
-            self._log.info(f"[SESSION] cleaned {removed} old files (>{RETENTION_DAYS}d)")
+            self._log.info(
+                f"[SESSION] cleaned {removed} old sessions/files "
+                f"(>{RETENTION_DAYS}d)"
+            )
 
     # ------------------------------------------------------------------
     # Chiusura
