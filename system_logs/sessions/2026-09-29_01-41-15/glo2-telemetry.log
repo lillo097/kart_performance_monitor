@@ -1,0 +1,26 @@
+2026-09-29 01:41:15.555 [INFO ] [main    ] [SESSION] started id=2026-09-29_01-41-15
+2026-09-29 01:41:15.555 [INFO ] [main    ] [SESSION] directory=/home/lillo97/kart_performance_monitor/system_logs/sessions/2026-09-29_01-41-15
+2026-09-29 01:41:15.556 [INFO ] [main    ] [SESSION] files=glo2-telemetry.log, boot.json, raw.jsonl, events.jsonl
+2026-09-29 01:41:15.556 [INFO ] [main    ] === Kart Telemetry v2.1.0 starting ===
+2026-09-29 01:41:15.556 [INFO ] [main    ] [main] hostname=raspberrypi pid=2648
+2026-09-29 01:41:15.557 [INFO ] [main    ] [main] mqtt_client_id=RPi-KART-2ccf677d1465 broker=broker.hivemq.com:1883
+2026-09-29 01:41:15.558 [INFO ] [main    ] [i2c] bus 1 opened
+2026-09-29 01:41:15.558 [INFO ] [main    ] ====================================================
+2026-09-29 01:41:15.559 [INFO ] [main    ] KART TELEMETRY - STARTUP CHECK
+2026-09-29 01:41:15.559 [INFO ] [main    ] ====================================================
+2026-09-29 01:41:15.559 [WARNING] [main    ] [check] NTC (ADC): no ADC
+2026-09-29 01:41:15.563 [WARNING] [main    ] [check] AS5600 I2C: not found
+2026-09-29 01:41:15.563 [INFO ] [main    ] [check] Garmin GLO2 verification in background
+2026-09-29 01:41:15.564 [INFO ] [main    ] [check] WiFi verification in background
+2026-09-29 01:41:15.564 [INFO ] [main    ] ====================================================
+2026-09-29 01:41:16.181 [INFO ] [main    ] [wifi] active ssid=iPhone di Livio ip=172.20.10.2
+2026-09-29 01:41:16.183 [INFO ] [main    ] [mqtt] connecting...
+2026-09-29 01:41:16.459 [INFO ] [main    ] [gps] task started
+2026-09-29 01:41:16.460 [INFO ] [main    ] [main] READY (watchdog armed, 30s)
+2026-09-29 01:41:16.461 [INFO ] [main    ] [ntc] reading invalid (open circuit or disconnected)
+2026-09-29 01:41:16.468 [WARNING] [main    ] [as5600] not detected at 0x36
+2026-09-29 01:41:16.499 [INFO ] [main    ] [mqtt] connected (session_present=True)
+2026-09-29 01:41:16.703 [INFO ] [main    ] [wifi] connected ssid=iPhone di Livio ip=172.20.10.2 mac=2c:cf:67:7d:14:65
+2026-09-29 01:41:22.468 [WARNING] [main    ] [gps] connect failed: timed out; retry in 1.0s
+2026-09-29 01:41:23.523 [INFO ] [main    ] [gps] connected to 14:13:0B:C0:B2:1E (socket RFCOMM)
+2026-09-29 01:41:23.668 [INFO ] [main    ] [gps] first NMEA: $GPRMC,234123.6,A,4529.645557,N,00912.36...

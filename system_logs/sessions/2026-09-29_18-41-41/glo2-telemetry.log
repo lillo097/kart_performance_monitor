@@ -1,0 +1,67 @@
+2026-09-29 18:41:41.770 [INFO ] [main    ] [SESSION] started id=2026-09-29_18-41-41
+2026-09-29 18:41:41.772 [INFO ] [main    ] [SESSION] directory=/home/lillo97/kart_performance_monitor/system_logs/sessions/2026-09-29_18-41-41
+2026-09-29 18:41:41.772 [INFO ] [main    ] [SESSION] files=glo2-telemetry.log, boot.json, raw.jsonl, events.jsonl
+2026-09-29 18:41:41.773 [INFO ] [main    ] === Kart Telemetry v2.1.0 starting ===
+2026-09-29 18:41:41.774 [INFO ] [main    ] [main] hostname=raspberrypi pid=651
+2026-09-29 18:41:41.775 [INFO ] [main    ] [main] mqtt_client_id=RPi-KART-7bdaee6eaf80 broker=broker.hivemq.com:1883
+2026-09-29 18:41:41.776 [INFO ] [main    ] [i2c] bus 1 opened
+2026-09-29 18:41:41.777 [INFO ] [main    ] ====================================================
+2026-09-29 18:41:41.777 [INFO ] [main    ] KART TELEMETRY - STARTUP CHECK
+2026-09-29 18:41:41.777 [INFO ] [main    ] ====================================================
+2026-09-29 18:41:41.778 [WARNING] [main    ] [check] NTC (ADC): no ADC
+2026-09-29 18:41:41.779 [WARNING] [main    ] [check] AS5600 I2C: not found
+2026-09-29 18:41:41.779 [INFO ] [main    ] [check] Garmin GLO2 verification in background
+2026-09-29 18:41:41.779 [INFO ] [main    ] [check] WiFi verification in background
+2026-09-29 18:41:41.780 [INFO ] [main    ] ====================================================
+2026-09-29 18:41:42.167 [INFO ] [main    ] [mqtt] connecting...
+2026-09-29 18:41:42.179 [ERROR] [main    ] [mqtt] initial connect failed: [Errno -3] Temporary failure in name resolution; paho will retry
+2026-09-29 18:41:42.183 [INFO ] [main    ] [gps] task started
+2026-09-29 18:41:42.184 [INFO ] [main    ] [main] READY (watchdog armed, 30s)
+2026-09-29 18:41:42.185 [INFO ] [main    ] [ntc] reading invalid (open circuit or disconnected)
+2026-09-29 18:41:42.187 [WARNING] [main    ] [as5600] not detected at 0x36
+2026-09-29 18:41:42.420 [WARNING] [main    ] [wifi] no active connection
+2026-09-29 18:41:48.233 [WARNING] [main    ] [gps] connect failed: timed out; retry in 1.0s
+2026-09-29 18:41:50.327 [WARNING] [main    ] [gps] connect failed: [Errno 112] Host is down; retry in 1.5s
+2026-09-29 18:41:53.501 [INFO ] [main    ] [wifi] connected ssid=WINDTRE-E9B808 ip=192.168.1.25 mac=2c:cf:67:7d:14:65
+2026-09-29 18:41:54.833 [WARNING] [main    ] [gps] connect failed: timed out; retry in 2.2s
+2026-09-29 18:42:00.146 [WARNING] [main    ] [gps] connect failed: timed out; retry in 3.0s
+2026-09-29 18:42:06.297 [WARNING] [main    ] [gps] connect failed: timed out; retry in 3.0s
+2026-09-29 18:42:12.308 [WARNING] [main    ] [gps] connect failed: timed out; retry in 3.0s
+2026-09-29 18:43:15.562 [WARNING] [main    ] [gps] connect failed: timed out; retry in 3.0s
+2026-09-29 18:43:17.145 [WARNING] [main    ] [wifi] no active connection
+2026-09-29 18:43:21.578 [WARNING] [main    ] [gps] connect failed: timed out; retry in 3.0s
+2026-09-29 18:43:27.584 [WARNING] [main    ] [gps] connect failed: timed out; retry in 3.0s
+2026-09-29 18:43:29.505 [WARNING] [main    ] [wifi] no active connection
+2026-09-29 18:43:33.607 [WARNING] [main    ] [gps] connect failed: timed out; retry in 3.0s
+2026-09-29 18:43:39.615 [WARNING] [main    ] [gps] connect failed: timed out; retry in 3.0s
+2026-09-29 18:43:39.754 [WARNING] [main    ] [wifi] no active connection
+2026-09-29 18:43:45.623 [WARNING] [main    ] [gps] connect failed: timed out; retry in 3.0s
+2026-09-29 18:43:51.628 [WARNING] [main    ] [gps] connect failed: timed out; retry in 3.0s
+2026-09-29 18:43:57.633 [WARNING] [main    ] [gps] connect failed: timed out; retry in 3.0s
+2026-09-29 18:44:03.635 [WARNING] [main    ] [gps] connect failed: timed out; retry in 3.0s
+2026-09-29 18:44:09.643 [WARNING] [main    ] [gps] connect failed: timed out; retry in 3.0s
+2026-09-29 18:44:15.650 [WARNING] [main    ] [gps] connect failed: timed out; retry in 3.0s
+2026-09-29 18:44:21.655 [WARNING] [main    ] [gps] connect failed: timed out; retry in 3.0s
+2026-09-29 18:44:27.660 [WARNING] [main    ] [gps] connect failed: timed out; retry in 3.0s
+2026-09-29 18:44:33.666 [WARNING] [main    ] [gps] connect failed: timed out; retry in 3.0s
+2026-09-29 18:44:39.670 [WARNING] [main    ] [gps] connect failed: timed out; retry in 3.0s
+2026-09-29 18:44:45.675 [WARNING] [main    ] [gps] connect failed: timed out; retry in 3.0s
+2026-09-29 18:44:51.680 [WARNING] [main    ] [gps] connect failed: timed out; retry in 3.0s
+2026-09-29 18:44:57.685 [WARNING] [main    ] [gps] connect failed: timed out; retry in 3.0s
+2026-09-29 18:45:03.691 [WARNING] [main    ] [gps] connect failed: timed out; retry in 3.0s
+2026-09-29 18:45:09.696 [WARNING] [main    ] [gps] connect failed: timed out; retry in 3.0s
+2026-09-29 18:45:15.703 [WARNING] [main    ] [gps] connect failed: timed out; retry in 3.0s
+2026-09-29 18:45:21.708 [WARNING] [main    ] [gps] connect failed: timed out; retry in 3.0s
+2026-09-29 18:45:27.713 [WARNING] [main    ] [gps] connect failed: timed out; retry in 3.0s
+2026-09-29 18:45:33.718 [WARNING] [main    ] [gps] connect failed: timed out; retry in 3.0s
+2026-09-29 18:45:39.723 [WARNING] [main    ] [gps] connect failed: timed out; retry in 3.0s
+2026-09-29 18:45:45.728 [WARNING] [main    ] [gps] connect failed: timed out; retry in 3.0s
+2026-09-29 18:45:51.733 [WARNING] [main    ] [gps] connect failed: timed out; retry in 3.0s
+2026-09-29 18:45:57.738 [WARNING] [main    ] [gps] connect failed: timed out; retry in 3.0s
+2026-09-29 18:46:03.742 [WARNING] [main    ] [gps] connect failed: timed out; retry in 3.0s
+2026-09-29 18:46:09.747 [WARNING] [main    ] [gps] connect failed: timed out; retry in 3.0s
+2026-09-29 18:46:15.752 [WARNING] [main    ] [gps] connect failed: timed out; retry in 3.0s
+2026-09-29 18:46:21.755 [WARNING] [main    ] [gps] connect failed: timed out; retry in 3.0s
+2026-09-29 18:46:25.307 [INFO ] [main    ] [main] signal 15 received, shutting down
+2026-09-29 18:46:25.515 [INFO ] [session ] [SESSION] closed id=2026-09-29_18-41-41 reason=shutdown
+2026-09-29 18:46:25.516 [INFO ] [main    ] === shutdown complete ===

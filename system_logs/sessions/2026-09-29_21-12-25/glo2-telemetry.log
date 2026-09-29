@@ -1,0 +1,28 @@
+2026-09-29 21:12:25.551 [INFO ] [main    ] [SESSION] started id=2026-09-29_21-12-25
+2026-09-29 21:12:25.552 [INFO ] [main    ] [SESSION] directory=/home/lillo97/kart_performance_monitor/system_logs/sessions/2026-09-29_21-12-25
+2026-09-29 21:12:25.552 [INFO ] [main    ] [SESSION] files=glo2-telemetry.log, boot.json, raw.jsonl, events.jsonl
+2026-09-29 21:12:25.552 [INFO ] [main    ] === Kart Telemetry v2.1.0 starting ===
+2026-09-29 21:12:25.553 [INFO ] [main    ] [main] hostname=raspberrypi pid=667
+2026-09-29 21:12:25.553 [INFO ] [main    ] [main] mqtt_client_id=RPi-KART-2ccf677d1465 broker=broker.hivemq.com:1883
+2026-09-29 21:12:25.555 [INFO ] [main    ] [i2c] bus 1 opened
+2026-09-29 21:12:25.555 [INFO ] [main    ] ====================================================
+2026-09-29 21:12:25.555 [INFO ] [main    ] KART TELEMETRY - STARTUP CHECK
+2026-09-29 21:12:25.556 [INFO ] [main    ] ====================================================
+2026-09-29 21:12:25.556 [WARNING] [main    ] [check] NTC (ADC): no ADC
+2026-09-29 21:12:25.557 [WARNING] [main    ] [check] AS5600 I2C: not found
+2026-09-29 21:12:25.557 [INFO ] [main    ] [check] Garmin GLO2 verification in background
+2026-09-29 21:12:25.558 [INFO ] [main    ] [check] WiFi verification in background
+2026-09-29 21:12:25.558 [INFO ] [main    ] ====================================================
+2026-09-29 21:12:25.951 [INFO ] [main    ] [wifi] active ssid=WINDTRE-E9B808 ip=192.168.1.25
+2026-09-29 21:12:25.952 [INFO ] [main    ] [mqtt] connecting...
+2026-09-29 21:12:26.070 [INFO ] [main    ] [gps] task started
+2026-09-29 21:12:26.071 [INFO ] [main    ] [main] READY (watchdog armed, 30s)
+2026-09-29 21:12:26.073 [INFO ] [main    ] [ntc] reading invalid (open circuit or disconnected)
+2026-09-29 21:12:26.074 [WARNING] [main    ] [as5600] not detected at 0x36
+2026-09-29 21:12:26.299 [INFO ] [main    ] [wifi] connected ssid=WINDTRE-E9B808 ip=192.168.1.25 mac=2c:cf:67:7d:14:65
+2026-09-29 21:12:30.488 [INFO ] [main    ] [gps] connected to 14:13:0B:C0:B2:1E (socket RFCOMM)
+2026-09-29 21:12:30.505 [INFO ] [main    ] [gps] first NMEA: $GPRMC,214603.7,V,4529.647018,N,00912.36...
+2026-09-29 21:12:32.546 [INFO ] [main    ] [mqtt] connected (session_present=False)
+2026-09-29 23:46:49.178 [INFO ] [main    ] [main] signal 15 received, shutting down
+2026-09-29 23:46:50.216 [INFO ] [session ] [SESSION] closed id=2026-09-29_21-12-25 reason=shutdown
+2026-09-29 23:46:50.217 [INFO ] [main    ] === shutdown complete ===
