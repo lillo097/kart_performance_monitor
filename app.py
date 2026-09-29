@@ -4052,7 +4052,7 @@ body{
             <span class="sep">|</span>
             <span id="dataAge"></span>
             <span class="sep">|</span>
-            <span class="status-badge" id="sessionStatusBadge"><span class="status-fill" id="sessionStatusText">RUNNING</span></span>
+            <span class="status-badge" id="sessionStatusBadge"><span class="status-fill" id="sessionStatusText">IN ATTESA</span></span>
         </div>
     </div>
 
@@ -4507,8 +4507,19 @@ async function refresh() {
                 : "--s";
 
         const statusBadge = document.getElementById("sessionStatusBadge");
-        const sessStatus = data.session_status || "idle";
-        statusBadge.classList.toggle("active", sessStatus === "running");
+        const sessionStatus = data.session_status || "idle";
+        const statusLabels = {
+            idle: "IN ATTESA",
+            running: "IN CORSO",
+            paused: "IN PAUSA",
+            stopped: "STOP"
+        };
+        document.getElementById("sessionStatusText").textContent =
+            statusLabels[sessionStatus] || statusLabels.idle;
+        statusBadge.classList.toggle(
+            "active",
+            sessionStatus === "running" || sessionStatus === "paused"
+        );
 
         updateDelta(data.delta);
 
@@ -4608,6 +4619,7 @@ def dashboard_page():
 def api_telemetry():
     with lock:
         speed = latest_sensors.get("speed_kmph", 0.0)
+        sess_status = session.get("status", "idle")
 
         rpm = latest_sensors.get("ir_rpm")
 
