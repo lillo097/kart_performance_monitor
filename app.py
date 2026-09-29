@@ -99,6 +99,7 @@ sensor_status = {
 }
 
 SENSOR_OFFLINE_TIMEOUT_S = 5 * 60
+DATA_AGE_SAMPLE_INTERVAL_S = 0.25
 
 FIX_TYPE_LABELS = {
     0: "No Fix",
@@ -2185,6 +2186,39 @@ def autosave_if_due(force=False):
 
 
 last_autosave_epoch = 0.0
+
+
+def data_age_sampling_loop():
+    while True:
+        tick_started = time.monotonic()
+        with lock:
+            if session.get("status") == "running":
+                now_epoch = time.time()
+                last_message_epoch = runtime.get(
+                    "mqtt_last_message_epoch", 0.0
+                )
+                data_age_s = (
+                    round(now_epoch - last_message_epoch, 3)
+                    if last_message_epoch
+                    else None
+                )
+                session["data_age_samples"].append({
+                    "at_epoch": now_epoch,
+                    "data_age_s": data_age_s,
+                })
+                try:
+                    autosave_if_due()
+                except Exception as error:
+                    runtime["last_error"] = (
+                        f"Session autosave failed: {error}"
+                    )
+                    print(f"[SESSION] autosave failed: {error}")
+
+        remaining = DATA_AGE_SAMPLE_INTERVAL_S - (
+            time.monotonic() - tick_started
+        )
+        if remaining > 0:
+            time.sleep(remaining)
 
 
 def reset_session():
@@ -4666,18 +4700,6 @@ def api_telemetry():
         else:
             data_age_s = None
 
-        sess_status = session.get("status", "idle")
-        if sess_status in {"running", "paused"}:
-            session["data_age_samples"].append({
-                "at_epoch": now_epoch,
-                "data_age_s": data_age_s,
-            })
-            try:
-                autosave_if_due()
-            except Exception as error:
-                runtime["last_error"] = f"Session autosave failed: {error}"
-                print(f"[SESSION] autosave failed: {error}")
-
         sector_event_data = None
 
         if session.get("last_sector_result"):
@@ -4935,6 +4957,7 @@ def shutdown_application(mqtt_client):
 
 if __name__ == "__main__":
     threading.Thread(target=watchdog_loop, daemon=True).start()
+    threading.Thread(target=data_age_sampling_loop, daemon=True).start()
 
     mqtt_client = start_mqtt()
 

@@ -31,7 +31,7 @@ from flask import Flask, jsonify, render_template_string, request
 # Bootstrap: .env + variabili d'ambiente
 # =============================================================
 
-BASE_DIR = Path(__file__).resolve().parent
+BASE_DIR = Path(__file__).resolve().parent.parent
 
 
 def load_dotenv_if_present():
@@ -1066,14 +1066,15 @@ function renderMapLayers(){
     clearMapLayers();
 
     const session = state.session;
-    if (!session || !Array.isArray(session.laps)){
+    if (!session){
         updateMapOverlay();
         updateLegend();
         return;
     }
 
+    const laps = getSessionLaps();
     const selected = [];
-    session.laps.forEach((lap, idx) => {
+    laps.forEach((lap, idx) => {
         if (state.selectedLaps.has(lap.lap_number)) selected.push({ lap, idx });
     });
 
@@ -1156,13 +1157,14 @@ function updateMapOverlay(){
 
 function updateLegend(){
     const legend = $("legend");
-    if (!state.session || !Array.isArray(state.session.laps) || state.selectedLaps.size === 0){
+    const laps = getSessionLaps();
+    if (!laps.length || state.selectedLaps.size === 0){
         legend.style.display = "none";
         return;
     }
 
     const selected = [];
-    state.session.laps.forEach((lap, idx) => {
+    laps.forEach((lap, idx) => {
         if (state.selectedLaps.has(lap.lap_number)) selected.push({ lap, idx });
     });
     if (!selected.length){
@@ -1176,11 +1178,14 @@ function updateLegend(){
         const lap = selected[0].lap;
         const speeds = (lap.track_points && lap.track_points.speed_kmph) || [];
         const finite = speeds.filter(Number.isFinite);
+        const lapLabel = lap.is_warmup
+            ? "Percorso iniziale"
+            : "Giro " + lap.lap_number + (lap.is_in_progress ? " (in corso)" : "");
         if (finite.length){
             const min = Math.round(Math.min.apply(null, finite));
             const max = Math.round(Math.max.apply(null, finite));
             items.push(
-                '<div class="legend-item"><strong>Giro ' + lap.lap_number +
+                '<div class="legend-item"><strong>' + lapLabel +
                 ' — velocità (' + fmtTime(lap.lap_time_s) + ')</strong></div>' +
                 '<div style="display:flex;align-items:center;gap:6px;margin-top:6px;">' +
                     '<span class="mono" style="font-size:10px;">' + min + '</span>' +
@@ -1196,17 +1201,20 @@ function updateLegend(){
                 '<div class="legend-item">' +
                     '<span class="swatch" style="background:' +
                     PALETTE[selected[0].idx % PALETTE.length] + ';"></span>' +
-                    '<span>Giro ' + lap.lap_number + ' — ' + fmtTime(lap.lap_time_s) + '</span>' +
+                    '<span>' + lapLabel + ' — ' + fmtTime(lap.lap_time_s) + '</span>' +
                 '</div>'
             );
         }
     } else {
         selected.forEach(({ lap, idx }) => {
             const color = PALETTE[idx % PALETTE.length];
+            const label = lap.is_warmup
+                ? "Percorso iniziale"
+                : "Giro " + lap.lap_number + (lap.is_in_progress ? " (in corso)" : "");
             items.push(
                 '<div class="legend-item">' +
                     '<span class="swatch" style="background:' + color + ';"></span>' +
-                    '<span>Giro ' + lap.lap_number + ' — ' + fmtTime(lap.lap_time_s) + '</span>' +
+                    '<span>' + label + ' — ' + fmtTime(lap.lap_time_s) + '</span>' +
                 '</div>'
             );
         });
@@ -1266,7 +1274,9 @@ function buildDataset(lap, idx, keyY){
     }
     const color = PALETTE[idx % PALETTE.length];
     return {
-        label: "Giro " + lap.lap_number,
+        label: lap.is_warmup
+            ? "Percorso iniziale"
+            : "Giro " + lap.lap_number + (lap.is_in_progress ? " (in corso)" : ""),
         data,
         borderColor: color,
         backgroundColor: color + "22",
@@ -1355,7 +1365,7 @@ function lapEventMarkers(lap){
 
 function sessionEventMarkers(laps){
     const session = state.session;
-    if (!session || !Array.isArray(session.laps)) return [];
+    if (!session) return [];
     const startEpoch = session.started_at ? Date.parse(session.started_at) / 1000 : NaN;
     if (!Number.isFinite(startEpoch)) return [];
 
@@ -1437,9 +1447,7 @@ function dataAgeSamples(){
 }
 
 function renderDataAge(){
-    const allLaps = state.session && Array.isArray(state.session.laps)
-        ? state.session.laps
-        : [];
+    const allLaps = getSessionLaps();
     const selectedLaps = allLaps.filter(lap =>
         state.selectedLaps.has(lap.lap_number)
     );
@@ -1627,14 +1635,14 @@ function renderChart(id, canvasId, selected, keyY, yLabel){
 
 function renderLapsTable(){
     const tbody = $("lapsTableBody");
-    const session = state.session;
-    if (!session || !Array.isArray(session.laps) || !session.laps.length){
+    const laps = getSessionLaps();
+    if (!state.session || !laps.length){
         tbody.innerHTML = '<tr><td colspan="8" class="empty-state">Nessuna sessione caricata.</td></tr>';
         return;
     }
 
     const rows = [];
-    session.laps.forEach((lap, idx) => {
+    laps.forEach((lap, idx) => {
         const selected = state.selectedLaps.has(lap.lap_number) ? " selected" : "";
         const sectors = lap.sectors_s || [];
         const s1 = sectors[0] != null ? sectors[0].toFixed(3) : "—";
@@ -1645,20 +1653,25 @@ function renderLapsTable(){
             ';width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:middle;"></span>';
         const nPoints = (lap.track_points && lap.track_points.latitude)
             ? lap.track_points.latitude.length : 0;
-        const valid = lap.valid
-            ? '<span class="badge valid">Valido</span>'
-            : '<span class="badge invalid">' + escapeHtml(lap.aborted_reason || "invalido") + '</span>';
+        const status = lap.is_warmup
+            ? '<span class="badge">Percorso iniziale</span>'
+            : lap.is_in_progress
+                ? '<span class="badge">In corso</span>'
+                : lap.valid
+                    ? '<span class="badge valid">Valido</span>'
+                    : '<span class="badge invalid">' + escapeHtml(lap.aborted_reason || "invalido") + '</span>';
+        const label = lap.is_warmup ? "Pista" : "#" + lap.lap_number;
 
         rows.push(
             '<tr class="lap-row' + selected + '" data-lap="' + lap.lap_number + '">' +
-                '<td class="mono">' + swatch + lap.lap_number + '</td>' +
+                '<td class="mono">' + swatch + label + '</td>' +
                 '<td class="mono">' + fmtTime(lap.lap_time_s) + '</td>' +
                 '<td class="mono">' + s1 + '</td>' +
                 '<td class="mono">' + s2 + '</td>' +
                 '<td class="mono">' + s3 + '</td>' +
                 '<td class="mono">' + (lap.lap_distance_m != null ? Math.round(lap.lap_distance_m) + ' m' : '—') + '</td>' +
                 '<td class="mono">' + nPoints + '</td>' +
-                '<td>' + valid + '</td>' +
+                '<td>' + status + '</td>' +
             '</tr>'
         );
     });
@@ -1674,13 +1687,13 @@ function renderLapsTable(){
 function renderEventsTable(){
     const tbody = $("eventsTableBody");
     const session = state.session;
-    if (!session || !Array.isArray(session.laps) || !session.laps.length){
+    if (!session){
         tbody.innerHTML = '<tr><td colspan="4" class="empty-state">Nessun evento.</td></tr>';
         return;
     }
 
     const rows = [];
-    session.laps.forEach(lap => {
+    getSessionLaps().forEach(lap => {
         if (!state.selectedLaps.has(lap.lap_number)) return;
         const events = Array.isArray(lap.events) ? lap.events : [];
         for (const ev of events){
@@ -1743,13 +1756,137 @@ function renderStats(){
 }
 
 function getSelectedLaps(){
-    const s = state.session;
-    if (!s || !Array.isArray(s.laps)) return [];
+    const laps = getSessionLaps();
     const out = [];
-    s.laps.forEach((lap, idx) => {
+    laps.forEach((lap, idx) => {
         if (state.selectedLaps.has(lap.lap_number)) out.push({ lap, idx });
     });
     return out;
+}
+
+function getSessionLaps(){
+    const session = state.session;
+    if (!session) return [];
+
+    const toNumber = value => {
+        const number = Number(value);
+        return value !== null && value !== undefined && Number.isFinite(number)
+            ? number
+            : null;
+    };
+    const laps = Array.isArray(session.laps) ? [...session.laps] : [];
+    const warmup = session.warmup_and_pitlane_raw;
+
+    if (warmup){
+        const fields = [
+            "received_at_epoch", "latitude", "longitude", "speed_kmph",
+            "satellites_used", "hdop", "temperature_c", "as5600_rpm", "ir_rpm",
+        ];
+        const points = {};
+        if (Array.isArray(warmup)){
+            for (const field of fields){
+                points[field] = warmup.map(point => toNumber(point && point[field]));
+            }
+        } else {
+            for (const field of fields){
+                points[field] = Array.isArray(warmup[field])
+                    ? warmup[field].map(toNumber)
+                    : [];
+            }
+        }
+
+        const count = Math.max(0, ...fields.map(field => points[field].length));
+        if (count){
+            for (const field of fields){
+                while (points[field].length < count) points[field].push(null);
+            }
+            points.lap_elapsed_s = [];
+            points.lap_distance_m = [];
+            points.delta_live_s = Array(count).fill(null);
+
+            const firstEpoch = points.received_at_epoch.find(Number.isFinite);
+            let distance = 0;
+            let previousCoordinate = null;
+            for (let i = 0; i < count; i++){
+                const latitude = points.latitude[i];
+                const longitude = points.longitude[i];
+                if (Number.isFinite(latitude) && Number.isFinite(longitude)
+                    && !(latitude === 0 && longitude === 0)){
+                    if (previousCoordinate){
+                        const toRadians = degrees => degrees * Math.PI / 180;
+                        const dLat = toRadians(latitude - previousCoordinate.latitude);
+                        const dLon = toRadians(longitude - previousCoordinate.longitude);
+                        const a = Math.min(1, Math.max(0,
+                            Math.sin(dLat / 2) ** 2
+                            + Math.cos(toRadians(previousCoordinate.latitude))
+                            * Math.cos(toRadians(latitude))
+                            * Math.sin(dLon / 2) ** 2
+                        ));
+                        distance += 6371000 * 2 * Math.atan2(
+                            Math.sqrt(a), Math.sqrt(1 - a)
+                        );
+                    }
+                    previousCoordinate = { latitude, longitude };
+                }
+                const epoch = points.received_at_epoch[i];
+                points.lap_elapsed_s.push(
+                    Number.isFinite(epoch) && Number.isFinite(firstEpoch)
+                        ? Math.max(0, epoch - firstEpoch)
+                        : null
+                );
+                points.lap_distance_m.push(distance);
+            }
+
+            const epochs = points.received_at_epoch.filter(Number.isFinite);
+            laps.unshift({
+                lap_number: -1,
+                lap_time_s: epochs.length > 1 ? epochs[epochs.length - 1] - epochs[0] : null,
+                lap_distance_m: distance,
+                valid: false,
+                is_warmup: true,
+                started_at_epoch: epochs.length ? epochs[0] : null,
+                ended_at_epoch: epochs.length ? epochs[epochs.length - 1] : null,
+                sectors_s: [],
+                events: [],
+                track_points: points,
+            });
+        }
+    }
+
+    const current = session.current_lap_in_progress;
+    if (current && current.track_points){
+        const trackPoints = current.track_points;
+        const epochs = Array.isArray(trackPoints.received_at_epoch)
+            ? trackPoints.received_at_epoch.map(toNumber).filter(Number.isFinite)
+            : [];
+        const elapsed = Array.isArray(trackPoints.lap_elapsed_s)
+            ? trackPoints.lap_elapsed_s.map(toNumber).filter(Number.isFinite)
+            : [];
+        const startedAt = toNumber(current.started_at_epoch);
+        const endedAt = epochs.length
+            ? epochs[epochs.length - 1]
+            : (startedAt !== null && elapsed.length ? startedAt + elapsed[elapsed.length - 1] : null);
+        const lapNumber = toNumber(current.lap_number);
+        if (lapNumber !== null && !laps.some(lap => lap.lap_number === lapNumber)){
+            const distances = Array.isArray(trackPoints.lap_distance_m)
+                ? trackPoints.lap_distance_m.map(toNumber).filter(Number.isFinite)
+                : [];
+            laps.push({
+                ...current,
+                sectors_s: current.current_lap_sectors_s || [],
+                lap_time_s: startedAt !== null && endedAt !== null
+                    ? Math.max(0, endedAt - startedAt)
+                    : (elapsed.length ? elapsed[elapsed.length - 1] : null),
+                ended_at_epoch: endedAt,
+                lap_distance_m: toNumber(current.current_lap_distance_m)
+                    ?? (distances.length ? distances[distances.length - 1] : null),
+                valid: false,
+                is_in_progress: true,
+            });
+        }
+    }
+
+    return laps;
 }
 
 function toggleLap(lapNumber){
@@ -1763,10 +1900,9 @@ function toggleLap(lapNumber){
 }
 
 function selectAllLaps(){
-    const s = state.session;
-    if (!s || !Array.isArray(s.laps)) return;
+    const laps = getSessionLaps();
     state.selectedLaps.clear();
-    for (const lap of s.laps) state.selectedLaps.add(lap.lap_number);
+    for (const lap of laps) state.selectedLaps.add(lap.lap_number);
     renderLapList();
     renderLapsTable();
     renderEventsTable();
@@ -1872,13 +2008,7 @@ async function loadSession(path){
         state.session = session;
         state.selectedLaps.clear();
 
-        if (Array.isArray(session.laps)){
-            const validLaps = session.laps.filter(l => l.valid);
-            validLaps.slice(0, 2).forEach(l => state.selectedLaps.add(l.lap_number));
-            if (!state.selectedLaps.size && session.laps.length){
-                state.selectedLaps.add(session.laps[0].lap_number);
-            }
-        }
+        getSessionLaps().forEach(lap => state.selectedLaps.add(lap.lap_number));
 
         renderSessionList();
         renderStats();
@@ -1897,8 +2027,9 @@ async function loadSession(path){
 function renderLapList(){
     const list = $("lapList");
     const s = state.session;
+    const laps = getSessionLaps();
 
-    if (!s || !Array.isArray(s.laps) || !s.laps.length){
+    if (!s || !laps.length){
         list.innerHTML =
             '<div class="empty-state" style="padding:16px 4px;">Seleziona una sessione.</div>';
         $("selectAllBtn").disabled = true;
@@ -1909,17 +2040,23 @@ function renderLapList(){
     $("selectAllBtn").disabled = false;
     $("clearAllBtn").disabled = false;
 
-    list.innerHTML = s.laps.map((lap, idx) => {
+    list.innerHTML = laps.map((lap, idx) => {
         const checked = state.selectedLaps.has(lap.lap_number);
-        const classes = ["lap-item", checked ? "checked" : "", lap.valid ? "" : "invalid"]
+        const classes = [
+            "lap-item",
+            checked ? "checked" : "",
+            !lap.valid && !lap.is_in_progress && !lap.is_warmup ? "invalid" : "",
+        ]
             .filter(Boolean).join(" ");
+        const badge = lap.is_warmup ? "raw" : lap.is_in_progress ? "in corso" : lap.valid ? "ok" : "no";
+        const label = lap.is_warmup ? "Pista" : "#" + lap.lap_number;
         return (
             '<div class="' + classes + '" data-lap="' + lap.lap_number + '">' +
                 '<span class="lap-swatch" style="background:' + PALETTE[idx % PALETTE.length] + ';"></span>' +
-                '<span class="lap-num">#' + lap.lap_number + '</span>' +
+                '<span class="lap-num">' + label + '</span>' +
                 '<span class="lap-time">' + fmtTime(lap.lap_time_s) + '</span>' +
-                '<span class="lap-badge ' + (lap.valid ? "valid" : "invalid") + '">' +
-                    (lap.valid ? "ok" : "no") + '</span>' +
+                '<span class="lap-badge ' + (lap.valid ? "valid" : lap.is_in_progress || lap.is_warmup ? "" : "invalid") + '">' +
+                    badge + '</span>' +
             '</div>'
         );
     }).join("");
