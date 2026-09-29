@@ -1,0 +1,48 @@
+{"ts_epoch": 1790700101.776, "ts_iso": "2026-09-29T18:41:41.775+02:00", "event": "service_start", "pid": 651, "app_version": "2.1.0", "hostname": "raspberrypi"}
+{"ts_epoch": 1790700101.781, "ts_iso": "2026-09-29T18:41:41.780+02:00", "event": "hardware_check", "ntc": false, "as5600": false, "ir_rpm": false, "gps": false}
+{"ts_epoch": 1790700102.186, "ts_iso": "2026-09-29T18:41:42.186+02:00", "event": "sensor_lost", "sensor": "ntc"}
+{"ts_epoch": 1790700102.188, "ts_iso": "2026-09-29T18:41:42.188+02:00", "event": "sensor_lost", "sensor": "as5600"}
+{"ts_epoch": 1790700102.421, "ts_iso": "2026-09-29T18:41:42.421+02:00", "event": "wifi_disconnect"}
+{"ts_epoch": 1790700108.238, "ts_iso": "2026-09-29T18:41:48.238+02:00", "event": "bt_connect_failed", "reason": "timed out", "backoff_s": 1.0}
+{"ts_epoch": 1790700110.329, "ts_iso": "2026-09-29T18:41:50.328+02:00", "event": "bt_connect_failed", "reason": "[Errno 112] Host is down", "backoff_s": 1.5}
+{"ts_epoch": 1790700113.503, "ts_iso": "2026-09-29T18:41:53.502+02:00", "event": "wifi_connect", "ssid": "WINDTRE-E9B808", "ip": "192.168.1.25", "mac": "2c:cf:67:7d:14:65"}
+{"ts_epoch": 1790700114.84, "ts_iso": "2026-09-29T18:41:54.840+02:00", "event": "bt_connect_failed", "reason": "timed out", "backoff_s": 2.25}
+{"ts_epoch": 1790700120.147, "ts_iso": "2026-09-29T18:42:00.146+02:00", "event": "bt_connect_failed", "reason": "timed out", "backoff_s": 3.0}
+{"ts_epoch": 1790700126.306, "ts_iso": "2026-09-29T18:42:06.306+02:00", "event": "bt_connect_failed", "reason": "timed out", "backoff_s": 3.0}
+{"ts_epoch": 1790700132.312, "ts_iso": "2026-09-29T18:42:12.311+02:00", "event": "bt_connect_failed", "reason": "timed out", "backoff_s": 3.0}
+{"ts_epoch": 1790700195.572, "ts_iso": "2026-09-29T18:43:15.571+02:00", "event": "bt_connect_failed", "reason": "timed out", "backoff_s": 3.0}
+{"ts_epoch": 1790700197.151, "ts_iso": "2026-09-29T18:43:17.150+02:00", "event": "wifi_disconnect"}
+{"ts_epoch": 1790700201.58, "ts_iso": "2026-09-29T18:43:21.579+02:00", "event": "bt_connect_failed", "reason": "timed out", "backoff_s": 3.0}
+{"ts_epoch": 1790700207.592, "ts_iso": "2026-09-29T18:43:27.592+02:00", "event": "bt_connect_failed", "reason": "timed out", "backoff_s": 3.0}
+{"ts_epoch": 1790700209.507, "ts_iso": "2026-09-29T18:43:29.507+02:00", "event": "wifi_disconnect"}
+{"ts_epoch": 1790700213.611, "ts_iso": "2026-09-29T18:43:33.611+02:00", "event": "bt_connect_failed", "reason": "timed out", "backoff_s": 3.0}
+{"ts_epoch": 1790700219.619, "ts_iso": "2026-09-29T18:43:39.618+02:00", "event": "bt_connect_failed", "reason": "timed out", "backoff_s": 3.0}
+{"ts_epoch": 1790700219.756, "ts_iso": "2026-09-29T18:43:39.756+02:00", "event": "wifi_disconnect"}
+{"ts_epoch": 1790700225.624, "ts_iso": "2026-09-29T18:43:45.624+02:00", "event": "bt_connect_failed", "reason": "timed out", "backoff_s": 3.0}
+{"ts_epoch": 1790700231.629, "ts_iso": "2026-09-29T18:43:51.628+02:00", "event": "bt_connect_failed", "reason": "timed out", "backoff_s": 3.0}
+{"ts_epoch": 1790700237.634, "ts_iso": "2026-09-29T18:43:57.633+02:00", "event": "bt_connect_failed", "reason": "timed out", "backoff_s": 3.0}
+{"ts_epoch": 1790700243.639, "ts_iso": "2026-09-29T18:44:03.639+02:00", "event": "bt_connect_failed", "reason": "timed out", "backoff_s": 3.0}
+{"ts_epoch": 1790700249.644, "ts_iso": "2026-09-29T18:44:09.644+02:00", "event": "bt_connect_failed", "reason": "timed out", "backoff_s": 3.0}
+{"ts_epoch": 1790700255.651, "ts_iso": "2026-09-29T18:44:15.651+02:00", "event": "bt_connect_failed", "reason": "timed out", "backoff_s": 3.0}
+{"ts_epoch": 1790700261.657, "ts_iso": "2026-09-29T18:44:21.656+02:00", "event": "bt_connect_failed", "reason": "timed out", "backoff_s": 3.0}
+{"ts_epoch": 1790700267.662, "ts_iso": "2026-09-29T18:44:27.661+02:00", "event": "bt_connect_failed", "reason": "timed out", "backoff_s": 3.0}
+{"ts_epoch": 1790700273.667, "ts_iso": "2026-09-29T18:44:33.666+02:00", "event": "bt_connect_failed", "reason": "timed out", "backoff_s": 3.0}
+{"ts_epoch": 1790700279.672, "ts_iso": "2026-09-29T18:44:39.671+02:00", "event": "bt_connect_failed", "reason": "timed out", "backoff_s": 3.0}
+{"ts_epoch": 1790700285.677, "ts_iso": "2026-09-29T18:44:45.676+02:00", "event": "bt_connect_failed", "reason": "timed out", "backoff_s": 3.0}
+{"ts_epoch": 1790700291.681, "ts_iso": "2026-09-29T18:44:51.681+02:00", "event": "bt_connect_failed", "reason": "timed out", "backoff_s": 3.0}
+{"ts_epoch": 1790700297.687, "ts_iso": "2026-09-29T18:44:57.686+02:00", "event": "bt_connect_failed", "reason": "timed out", "backoff_s": 3.0}
+{"ts_epoch": 1790700303.692, "ts_iso": "2026-09-29T18:45:03.692+02:00", "event": "bt_connect_failed", "reason": "timed out", "backoff_s": 3.0}
+{"ts_epoch": 1790700309.697, "ts_iso": "2026-09-29T18:45:09.697+02:00", "event": "bt_connect_failed", "reason": "timed out", "backoff_s": 3.0}
+{"ts_epoch": 1790700315.704, "ts_iso": "2026-09-29T18:45:15.703+02:00", "event": "bt_connect_failed", "reason": "timed out", "backoff_s": 3.0}
+{"ts_epoch": 1790700321.709, "ts_iso": "2026-09-29T18:45:21.709+02:00", "event": "bt_connect_failed", "reason": "timed out", "backoff_s": 3.0}
+{"ts_epoch": 1790700327.714, "ts_iso": "2026-09-29T18:45:27.714+02:00", "event": "bt_connect_failed", "reason": "timed out", "backoff_s": 3.0}
+{"ts_epoch": 1790700333.719, "ts_iso": "2026-09-29T18:45:33.719+02:00", "event": "bt_connect_failed", "reason": "timed out", "backoff_s": 3.0}
+{"ts_epoch": 1790700339.724, "ts_iso": "2026-09-29T18:45:39.724+02:00", "event": "bt_connect_failed", "reason": "timed out", "backoff_s": 3.0}
+{"ts_epoch": 1790700345.729, "ts_iso": "2026-09-29T18:45:45.729+02:00", "event": "bt_connect_failed", "reason": "timed out", "backoff_s": 3.0}
+{"ts_epoch": 1790700351.734, "ts_iso": "2026-09-29T18:45:51.734+02:00", "event": "bt_connect_failed", "reason": "timed out", "backoff_s": 3.0}
+{"ts_epoch": 1790700357.739, "ts_iso": "2026-09-29T18:45:57.739+02:00", "event": "bt_connect_failed", "reason": "timed out", "backoff_s": 3.0}
+{"ts_epoch": 1790700363.743, "ts_iso": "2026-09-29T18:46:03.743+02:00", "event": "bt_connect_failed", "reason": "timed out", "backoff_s": 3.0}
+{"ts_epoch": 1790700369.748, "ts_iso": "2026-09-29T18:46:09.748+02:00", "event": "bt_connect_failed", "reason": "timed out", "backoff_s": 3.0}
+{"ts_epoch": 1790700375.753, "ts_iso": "2026-09-29T18:46:15.752+02:00", "event": "bt_connect_failed", "reason": "timed out", "backoff_s": 3.0}
+{"ts_epoch": 1790700381.756, "ts_iso": "2026-09-29T18:46:21.756+02:00", "event": "bt_connect_failed", "reason": "timed out", "backoff_s": 3.0}
+{"ts_epoch": 1790700385.512, "ts_iso": "2026-09-29T18:46:25.511+02:00", "event": "service_stop", "reason": "shutdown", "uptime_s": 283.742, "samples_published": 1122}

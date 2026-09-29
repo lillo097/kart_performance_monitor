@@ -1,0 +1,10 @@
+{"ts_epoch": 1790709145.554, "ts_iso": "2026-09-29T21:12:25.554+02:00", "event": "service_start", "pid": 667, "app_version": "2.1.0", "hostname": "raspberrypi"}
+{"ts_epoch": 1790709145.559, "ts_iso": "2026-09-29T21:12:25.558+02:00", "event": "hardware_check", "ntc": false, "as5600": false, "ir_rpm": false, "gps": false}
+{"ts_epoch": 1790709145.952, "ts_iso": "2026-09-29T21:12:25.951+02:00", "event": "wifi_connect", "ssid": "WINDTRE-E9B808", "ip": "192.168.1.25", "mac": "2c:cf:67:7d:14:65"}
+{"ts_epoch": 1790709146.074, "ts_iso": "2026-09-29T21:12:26.073+02:00", "event": "sensor_lost", "sensor": "ntc"}
+{"ts_epoch": 1790709146.076, "ts_iso": "2026-09-29T21:12:26.075+02:00", "event": "sensor_lost", "sensor": "as5600"}
+{"ts_epoch": 1790709146.3, "ts_iso": "2026-09-29T21:12:26.300+02:00", "event": "wifi_connect", "ssid": "WINDTRE-E9B808", "ip": "192.168.1.25", "mac": "2c:cf:67:7d:14:65"}
+{"ts_epoch": 1790709150.49, "ts_iso": "2026-09-29T21:12:30.490+02:00", "event": "bt_connect", "mac": "14:13:0B:C0:B2:1E", "rfcomm_channel": 1, "attempt": 1}
+{"ts_epoch": 1790709150.506, "ts_iso": "2026-09-29T21:12:30.505+02:00", "event": "first_nmea", "sentence": "$GPRMC,214603.7,V,4529.647018,N,00912.369565,E,,,290926,001.9,E,N*10"}
+{"ts_epoch": 1790709152.547, "ts_iso": "2026-09-29T21:12:32.546+02:00", "event": "mqtt_connect", "broker": "broker.hivemq.com", "port": 1883, "client_id": "RPi-KART-2ccf677d1465", "session_present": false}
+{"ts_epoch": 1790718410.21, "ts_iso": "2026-09-29T23:46:50.210+02:00", "event": "service_stop", "reason": "shutdown", "uptime_s": 9264.66, "samples_published": 248}
