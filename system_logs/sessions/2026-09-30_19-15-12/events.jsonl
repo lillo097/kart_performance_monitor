@@ -21,3 +21,4 @@
 {"ts_epoch": 1790788811.873, "ts_iso": "2026-09-30T19:20:11.873+02:00", "event": "wifi_disconnect"}
 {"ts_epoch": 1790788822.119, "ts_iso": "2026-09-30T19:20:22.119+02:00", "event": "wifi_disconnect"}
 {"ts_epoch": 1790788824.223, "ts_iso": "2026-09-30T19:20:24.223+02:00", "event": "mqtt_disconnect", "rc": 141, "meaning": "keepalive_timeout", "total_disconnects": 8}
+{"ts_epoch": 1790788856.701, "ts_iso": "2026-09-30T19:20:56.701+02:00", "event": "bt_connect_failed", "reason": "timed out", "backoff_s": 3.0, "attempt": 52}

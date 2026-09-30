@@ -38,3 +38,4 @@
 2026-09-30 19:20:11.872 [WARNING] [main    ] [wifi] no active connection
 2026-09-30 19:20:22.118 [WARNING] [main    ] [wifi] no active connection
 2026-09-30 19:20:24.222 [WARNING] [main    ] [mqtt] disconnected rc=141 (keepalive_timeout); paho will retry [total=8]
+2026-09-30 19:20:56.700 [WARNING] [main    ] [gps] connect failed: timed out; retry in 3.0s (attempt 52, next log in 300s if still failing)
