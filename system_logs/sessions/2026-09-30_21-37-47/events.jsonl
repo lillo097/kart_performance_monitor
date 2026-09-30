@@ -18,3 +18,7 @@
 {"ts_epoch": 1790799345.751, "ts_iso": "2026-09-30T22:15:45.751+02:00", "event": "wifi_connect", "ssid": "iPhone di Livio", "ip": "172.20.10.2", "mac": "2c:cf:67:7d:14:65"}
 {"ts_epoch": 1790799437.907, "ts_iso": "2026-09-30T22:17:17.907+02:00", "event": "sensor_appeared", "sensor": "as5600", "address": "0x36"}
 {"ts_epoch": 1790799437.918, "ts_iso": "2026-09-30T22:17:17.918+02:00", "event": "sensor_lost", "sensor": "as5600"}
+{"ts_epoch": 1790800838.471, "ts_iso": "2026-09-30T22:40:38.471+02:00", "event": "mqtt_disconnect", "rc": 128, "meaning": "unknown", "total_disconnects": 1}
+{"ts_epoch": 1790800848.907, "ts_iso": "2026-09-30T22:40:48.906+02:00", "event": "mqtt_connect", "broker": "broker.hivemq.com", "port": 1883, "client_id": "RPi-KART-2ccf677d1465", "session_present": true}
+{"ts_epoch": 1790800886.222, "ts_iso": "2026-09-30T22:41:26.221+02:00", "event": "wifi_disconnect"}
+{"ts_epoch": 1790800896.433, "ts_iso": "2026-09-30T22:41:36.432+02:00", "event": "wifi_connect", "ssid": "iPhone di Livio", "ip": "172.20.10.2", "mac": "2c:cf:67:7d:14:65"}
