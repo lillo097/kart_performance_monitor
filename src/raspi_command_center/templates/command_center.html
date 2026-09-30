@@ -475,15 +475,24 @@
       function paintService(service) {
         const card = document.querySelector(`[data-service="${service.id}"]`);
         if (!card) return;
-        card.querySelector(".unit-name").textContent = service.unit;
+        const unitName = card.querySelector(".unit-name");
+        if (unitName) unitName.textContent = service.unit;
         const state = card.querySelector(".state");
         const isActive = service.active_state === "active";
-        state.textContent = `${service.active_state} · ${service.sub_state}`;
-        state.className = `state ${isActive ? "active" : service.active_state === "failed" ? "failed" : "inactive"}`;
-        card.querySelector('[data-value="pid"]').textContent = service.main_pid === "0" ? "—" : service.main_pid;
-        card.querySelector('[data-value="substate"]').textContent = service.sub_state || "—";
-        card.querySelector('[data-value="started"]').textContent = formatTime(service.active_since || service.last_started);
-        card.querySelector('[data-value="result"]').textContent = service.result || "—";
+        if (state) {
+          state.textContent = `${service.active_state} · ${service.sub_state}`;
+          state.className = `state ${isActive ? "active" : service.active_state === "failed" ? "failed" : "inactive"}`;
+        }
+        const values = {
+          pid: service.main_pid === "0" ? "—" : service.main_pid,
+          substate: service.sub_state || "—",
+          started: formatTime(service.active_since || service.last_started),
+          result: service.result || "—",
+        };
+        for (const [name, value] of Object.entries(values)) {
+          const element = card.querySelector(`[data-value="${name}"]`);
+          if (element) element.textContent = value;
+        }
         card.querySelectorAll("[data-action]").forEach((button) => { button.disabled = false; });
         const stop = card.querySelector('[data-action="stop"]');
         const start = card.querySelector('[data-action="start"]');
@@ -513,7 +522,7 @@
             document.querySelectorAll("[data-action]").forEach((button) => { button.disabled = true; });
           }
         } catch (error) {
-          setConnected(false, "Configurazione non valida");
+          setConnected(false, "Errore di comunicazione");
           setNotice(error.message, "error");
           document.querySelectorAll("[data-action]").forEach((button) => { button.disabled = true; });
         }
