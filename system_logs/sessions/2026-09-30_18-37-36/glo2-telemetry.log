@@ -40,3 +40,6 @@
 2026-09-30 18:57:43.391 [WARNING] [main    ] [gps] connect failed: timed out; retry in 3.0s (attempt 202, next log in 300s if still failing)
 2026-09-30 19:02:43.539 [WARNING] [main    ] [gps] connect failed: timed out; retry in 3.0s (attempt 252, next log in 300s if still failing)
 2026-09-30 19:07:43.694 [WARNING] [main    ] [gps] connect failed: timed out; retry in 3.0s (attempt 302, next log in 300s if still failing)
+2026-09-30 19:12:43.852 [WARNING] [main    ] [gps] connect failed: timed out; retry in 3.0s (attempt 352, next log in 300s if still failing)
+2026-09-30 19:13:35.269 [INFO ] [main    ] [as5600] detected at 0x36 (magnet_detected=False)
+2026-09-30 19:13:35.275 [WARNING] [main    ] [as5600] not detected at 0x36
