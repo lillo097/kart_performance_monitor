@@ -95,6 +95,7 @@ if not ADC_AVAILABLE:
 MQTT_BROKER = "broker.hivemq.com"
 MQTT_PORT   = 1883
 MQTT_TOPIC  = "sensors2mqtt-glo2/esp32/location"
+SESSION_CONTROL_TOPIC = "sensors2mqtt-glo2/session/control"
 
 STATUS_TOPIC_HOTSPOT = "sensors2mqtt-glo2/esp32/status/hotspot"
 STATUS_TOPIC_MQTT    = "sensors2mqtt-glo2/esp32/status/mqtt"
@@ -708,6 +709,7 @@ def on_mqtt_connect(client, userdata, flags, reason_code, properties=None):
     global _last_mqtt_disconn_log_ts, _last_mqtt_disconn_rc
     rc_val = reason_code if isinstance(reason_code, int) else getattr(reason_code, "value", 1)
     if rc_val == 0:
+        client.subscribe(SESSION_CONTROL_TOPIC, qos=1)
         mqtt_connected = True
         force_publish_all_statuses = True
         for k in published:
@@ -770,6 +772,30 @@ def on_mqtt_disconnect(
 
     _last_mqtt_state = False
 
+def on_mqtt_message(client, userdata, message):
+    global log
+
+    if message.topic != SESSION_CONTROL_TOPIC:
+        return
+
+    try:
+        payload = json.loads(message.payload.decode("utf-8"))
+        if not isinstance(payload, dict):
+            raise ValueError("session control payload must be a JSON object")
+
+        if payload.get("event") != "session_started":
+            return
+
+        session_guid = str(uuid.UUID(str(payload.get("session_guid", ""))))
+        if session_logger is None:
+            raise RuntimeError("session logger is not initialized")
+
+        session_logger.set_session_guid(session_guid)
+        log = setup_logging(session_logger.session_dir)
+        log.info(f"[SESSION] received session_guid={session_guid}")
+    except (UnicodeDecodeError, json.JSONDecodeError, ValueError, RuntimeError, OSError) as error:
+        log.error(f"[mqtt] invalid session control message: {error}")
+
 def build_mqtt_client():
     try:
         from paho.mqtt.client import CallbackAPIVersion
@@ -791,6 +817,7 @@ def build_mqtt_client():
     c.will_set(ALIVE_TOPIC, json.dumps({"alive": False}), qos=1, retain=True)
     c.on_connect = on_mqtt_connect
     c.on_disconnect = on_mqtt_disconnect
+    c.on_message = on_mqtt_message
     return c
 
 def publish_status(topic, component, present):

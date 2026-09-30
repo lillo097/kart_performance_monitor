@@ -8,6 +8,7 @@ mqtt:
   websocket_port: 8000
   websocket_path: "/mqtt"
   topic: "sensors2mqtt-glo2/esp32/location"
+  session_control_topic: "sensors2mqtt-glo2/session/control"
   keepalive_s: 60
 
 dashboard:

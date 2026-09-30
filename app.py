@@ -5,6 +5,7 @@ import math
 import signal
 import threading
 import time
+import uuid
 from copy import deepcopy
 from datetime import datetime
 from pathlib import Path
@@ -122,6 +123,8 @@ runtime = {
     "telemetry_payload_received": False,
     "last_error": None,
 }
+
+mqtt_client = None
 
 # Driver + pista "in anteprima" quando si va in dashboard senza START.
 preview = {
@@ -358,6 +361,7 @@ def new_session_state():
 
     return {
         "status": "idle",
+        "session_guid": None,
         "driver": None,
         "started_at": None,
         "paused_at": None,
@@ -2112,9 +2116,10 @@ def serializable_session():
     tp_count = session.get("session_track_point_count", 0)
 
     return {
-        "schema_version": 12,
+        "schema_version": 13,
         "saved_at": now_iso(),
         "status": session["status"],
+        "session_guid": session.get("session_guid"),
         "driver": deepcopy(session["driver"]),
         "track": deepcopy(TRACK_CONFIG.get("track", {})),
         "track_config": deepcopy(TRACK_CONFIG),
@@ -2244,6 +2249,7 @@ def start_recording_session(driver, source="mqtt"):
     session["mqtt_topic"] = None
 
     session["status"] = "running"
+    session["session_guid"] = str(uuid.uuid4())
     session["driver"] = deepcopy(driver)
     start_epoch = time.time()
     session["started_at"] = now_iso()
@@ -2271,6 +2277,7 @@ def start_recording_session(driver, source="mqtt"):
     try:
         append_event(
             "session_started",
+            session_guid=session["session_guid"],
             driver_id=driver["id"],
             driver_name=driver["name"],
             track_id=current_track_id,
@@ -2278,6 +2285,8 @@ def start_recording_session(driver, source="mqtt"):
         )
     except Exception as error:
         print(f"[SESSION] append_event('session_started') failed: {error}")
+
+    publish_session_control("session_started")
 
     try:
         autosave_if_due(force=True)
@@ -2301,6 +2310,7 @@ def stop_recording_session(reason=None):
 
     session["ended_at"] = now_iso()
     session["status"] = "stopped"
+    publish_session_control("session_stopped")
 
     try:
         if reason:
@@ -2328,7 +2338,8 @@ def stop_recording_session(reason=None):
         stamp = now_local().strftime("%Y-%m-%d_%H-%M-%S")
 
         final_path = SESSIONS_DIR / (
-            f"{stamp}_{driver_id}_{track_id}.json"
+            f"{stamp}_{driver_id}_{track_id}_"
+            f"{session['session_guid']}.json"
         )
 
         write_json_atomic(final_path, final_data)
@@ -2516,6 +2527,43 @@ def on_mqtt_connect(
         sensor_status["mqtt"] = True
 
     print("[MQTT] Connected. Subscribed to topics")
+    with lock:
+        if session.get("session_guid"):
+            if session["status"] in {"running", "paused"}:
+                publish_session_control("session_started")
+            elif session["status"] == "stopped":
+                publish_session_control("session_stopped")
+        else:
+            publish_session_control("session_stopped")
+
+
+def publish_session_control(event):
+    client = mqtt_client
+    if client is None:
+        runtime["last_error"] = (
+            "Session started/stopped but MQTT session control is unavailable"
+        )
+        print(f"[MQTT] {runtime['last_error']}")
+        return False
+
+    payload = {
+        "event": event,
+        "session_guid": session.get("session_guid"),
+    }
+    try:
+        result = client.publish(
+            MQTT_CONFIG["session_control_topic"],
+            json.dumps(payload),
+            qos=1,
+            retain=True,
+        )
+        if result.rc != mqtt.MQTT_ERR_SUCCESS:
+            raise RuntimeError(f"MQTT publish returned rc={result.rc}")
+        return True
+    except Exception as error:
+        runtime["last_error"] = f"Session control publish failed: {error}"
+        print(f"[MQTT] {runtime['last_error']}")
+        return False
 
 
 def on_mqtt_disconnect(
@@ -2681,6 +2729,8 @@ def on_mqtt_message(client, userdata, message):
 
 
 def start_mqtt():
+    global mqtt_client
+
     client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
 
     client.on_connect = on_mqtt_connect
@@ -2695,6 +2745,7 @@ def start_mqtt():
         MQTT_CONFIG.get("keepalive_s", 60),
     )
 
+    mqtt_client = client
     client.loop_start()
 
     return client
@@ -4876,7 +4927,11 @@ def api_session_start():
         reset_session()
         start_recording_session(driver, source="web")
 
-    return jsonify({"ok": True, "track_id": current_track_id})
+    return jsonify({
+        "ok": True,
+        "track_id": current_track_id,
+        "session_guid": session["session_guid"],
+    })
 
 
 @app.post("/api/session/pause")

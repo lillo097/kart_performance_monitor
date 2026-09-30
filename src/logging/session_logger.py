@@ -8,6 +8,7 @@ import platform
 import shutil
 import threading
 import time
+import uuid
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -64,6 +65,8 @@ class SessionLogger:
 
         stamp = session_dir.name
         self.session_id = stamp
+        self._session_boot_stamp = stamp
+        self.session_guid = None
 
         self.session_dir = session_dir
         self._app_session_path = APP_SESSIONS_DIR / f"{stamp}_raspi.json"
@@ -103,6 +106,57 @@ class SessionLogger:
         self._log.info(f"[SESSION] boot={self._boot_path.name}")
         self._log.info(f"[SESSION] raw={self._raw_path.name}")
         self._log.info(f"[SESSION] events={self._events_path.name}")
+
+    def set_session_guid(self, session_guid):
+        normalized_guid = str(uuid.UUID(str(session_guid)))
+
+        with self._lock:
+            if self.session_guid == normalized_guid:
+                return
+
+            session_dir = SESSIONS_DIR / (
+                f"{self._session_boot_stamp}_{normalized_guid}"
+            )
+            if session_dir.exists():
+                raise FileExistsError(
+                    f"Session directory already exists: {session_dir}"
+                )
+
+            if self.session_guid is None:
+                self.session_dir.rename(session_dir)
+            else:
+                self.update_boot_json(force=True)
+                self._raw_handle.close()
+                self._events_handle.close()
+                session_dir.mkdir()
+
+            self.session_dir = session_dir
+            self.session_id = session_dir.name
+            self._boot_path = session_dir / "boot.json"
+            self._raw_path = session_dir / "raw.jsonl"
+            self._events_path = session_dir / "events.jsonl"
+            self._log_path = session_dir / "glo2-telemetry.log"
+            self._app_session_path = (
+                APP_SESSIONS_DIR
+                / f"{session_dir.name}_raspi.json"
+            )
+            self.session_guid = normalized_guid
+            self._counters["raw_rotations"] = 0
+
+            if self._raw_handle.closed:
+                self._raw_handle = open(
+                    self._raw_path, "a", encoding="utf-8", buffering=1
+                )
+            if self._events_handle.closed:
+                self._events_handle = open(
+                    self._events_path, "a", encoding="utf-8", buffering=1
+                )
+
+            self.log_event("session_associated", session_guid=normalized_guid)
+            self.update_boot_json(force=True)
+            self._log.info(
+                f"[SESSION] associated session_guid={normalized_guid}"
+            )
 
     # ------------------------------------------------------------------
     # Meta (chiamati all'avvio da app.py)
@@ -215,8 +269,9 @@ class SessionLogger:
 
         with self._lock:
             return {
-                "schema_version": 12,
+                "schema_version": 13,
                 "client_side": True,
+                "session_guid": self.session_guid,
                 "saved_at": _iso_now(),
                 "status": self._boot_status,
                 "driver": {},
@@ -293,7 +348,8 @@ class SessionLogger:
                 for field in warmup_fields
             }
             return {
-                "schema_version": 12,
+                "schema_version": 13,
+                "session_guid": self.session_guid,
                 "saved_at": _iso_now(),
                 "status": self._boot_status,
                 "driver": {},
