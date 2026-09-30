@@ -10,3 +10,5 @@
 {"ts_epoch": 1790797075.031, "ts_iso": "2026-09-30T21:37:55.031+02:00", "event": "first_nmea", "sentence": "$GPRMC,193853.8,V,4529.633228,N,00912.421174,E,,,300926,001.9,E,N*1D"}
 {"ts_epoch": 1790797164.225, "ts_iso": "2026-09-30T21:39:24.225+02:00", "event": "wifi_disconnect"}
 {"ts_epoch": 1790797174.575, "ts_iso": "2026-09-30T21:39:34.575+02:00", "event": "wifi_connect", "ssid": "iPhone di Livio", "ip": "172.20.10.2", "mac": "2c:cf:67:7d:14:65"}
+{"ts_epoch": 1790798105.3, "ts_iso": "2026-09-30T21:55:05.299+02:00", "event": "sensor_appeared", "sensor": "as5600", "address": "0x36"}
+{"ts_epoch": 1790798105.31, "ts_iso": "2026-09-30T21:55:05.309+02:00", "event": "sensor_lost", "sensor": "as5600"}
