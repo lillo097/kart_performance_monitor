@@ -39,3 +39,5 @@
 2026-09-30 22:40:48.906 [INFO ] [main    ] [mqtt] connected (session_present=True)
 2026-09-30 22:41:26.219 [WARNING] [main    ] [wifi] no active connection
 2026-09-30 22:41:36.432 [INFO ] [main    ] [wifi] connected ssid=iPhone di Livio ip=172.20.10.2 mac=2c:cf:67:7d:14:65
+2026-09-30 22:51:46.361 [WARNING] [main    ] [wifi] no active connection
+2026-09-30 22:51:56.580 [INFO ] [main    ] [wifi] connected ssid=iPhone di Livio ip=172.20.10.2 mac=2c:cf:67:7d:14:65

@@ -22,3 +22,5 @@
 {"ts_epoch": 1790800848.907, "ts_iso": "2026-09-30T22:40:48.906+02:00", "event": "mqtt_connect", "broker": "broker.hivemq.com", "port": 1883, "client_id": "RPi-KART-2ccf677d1465", "session_present": true}
 {"ts_epoch": 1790800886.222, "ts_iso": "2026-09-30T22:41:26.221+02:00", "event": "wifi_disconnect"}
 {"ts_epoch": 1790800896.433, "ts_iso": "2026-09-30T22:41:36.432+02:00", "event": "wifi_connect", "ssid": "iPhone di Livio", "ip": "172.20.10.2", "mac": "2c:cf:67:7d:14:65"}
+{"ts_epoch": 1790801506.363, "ts_iso": "2026-09-30T22:51:46.362+02:00", "event": "wifi_disconnect"}
+{"ts_epoch": 1790801516.581, "ts_iso": "2026-09-30T22:51:56.581+02:00", "event": "wifi_connect", "ssid": "iPhone di Livio", "ip": "172.20.10.2", "mac": "2c:cf:67:7d:14:65"}
