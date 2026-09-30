@@ -1,0 +1,29 @@
+2026-10-01 01:12:13.948 [INFO ] [main    ] [SESSION] started id=2026-10-01_01-12-13
+2026-10-01 01:12:13.949 [INFO ] [main    ] [SESSION] directory=/home/lillo97/kart_performance_monitor/system_logs/sessions/2026-10-01_01-12-13
+2026-10-01 01:12:13.949 [INFO ] [main    ] [SESSION] files=glo2-telemetry.log, boot.json, raw.jsonl, events.jsonl
+2026-10-01 01:12:13.950 [INFO ] [main    ] === Kart Telemetry v2.1.1 starting ===
+2026-10-01 01:12:13.950 [INFO ] [main    ] [main] hostname=raspberrypi pid=661
+2026-10-01 01:12:13.951 [INFO ] [main    ] [main] mqtt_client_id=RPi-KART-2ccf677d1465 broker=broker.hivemq.com:1883
+2026-10-01 01:12:13.952 [INFO ] [main    ] [i2c] bus 1 opened
+2026-10-01 01:12:13.952 [INFO ] [main    ] ====================================================
+2026-10-01 01:12:13.953 [INFO ] [main    ] KART TELEMETRY - STARTUP CHECK
+2026-10-01 01:12:13.953 [INFO ] [main    ] ====================================================
+2026-10-01 01:12:13.954 [WARNING] [main    ] [check] NTC (ADC): no ADC
+2026-10-01 01:12:13.955 [WARNING] [main    ] [check] AS5600 I2C: not found
+2026-10-01 01:12:13.956 [INFO ] [main    ] [check] Garmin GLO2 verification in background
+2026-10-01 01:12:13.957 [INFO ] [main    ] [check] WiFi verification in background
+2026-10-01 01:12:13.958 [INFO ] [main    ] ====================================================
+2026-10-01 01:12:14.347 [INFO ] [main    ] [wifi] active ssid=iPhone di Livio ip=172.20.10.2
+2026-10-01 01:12:14.349 [INFO ] [main    ] [mqtt] connecting...
+2026-10-01 01:12:14.615 [INFO ] [main    ] [wifi] keepalive started (ping gateway every 30s)
+2026-10-01 01:12:14.621 [INFO ] [main    ] [gps] task started
+2026-10-01 01:12:14.626 [INFO ] [main    ] [main] READY (watchdog armed, 30s)
+2026-10-01 01:12:14.627 [INFO ] [main    ] [ntc] reading invalid (open circuit or disconnected)
+2026-10-01 01:12:14.644 [WARNING] [main    ] [as5600] not detected at 0x36
+2026-10-01 01:12:14.672 [INFO ] [main    ] [mqtt] connected (session_present=False)
+2026-10-01 01:12:14.876 [INFO ] [main    ] [wifi] connected ssid=iPhone di Livio ip=172.20.10.2 mac=2c:cf:67:7d:14:65
+2026-10-01 01:12:20.724 [WARNING] [main    ] [gps] connect failed: timed out; retry in 1.0s (attempt 1, next log in 300s if still failing)
+2026-10-01 01:12:21.816 [INFO ] [main    ] [gps] connected to 14:13:0B:C0:B2:1E (socket RFCOMM)
+2026-10-01 01:12:21.850 [INFO ] [main    ] [gps] first NMEA: $GPRMC,234628.2,V,4529.629340,N,00912.36...
+2026-10-01 01:46:55.466 [WARNING] [main    ] [wifi] no active connection
+2026-10-01 01:47:05.745 [INFO ] [main    ] [wifi] connected ssid=iPhone di Livio ip=172.20.10.2 mac=2c:cf:67:7d:14:65

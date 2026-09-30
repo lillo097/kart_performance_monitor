@@ -1,0 +1,92 @@
+{
+  "schema_version": 13,
+  "client_side": true,
+  "session_guid": null,
+  "saved_at": "2026-10-01T01:50:25.031+02:00",
+  "status": "running",
+  "driver": {},
+  "track": {},
+  "track_config": {},
+  "track_id": null,
+  "mqtt_topic": "sensors2mqtt-glo2/esp32/location",
+  "started_at": "2026-10-01T01:12:13.947+02:00",
+  "paused_at": null,
+  "paused_total_s": 0.0,
+  "ended_at": null,
+  "data_age_at_start_s": null,
+  "data_age_samples": {
+    "at_epoch": [],
+    "data_age_s": []
+  },
+  "session_elapsed_s": 2291.084,
+  "summary": {
+    "raw_samples_received": 1215,
+    "track_points_saved": 0,
+    "valid_gps_samples": 3,
+    "filtered_out_samples": 0,
+    "laps_completed": 0,
+    "laps_aborted": 0,
+    "data_age_samples_recorded": 0
+  },
+  "best_lap_time_s": null,
+  "best_sector_times_s": [],
+  "ideal_lap_time_s": null,
+  "reference_lap_number": null,
+  "reference_lap_time_s": null,
+  "laps": [],
+  "current_lap_in_progress": null,
+  "warmup_and_pitlane_raw": {
+    "received_at_epoch": [],
+    "latitude": [],
+    "longitude": [],
+    "speed_kmph": [],
+    "satellites_used": [],
+    "hdop": [],
+    "temperature_c": [],
+    "as5600_rpm": [],
+    "ir_rpm": []
+  },
+  "track_state": "pitlane",
+  "cooldown_active": false,
+  "delta_live_s": null,
+  "last_sector_result": null,
+  "last_aborted_lap": null,
+  "client_meta": {
+    "hostname": "raspberrypi",
+    "python_version": "3.13.5",
+    "app_version": "2.1.1",
+    "mqtt_client_id": "RPi-KART-2ccf677d1465",
+    "wifi": {
+      "ssid": "iPhone di Livio",
+      "ip": "172.20.10.2",
+      "mac": "2c:cf:67:7d:14:65",
+      "rssi": null
+    },
+    "gps": {
+      "mac": "14:13:0B:C0:B2:1E",
+      "rfcomm_channel": 1
+    },
+    "sensors_at_boot": {
+      "ntc": false,
+      "as5600": false,
+      "ir_rpm": false,
+      "gps": false
+    },
+    "sensors_now": {
+      "ntc": false,
+      "as5600": false,
+      "gps": true
+    },
+    "counters": {
+      "samples_published": 1215,
+      "valid_gps_samples": 3,
+      "mqtt_reconnects": 0,
+      "bt_reconnects": 1,
+      "nmea_timeouts": 0,
+      "raw_rotations": 0
+    }
+  },
+  "raw_stream_file": "raw.jsonl",
+  "events_file": "events.jsonl",
+  "log_file": "glo2-telemetry.log"
+}
