@@ -1,0 +1,24 @@
+{"ts_epoch": 1790785642.609, "ts_iso": "2026-09-30T18:27:22.608+02:00", "event": "service_start", "pid": 7440, "app_version": "2.1.1", "hostname": "raspberrypi"}
+{"ts_epoch": 1790785642.614, "ts_iso": "2026-09-30T18:27:22.613+02:00", "event": "hardware_check", "ntc": false, "as5600": false, "ir_rpm": false, "gps": false}
+{"ts_epoch": 1790785642.873, "ts_iso": "2026-09-30T18:27:22.872+02:00", "event": "wifi_connect", "ssid": "WINDTRE-E9B808", "ip": "192.168.1.25", "mac": "2c:cf:67:7d:14:65"}
+{"ts_epoch": 1790785642.991, "ts_iso": "2026-09-30T18:27:22.991+02:00", "event": "sensor_lost", "sensor": "ntc"}
+{"ts_epoch": 1790785642.994, "ts_iso": "2026-09-30T18:27:22.993+02:00", "event": "sensor_lost", "sensor": "as5600"}
+{"ts_epoch": 1790785643.231, "ts_iso": "2026-09-30T18:27:23.231+02:00", "event": "wifi_connect", "ssid": "WINDTRE-E9B808", "ip": "192.168.1.25", "mac": "2c:cf:67:7d:14:65"}
+{"ts_epoch": 1790785644.235, "ts_iso": "2026-09-30T18:27:24.235+02:00", "event": "mqtt_connect", "broker": "broker.hivemq.com", "port": 1883, "client_id": "RPi-KART-2ccf677d1465", "session_present": true}
+{"ts_epoch": 1790785648.993, "ts_iso": "2026-09-30T18:27:28.992+02:00", "event": "bt_connect_failed", "reason": "timed out", "backoff_s": 1.0, "attempt": 1}
+{"ts_epoch": 1790785703.861, "ts_iso": "2026-09-30T18:28:23.860+02:00", "event": "mqtt_disconnect", "rc": 141, "meaning": "keepalive_timeout", "total_disconnects": 1}
+{"ts_epoch": 1790785705.231, "ts_iso": "2026-09-30T18:28:25.230+02:00", "event": "mqtt_connect", "broker": "broker.hivemq.com", "port": 1883, "client_id": "RPi-KART-2ccf677d1465", "session_present": true}
+{"ts_epoch": 1790785758.796, "ts_iso": "2026-09-30T18:29:18.795+02:00", "event": "wifi_disconnect"}
+{"ts_epoch": 1790785765.91, "ts_iso": "2026-09-30T18:29:25.909+02:00", "event": "mqtt_disconnect", "rc": 141, "meaning": "keepalive_timeout", "total_disconnects": 3}
+{"ts_epoch": 1790785769.079, "ts_iso": "2026-09-30T18:29:29.078+02:00", "event": "wifi_connect", "ssid": "WINDTRE-E9B808", "ip": "192.168.1.25", "mac": "2c:cf:67:7d:14:65"}
+{"ts_epoch": 1790785771.289, "ts_iso": "2026-09-30T18:29:31.288+02:00", "event": "mqtt_connect", "broker": "broker.hivemq.com", "port": 1883, "client_id": "RPi-KART-2ccf677d1465", "session_present": true}
+{"ts_epoch": 1790785807.934, "ts_iso": "2026-09-30T18:30:07.933+02:00", "event": "mqtt_disconnect", "rc": 141, "meaning": "keepalive_timeout", "total_disconnects": 5}
+{"ts_epoch": 1790785813.157, "ts_iso": "2026-09-30T18:30:13.156+02:00", "event": "mqtt_connect", "broker": "broker.hivemq.com", "port": 1883, "client_id": "RPi-KART-2ccf677d1465", "session_present": true}
+{"ts_epoch": 1790785849.909, "ts_iso": "2026-09-30T18:30:49.909+02:00", "event": "mqtt_disconnect", "rc": 141, "meaning": "keepalive_timeout", "total_disconnects": 7}
+{"ts_epoch": 1790785861.311, "ts_iso": "2026-09-30T18:31:01.310+02:00", "event": "mqtt_connect", "broker": "broker.hivemq.com", "port": 1883, "client_id": "RPi-KART-2ccf677d1465", "session_present": true}
+{"ts_epoch": 1790785909.154, "ts_iso": "2026-09-30T18:31:49.153+02:00", "event": "mqtt_disconnect", "rc": 128, "meaning": "unknown", "total_disconnects": 9}
+{"ts_epoch": 1790785915.262, "ts_iso": "2026-09-30T18:31:55.261+02:00", "event": "mqtt_connect", "broker": "broker.hivemq.com", "port": 1883, "client_id": "RPi-KART-2ccf677d1465", "session_present": true}
+{"ts_epoch": 1790785949.016, "ts_iso": "2026-09-30T18:32:29.016+02:00", "event": "bt_connect_failed", "reason": "timed out", "backoff_s": 3.0, "attempt": 52}
+{"ts_epoch": 1790785951.177, "ts_iso": "2026-09-30T18:32:31.177+02:00", "event": "mqtt_disconnect", "rc": 141, "meaning": "keepalive_timeout", "total_disconnects": 10}
+{"ts_epoch": 1790785963.235, "ts_iso": "2026-09-30T18:32:43.234+02:00", "event": "mqtt_connect", "broker": "broker.hivemq.com", "port": 1883, "client_id": "RPi-KART-2ccf677d1465", "session_present": true}
+{"ts_epoch": 1790786003.348, "ts_iso": "2026-09-30T18:33:23.348+02:00", "event": "service_stop", "reason": "shutdown", "uptime_s": 360.744, "samples_published": 1758}
