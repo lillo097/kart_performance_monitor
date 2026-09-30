@@ -2,14 +2,14 @@
   "schema_version": 13,
   "client_side": true,
   "session_guid": null,
-  "saved_at": "2026-09-30T21:37:59.542+02:00",
+  "saved_at": "2026-09-30T21:39:23.938+02:00",
   "status": "running",
   "driver": {},
   "track": {},
   "track_config": {},
   "track_id": null,
   "mqtt_topic": "sensors2mqtt-glo2/esp32/location",
-  "started_at": "2026-09-30T20:20:58.959+02:00",
+  "started_at": "2026-09-30T21:37:47.141+02:00",
   "paused_at": null,
   "paused_total_s": 0.0,
   "ended_at": null,
@@ -18,9 +18,9 @@
     "at_epoch": [],
     "data_age_s": []
   },
-  "session_elapsed_s": 4620.583,
+  "session_elapsed_s": 96.797,
   "summary": {
-    "raw_samples_received": 22529,
+    "raw_samples_received": 178,
     "track_points_saved": 0,
     "valid_gps_samples": 0,
     "filtered_out_samples": 0,
@@ -57,8 +57,8 @@
     "app_version": "2.1.1",
     "mqtt_client_id": "RPi-KART-2ccf677d1465",
     "wifi": {
-      "ssid": "WINDTRE-E9B808",
-      "ip": "192.168.1.25",
+      "ssid": "iPhone di Livio",
+      "ip": "172.20.10.2",
       "mac": "2c:cf:67:7d:14:65",
       "rssi": null
     },
@@ -74,13 +74,14 @@
     },
     "sensors_now": {
       "ntc": false,
-      "as5600": false
+      "as5600": false,
+      "gps": true
     },
     "counters": {
-      "samples_published": 22529,
+      "samples_published": 178,
       "valid_gps_samples": 0,
-      "mqtt_reconnects": 78,
-      "bt_reconnects": 0,
+      "mqtt_reconnects": 0,
+      "bt_reconnects": 1,
       "nmea_timeouts": 0,
       "raw_rotations": 0
     }
