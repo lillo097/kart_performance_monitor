@@ -37,3 +37,6 @@
 2026-09-30 18:43:25.441 [WARNING] [main    ] [as5600] not detected at 0x36
 2026-09-30 18:47:43.020 [WARNING] [main    ] [gps] connect failed: timed out; retry in 3.0s (attempt 102, next log in 300s if still failing)
 2026-09-30 18:52:43.227 [WARNING] [main    ] [gps] connect failed: timed out; retry in 3.0s (attempt 152, next log in 300s if still failing)
+2026-09-30 18:57:43.391 [WARNING] [main    ] [gps] connect failed: timed out; retry in 3.0s (attempt 202, next log in 300s if still failing)
+2026-09-30 19:02:43.539 [WARNING] [main    ] [gps] connect failed: timed out; retry in 3.0s (attempt 252, next log in 300s if still failing)
+2026-09-30 19:07:43.694 [WARNING] [main    ] [gps] connect failed: timed out; retry in 3.0s (attempt 302, next log in 300s if still failing)

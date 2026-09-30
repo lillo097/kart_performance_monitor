@@ -20,3 +20,6 @@
 {"ts_epoch": 1790786605.442, "ts_iso": "2026-09-30T18:43:25.442+02:00", "event": "sensor_lost", "sensor": "as5600"}
 {"ts_epoch": 1790786863.024, "ts_iso": "2026-09-30T18:47:43.023+02:00", "event": "bt_connect_failed", "reason": "timed out", "backoff_s": 3.0, "attempt": 102}
 {"ts_epoch": 1790787163.237, "ts_iso": "2026-09-30T18:52:43.237+02:00", "event": "bt_connect_failed", "reason": "timed out", "backoff_s": 3.0, "attempt": 152}
+{"ts_epoch": 1790787463.392, "ts_iso": "2026-09-30T18:57:43.392+02:00", "event": "bt_connect_failed", "reason": "timed out", "backoff_s": 3.0, "attempt": 202}
+{"ts_epoch": 1790787763.543, "ts_iso": "2026-09-30T19:02:43.543+02:00", "event": "bt_connect_failed", "reason": "timed out", "backoff_s": 3.0, "attempt": 252}
+{"ts_epoch": 1790788063.695, "ts_iso": "2026-09-30T19:07:43.695+02:00", "event": "bt_connect_failed", "reason": "timed out", "backoff_s": 3.0, "attempt": 302}
