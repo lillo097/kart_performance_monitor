@@ -1,0 +1,71 @@
+{
+  "schema_version": 13,
+  "session_guid": null,
+  "saved_at": "2026-09-30T19:44:44.629+02:00",
+  "status": "running",
+  "driver": {},
+  "track": {},
+  "track_config": {},
+  "track_id": null,
+  "mqtt_topic": "sensors2mqtt-glo2/esp32/location",
+  "started_at": "2026-09-30T19:44:44.030+02:00",
+  "paused_at": null,
+  "paused_total_s": 0.0,
+  "ended_at": null,
+  "data_age_at_start_s": null,
+  "data_age_samples": {
+    "at_epoch": [],
+    "data_age_s": []
+  },
+  "session_elapsed_s": 0.599,
+  "summary": {
+    "raw_samples_received": 1,
+    "track_points_saved": 0,
+    "valid_gps_samples": 0,
+    "filtered_out_samples": 0,
+    "laps_completed": 0,
+    "laps_aborted": 0,
+    "data_age_samples_recorded": 0
+  },
+  "best_lap_time_s": null,
+  "best_sector_times_s": [],
+  "ideal_lap_time_s": null,
+  "reference_lap_number": null,
+  "reference_lap_time_s": null,
+  "laps": [],
+  "current_lap_in_progress": null,
+  "warmup_and_pitlane_raw": {
+    "received_at_epoch": [
+      1790790284.616
+    ],
+    "latitude": [
+      0.0
+    ],
+    "longitude": [
+      0.0
+    ],
+    "speed_kmph": [
+      0.0
+    ],
+    "satellites_used": [
+      0
+    ],
+    "hdop": [
+      0.0
+    ],
+    "temperature_c": [
+      null
+    ],
+    "as5600_rpm": [
+      null
+    ],
+    "ir_rpm": [
+      0.0
+    ]
+  },
+  "track_state": null,
+  "cooldown_active": null,
+  "delta_live_s": null,
+  "last_sector_result": null,
+  "last_aborted_lap": null
+}
