@@ -1,0 +1,47 @@
+{"ts_epoch": 1790763851.193, "ts_iso": "2026-09-30T12:24:11.192+02:00", "event": "service_start", "pid": 658, "app_version": "2.1.1", "hostname": "raspberrypi"}
+{"ts_epoch": 1790763851.198, "ts_iso": "2026-09-30T12:24:11.197+02:00", "event": "hardware_check", "ntc": false, "as5600": false, "ir_rpm": false, "gps": false}
+{"ts_epoch": 1790763851.552, "ts_iso": "2026-09-30T12:24:11.551+02:00", "event": "wifi_connect", "ssid": "WINDTRE-E9B808", "ip": "192.168.1.25", "mac": "2c:cf:67:7d:14:65"}
+{"ts_epoch": 1790763851.698, "ts_iso": "2026-09-30T12:24:11.698+02:00", "event": "sensor_lost", "sensor": "ntc"}
+{"ts_epoch": 1790763851.705, "ts_iso": "2026-09-30T12:24:11.704+02:00", "event": "sensor_lost", "sensor": "as5600"}
+{"ts_epoch": 1790763851.933, "ts_iso": "2026-09-30T12:24:11.932+02:00", "event": "wifi_connect", "ssid": "WINDTRE-E9B808", "ip": "192.168.1.25", "mac": "2c:cf:67:7d:14:65"}
+{"ts_epoch": 1790763857.696, "ts_iso": "2026-09-30T12:24:17.696+02:00", "event": "bt_connect_failed", "reason": "timed out", "backoff_s": 1.0, "attempt": 1}
+{"ts_epoch": 1790763866.843, "ts_iso": "2026-09-30T12:24:26.843+02:00", "event": "mqtt_connect", "broker": "broker.hivemq.com", "port": 1883, "client_id": "RPi-KART-2ccf677d1465", "session_present": false}
+{"ts_epoch": 1790775059.761, "ts_iso": "2026-09-30T15:30:59.761+02:00", "event": "wifi_disconnect"}
+{"ts_epoch": 1790775070.021, "ts_iso": "2026-09-30T15:31:10.021+02:00", "event": "wifi_connect", "ssid": "WINDTRE-E9B808", "ip": "192.168.1.25", "mac": "2c:cf:67:7d:14:65"}
+{"ts_epoch": 1790775123.58, "ts_iso": "2026-09-30T15:32:03.579+02:00", "event": "mqtt_disconnect", "rc": 128, "meaning": "unknown", "total_disconnects": 1}
+{"ts_epoch": 1790775129.208, "ts_iso": "2026-09-30T15:32:09.207+02:00", "event": "mqtt_connect", "broker": "broker.hivemq.com", "port": 1883, "client_id": "RPi-KART-2ccf677d1465", "session_present": true}
+{"ts_epoch": 1790775164.677, "ts_iso": "2026-09-30T15:32:44.677+02:00", "event": "mqtt_disconnect", "rc": 141, "meaning": "keepalive_timeout", "total_disconnects": 2}
+{"ts_epoch": 1790775182.861, "ts_iso": "2026-09-30T15:33:02.861+02:00", "event": "mqtt_connect", "broker": "broker.hivemq.com", "port": 1883, "client_id": "RPi-KART-2ccf677d1465", "session_present": true}
+{"ts_epoch": 1790775206.564, "ts_iso": "2026-09-30T15:33:26.563+02:00", "event": "mqtt_disconnect", "rc": 141, "meaning": "keepalive_timeout", "total_disconnects": 4}
+{"ts_epoch": 1790775228.817, "ts_iso": "2026-09-30T15:33:48.817+02:00", "event": "mqtt_connect", "broker": "broker.hivemq.com", "port": 1883, "client_id": "RPi-KART-2ccf677d1465", "session_present": true}
+{"ts_epoch": 1790775269.691, "ts_iso": "2026-09-30T15:34:29.690+02:00", "event": "mqtt_disconnect", "rc": 141, "meaning": "keepalive_timeout", "total_disconnects": 6}
+{"ts_epoch": 1790775279.323, "ts_iso": "2026-09-30T15:34:39.322+02:00", "event": "mqtt_connect", "broker": "broker.hivemq.com", "port": 1883, "client_id": "RPi-KART-2ccf677d1465", "session_present": true}
+{"ts_epoch": 1790775330.82, "ts_iso": "2026-09-30T15:35:30.820+02:00", "event": "bt_connect_failed", "reason": "timed out", "backoff_s": 3.0, "attempt": 52}
+{"ts_epoch": 1790775351.755, "ts_iso": "2026-09-30T15:35:51.754+02:00", "event": "mqtt_disconnect", "rc": 141, "meaning": "keepalive_timeout", "total_disconnects": 8}
+{"ts_epoch": 1790775357.192, "ts_iso": "2026-09-30T15:35:57.191+02:00", "event": "mqtt_connect", "broker": "broker.hivemq.com", "port": 1883, "client_id": "RPi-KART-2ccf677d1465", "session_present": true}
+{"ts_epoch": 1790775371.263, "ts_iso": "2026-09-30T15:36:11.262+02:00", "event": "wifi_disconnect"}
+{"ts_epoch": 1790775381.534, "ts_iso": "2026-09-30T15:36:21.533+02:00", "event": "wifi_connect", "ssid": "WINDTRE-E9B808", "ip": "192.168.1.25", "mac": "2c:cf:67:7d:14:65"}
+{"ts_epoch": 1790775393.735, "ts_iso": "2026-09-30T15:36:33.734+02:00", "event": "mqtt_disconnect", "rc": 141, "meaning": "keepalive_timeout", "total_disconnects": 10}
+{"ts_epoch": 1790775417.654, "ts_iso": "2026-09-30T15:36:57.653+02:00", "event": "mqtt_connect", "broker": "broker.hivemq.com", "port": 1883, "client_id": "RPi-KART-2ccf677d1465", "session_present": true}
+{"ts_epoch": 1790775457.744, "ts_iso": "2026-09-30T15:37:37.743+02:00", "event": "mqtt_disconnect", "rc": 141, "meaning": "keepalive_timeout", "total_disconnects": 13}
+{"ts_epoch": 1790775459.784, "ts_iso": "2026-09-30T15:37:39.784+02:00", "event": "mqtt_connect", "broker": "broker.hivemq.com", "port": 1883, "client_id": "RPi-KART-2ccf677d1465", "session_present": true}
+{"ts_epoch": 1790775498.835, "ts_iso": "2026-09-30T15:38:18.835+02:00", "event": "mqtt_disconnect", "rc": 141, "meaning": "keepalive_timeout", "total_disconnects": 15}
+{"ts_epoch": 1790775513.209, "ts_iso": "2026-09-30T15:38:33.209+02:00", "event": "mqtt_connect", "broker": "broker.hivemq.com", "port": 1883, "client_id": "RPi-KART-2ccf677d1465", "session_present": true}
+{"ts_epoch": 1790775540.768, "ts_iso": "2026-09-30T15:39:00.767+02:00", "event": "mqtt_disconnect", "rc": 141, "meaning": "keepalive_timeout", "total_disconnects": 17}
+{"ts_epoch": 1790775555.885, "ts_iso": "2026-09-30T15:39:15.885+02:00", "event": "mqtt_connect", "broker": "broker.hivemq.com", "port": 1883, "client_id": "RPi-KART-2ccf677d1465", "session_present": true}
+{"ts_epoch": 1790775582.684, "ts_iso": "2026-09-30T15:39:42.683+02:00", "event": "mqtt_disconnect", "rc": 141, "meaning": "keepalive_timeout", "total_disconnects": 19}
+{"ts_epoch": 1790775621.438, "ts_iso": "2026-09-30T15:40:21.438+02:00", "event": "mqtt_connect", "broker": "broker.hivemq.com", "port": 1883, "client_id": "RPi-KART-2ccf677d1465", "session_present": true}
+{"ts_epoch": 1790775630.982, "ts_iso": "2026-09-30T15:40:30.982+02:00", "event": "bt_connect_failed", "reason": "timed out", "backoff_s": 3.0, "attempt": 102}
+{"ts_epoch": 1790775637.351, "ts_iso": "2026-09-30T15:40:37.350+02:00", "event": "wifi_disconnect"}
+{"ts_epoch": 1790775645.833, "ts_iso": "2026-09-30T15:40:45.833+02:00", "event": "mqtt_disconnect", "rc": 141, "meaning": "keepalive_timeout", "total_disconnects": 22}
+{"ts_epoch": 1790775657.79, "ts_iso": "2026-09-30T15:40:57.789+02:00", "event": "wifi_disconnect"}
+{"ts_epoch": 1790775708.859, "ts_iso": "2026-09-30T15:41:48.858+02:00", "event": "wifi_connect", "ssid": "WINDTRE-E9B808", "ip": "192.168.1.25", "mac": "2c:cf:67:7d:14:65"}
+{"ts_epoch": 1790775741.255, "ts_iso": "2026-09-30T15:42:21.254+02:00", "event": "mqtt_connect", "broker": "broker.hivemq.com", "port": 1883, "client_id": "RPi-KART-2ccf677d1465", "session_present": true}
+{"ts_epoch": 1790775742.316, "ts_iso": "2026-09-30T15:42:22.316+02:00", "event": "wifi_disconnect"}
+{"ts_epoch": 1790775752.556, "ts_iso": "2026-09-30T15:42:32.556+02:00", "event": "wifi_connect", "ssid": "WINDTRE-E9B808", "ip": "192.168.1.25", "mac": "2c:cf:67:7d:14:65"}
+{"ts_epoch": 1790775786.864, "ts_iso": "2026-09-30T15:43:06.864+02:00", "event": "mqtt_disconnect", "rc": 141, "meaning": "keepalive_timeout", "total_disconnects": 25}
+{"ts_epoch": 1790775789.953, "ts_iso": "2026-09-30T15:43:09.953+02:00", "event": "mqtt_connect", "broker": "broker.hivemq.com", "port": 1883, "client_id": "RPi-KART-2ccf677d1465", "session_present": true}
+{"ts_epoch": 1790775909.084, "ts_iso": "2026-09-30T15:45:09.084+02:00", "event": "mqtt_disconnect", "rc": 141, "meaning": "keepalive_timeout", "total_disconnects": 27}
+{"ts_epoch": 1790775926.866, "ts_iso": "2026-09-30T15:45:26.865+02:00", "event": "wifi_disconnect"}
+{"ts_epoch": 1790775931.13, "ts_iso": "2026-09-30T15:45:31.130+02:00", "event": "bt_connect_failed", "reason": "timed out", "backoff_s": 3.0, "attempt": 152}
+{"ts_epoch": 1790775937.067, "ts_iso": "2026-09-30T15:45:37.066+02:00", "event": "wifi_disconnect"}
