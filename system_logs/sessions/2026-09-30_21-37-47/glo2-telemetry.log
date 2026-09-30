@@ -29,3 +29,5 @@
 2026-09-30 21:39:34.574 [INFO ] [main    ] [wifi] connected ssid=iPhone di Livio ip=172.20.10.2 mac=2c:cf:67:7d:14:65
 2026-09-30 21:55:05.286 [INFO ] [main    ] [as5600] detected at 0x36 (magnet_detected=False)
 2026-09-30 21:55:05.304 [WARNING] [main    ] [as5600] not detected at 0x36
+2026-09-30 22:10:25.826 [WARNING] [main    ] [wifi] no active connection
+2026-09-30 22:10:36.048 [INFO ] [main    ] [wifi] connected ssid=iPhone di Livio ip=172.20.10.2 mac=2c:cf:67:7d:14:65

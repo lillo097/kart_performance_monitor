@@ -12,3 +12,5 @@
 {"ts_epoch": 1790797174.575, "ts_iso": "2026-09-30T21:39:34.575+02:00", "event": "wifi_connect", "ssid": "iPhone di Livio", "ip": "172.20.10.2", "mac": "2c:cf:67:7d:14:65"}
 {"ts_epoch": 1790798105.3, "ts_iso": "2026-09-30T21:55:05.299+02:00", "event": "sensor_appeared", "sensor": "as5600", "address": "0x36"}
 {"ts_epoch": 1790798105.31, "ts_iso": "2026-09-30T21:55:05.309+02:00", "event": "sensor_lost", "sensor": "as5600"}
+{"ts_epoch": 1790799025.828, "ts_iso": "2026-09-30T22:10:25.827+02:00", "event": "wifi_disconnect"}
+{"ts_epoch": 1790799036.049, "ts_iso": "2026-09-30T22:10:36.048+02:00", "event": "wifi_connect", "ssid": "iPhone di Livio", "ip": "172.20.10.2", "mac": "2c:cf:67:7d:14:65"}
