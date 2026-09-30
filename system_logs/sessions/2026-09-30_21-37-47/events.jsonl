@@ -24,3 +24,4 @@
 {"ts_epoch": 1790800896.433, "ts_iso": "2026-09-30T22:41:36.432+02:00", "event": "wifi_connect", "ssid": "iPhone di Livio", "ip": "172.20.10.2", "mac": "2c:cf:67:7d:14:65"}
 {"ts_epoch": 1790801506.363, "ts_iso": "2026-09-30T22:51:46.362+02:00", "event": "wifi_disconnect"}
 {"ts_epoch": 1790801516.581, "ts_iso": "2026-09-30T22:51:56.581+02:00", "event": "wifi_connect", "ssid": "iPhone di Livio", "ip": "172.20.10.2", "mac": "2c:cf:67:7d:14:65"}
+{"ts_epoch": 1790803581.445, "ts_iso": "2026-09-30T23:26:21.444+02:00", "event": "service_stop", "reason": "shutdown", "uptime_s": 6514.303, "samples_published": 31068}

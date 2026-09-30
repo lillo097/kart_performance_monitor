@@ -41,3 +41,6 @@
 2026-09-30 22:41:36.432 [INFO ] [main    ] [wifi] connected ssid=iPhone di Livio ip=172.20.10.2 mac=2c:cf:67:7d:14:65
 2026-09-30 22:51:46.361 [WARNING] [main    ] [wifi] no active connection
 2026-09-30 22:51:56.580 [INFO ] [main    ] [wifi] connected ssid=iPhone di Livio ip=172.20.10.2 mac=2c:cf:67:7d:14:65
+2026-09-30 23:26:20.345 [INFO ] [main    ] [main] signal 15 received, shutting down
+2026-09-30 23:26:23.522 [INFO ] [session ] [SESSION] closed id=2026-09-30_21-37-47 reason=shutdown
+2026-09-30 23:26:23.523 [INFO ] [main    ] === shutdown complete ===
