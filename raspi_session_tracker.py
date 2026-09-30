@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """
-Kart Telemetry - Production-ready v2.1 (con logging)
+Kart Telemetry - Production-ready v2.1.1
 Raspberry Pi Zero 2W
+- Rate-limited logging per errori ripetuti (BT, MQTT)
+- WiFi keepalive per hotspot iPhone
 """
 
 import json
@@ -10,6 +12,7 @@ import math
 import os
 import signal
 import socket
+import subprocess
 import sys
 import threading
 import time
@@ -18,7 +21,6 @@ import uuid
 import smbus2
 import paho.mqtt.client as mqtt
 
-import sys
 from pathlib import Path
 
 # Aggiunge src/logging/ al sys.path per importare i moduli di logging
@@ -145,8 +147,12 @@ GPS_RECV_TIMEOUT_S = 0.5
 
 WIFI_CHECK_INTERVAL_S = 10.0
 WIFI_LOG_INTERVAL_S   = 60.0
+WIFI_KEEPALIVE_INTERVAL_S = 30.0
 
-APP_VERSION = "2.1.0"
+# Rate-limit per log ed eventi ripetuti (evita di riempire il .log)
+LOG_RATE_LIMIT_S = 300.0  # 5 minuti
+
+APP_VERSION = "2.1.1"
 
 # ============================================================
 # STATO
@@ -204,6 +210,11 @@ _last_ntc_state = None
 _last_as5600_state = None
 _last_gps_state = None
 
+# Rate-limit timestamps (inizializzati a -LIMIT così il primo errore logga subito)
+_last_gps_err_log_ts = -LOG_RATE_LIMIT_S
+_last_mqtt_disconn_log_ts = -LOG_RATE_LIMIT_S
+_last_mqtt_disconn_rc = None
+
 
 # ============================================================
 # UTILITY
@@ -240,7 +251,6 @@ def get_wifi_info():
     """Legge SSID/IP/MAC da /sys e nmcli. Ritorna dict o {}."""
     info = {}
     try:
-        import subprocess
         r = subprocess.run(
             ["nmcli", "-t", "-f", "active,ssid", "dev", "wifi"],
             capture_output=True, text=True, timeout=3,
@@ -264,6 +274,23 @@ def get_wifi_info():
     except Exception:
         pass
     return info
+
+def get_default_gateway():
+    """Ritorna l'IP del gateway di default, o None."""
+    try:
+        r = subprocess.run(
+            ["ip", "route", "show", "default"],
+            capture_output=True, text=True, timeout=3,
+        )
+        for line in r.stdout.splitlines():
+            parts = line.split()
+            if "via" in parts:
+                idx = parts.index("via")
+                if idx + 1 < len(parts):
+                    return parts[idx + 1]
+    except Exception:
+        pass
+    return None
 
 
 # ============================================================
@@ -530,7 +557,7 @@ def clear_gps_state():
 # GPS THREAD
 # ============================================================
 def gps_thread_func():
-    global bt_connected, last_nmea_time, _last_gps_state
+    global bt_connected, last_nmea_time, _last_gps_state, _last_gps_err_log_ts
 
     time.sleep(GPS_TASK_START_DELAY_S)
 
@@ -543,7 +570,6 @@ def gps_thread_func():
     while not _shutdown.is_set():
         if sock is None:
             connect_attempts += 1
-            log.debug(f"[gps] connecting to {GLO2_MAC} ch={RFCOMM_CHANNEL} (attempt {connect_attempts})")
             try:
                 sock = socket.socket(
                     socket.AF_BLUETOOTH,
@@ -567,6 +593,7 @@ def gps_thread_func():
                         session_logger.bump("bt_reconnects")
                     session_logger.update_sensors_now(gps=False)
                 _last_gps_state = True
+                connect_attempts = 0
             except OSError as e:
                 if sock:
                     try: sock.close()
@@ -574,11 +601,20 @@ def gps_thread_func():
                 sock = None
                 bt_connected = False
                 clear_gps_state()
-                log.warning(f"[gps] connect failed: {e}; retry in {backoff:.1f}s")
-                if session_logger:
-                    session_logger.log_event("bt_connect_failed",
-                                             reason=str(e),
-                                             backoff_s=round(backoff, 2))
+
+                # Rate-limit del log: max 1 errore ogni LOG_RATE_LIMIT_S
+                now_mono = time.monotonic()
+                if (now_mono - _last_gps_err_log_ts) >= LOG_RATE_LIMIT_S:
+                    log.warning(f"[gps] connect failed: {e}; retry in {backoff:.1f}s "
+                                f"(attempt {connect_attempts}, "
+                                f"next log in {int(LOG_RATE_LIMIT_S)}s if still failing)")
+                    if session_logger:
+                        session_logger.log_event("bt_connect_failed",
+                                                 reason=str(e),
+                                                 backoff_s=round(backoff, 2),
+                                                 attempt=connect_attempts)
+                    _last_gps_err_log_ts = now_mono
+
                 time.sleep(backoff)
                 backoff = min(backoff * 1.5, GPS_RECONNECT_MAX_S)
                 continue
@@ -592,10 +628,14 @@ def gps_thread_func():
         except socket.timeout:
             data = None
         except OSError as e:
-            log.warning(f"[gps] socket error: {e}; reconnecting in {backoff:.1f}s")
+            now_mono = time.monotonic()
+            if (now_mono - _last_gps_err_log_ts) >= LOG_RATE_LIMIT_S:
+                log.warning(f"[gps] socket error: {e}; reconnecting in {backoff:.1f}s")
+                if session_logger:
+                    session_logger.log_event("bt_disconnect", reason=str(e),
+                                             backoff_s=round(backoff, 2))
+                _last_gps_err_log_ts = now_mono
             if session_logger:
-                session_logger.log_event("bt_disconnect", reason=str(e),
-                                         backoff_s=round(backoff, 2))
                 session_logger.update_sensors_now(gps=False)
             _last_gps_state = False
             try: sock.close()
@@ -633,13 +673,16 @@ def gps_thread_func():
 
         if bt_connected and last_nmea_time > 0.0:
             if (time.monotonic() - last_nmea_time) > GPS_NMEA_TIMEOUT_S:
-                log.warning(f"[gps] no NMEA for {GPS_NMEA_TIMEOUT_S}s; force reconnect")
-                if session_logger:
-                    session_logger.log_event("nmea_timeout",
-                                             seconds_without_nmea=round(
-                                                 time.monotonic() - last_nmea_time, 2),
-                                             action="force_reconnect")
-                    session_logger.bump("nmea_timeouts")
+                now_mono = time.monotonic()
+                if (now_mono - _last_gps_err_log_ts) >= LOG_RATE_LIMIT_S:
+                    log.warning(f"[gps] no NMEA for {GPS_NMEA_TIMEOUT_S}s; force reconnect")
+                    if session_logger:
+                        session_logger.log_event("nmea_timeout",
+                                                 seconds_without_nmea=round(
+                                                     time.monotonic() - last_nmea_time, 2),
+                                                 action="force_reconnect")
+                        session_logger.bump("nmea_timeouts")
+                    _last_gps_err_log_ts = now_mono
                 try: sock.close()
                 except Exception: pass
                 sock = None
@@ -662,6 +705,7 @@ def gps_thread_func():
 # ============================================================
 def on_mqtt_connect(client, userdata, flags, reason_code, properties=None):
     global mqtt_connected, force_publish_all_statuses, _last_mqtt_state
+    global _last_mqtt_disconn_log_ts, _last_mqtt_disconn_rc
     rc_val = reason_code if isinstance(reason_code, int) else getattr(reason_code, "value", 1)
     if rc_val == 0:
         mqtt_connected = True
@@ -686,6 +730,9 @@ def on_mqtt_connect(client, userdata, flags, reason_code, properties=None):
             if _last_mqtt_state is False:
                 session_logger.bump("mqtt_reconnects")
         _last_mqtt_state = True
+        # Reset rate-limit disconnessioni al ripristino
+        _last_mqtt_disconn_log_ts = -LOG_RATE_LIMIT_S
+        _last_mqtt_disconn_rc = None
     else:
         mqtt_connected = False
         log.error(f"[mqtt] connect failed rc={rc_val}")
@@ -695,6 +742,7 @@ def on_mqtt_disconnect(
     client, userdata, disconnect_flags, reason_code=None, properties=None
 ):
     global mqtt_connected, mqtt_disconnect_count, _last_mqtt_state
+    global _last_mqtt_disconn_log_ts, _last_mqtt_disconn_rc
     mqtt_connected = False
     mqtt_disconnect_count += 1
     rc = reason_code if reason_code is not None else disconnect_flags
@@ -703,12 +751,23 @@ def on_mqtt_disconnect(
         1: "unacceptable_protocol", 2: "identifier_rejected",
         3: "broker_unavailable", 4: "bad_credentials",
         5: "not_authorized", 7: "connection_lost",
+        141: "keepalive_timeout",
     }.get(rc_val, "unknown")
-    log.warning(f"[mqtt] disconnected rc={rc_val} ({meaning}); paho will retry")
-    if session_logger:
-        session_logger.log_event("mqtt_disconnect", rc=rc_val,
-                                 meaning=meaning,
-                                 total_disconnects=mqtt_disconnect_count)
+
+    # Rate-limit: logga se il reason code cambia o se è passato LOG_RATE_LIMIT_S
+    now_mono = time.monotonic()
+    same_rc = (rc_val == _last_mqtt_disconn_rc)
+    within_window = (now_mono - _last_mqtt_disconn_log_ts) < LOG_RATE_LIMIT_S
+    if (not same_rc) or (not within_window):
+        log.warning(f"[mqtt] disconnected rc={rc_val} ({meaning}); paho will retry "
+                    f"[total={mqtt_disconnect_count}]")
+        if session_logger:
+            session_logger.log_event("mqtt_disconnect", rc=rc_val,
+                                     meaning=meaning,
+                                     total_disconnects=mqtt_disconnect_count)
+        _last_mqtt_disconn_log_ts = now_mono
+        _last_mqtt_disconn_rc = rc_val
+
     _last_mqtt_state = False
 
 def build_mqtt_client():
@@ -820,7 +879,7 @@ def publish_telemetry():
 
 
 # ============================================================
-# WIFI MONITOR
+# WIFI MONITOR + KEEPALIVE
 # ============================================================
 def wifi_monitor_loop():
     global _last_wifi_snapshot, _last_wifi_log_time
@@ -859,11 +918,33 @@ def wifi_monitor_loop():
         time.sleep(WIFI_CHECK_INTERVAL_S)
 
 
+def wifi_keepalive_loop():
+    """
+    Pinga il gateway ogni 30s per tenere sveglio l'hotspot iPhone.
+    iOS spegne l'hotspot se non rileva traffico attivo dai client.
+    """
+    while not _shutdown.is_set():
+        try:
+            gw = get_default_gateway()
+            if gw:
+                subprocess.run(
+                    ["ping", "-c", "1", "-W", "2", gw],
+                    capture_output=True, timeout=4,
+                )
+        except Exception:
+            pass
+
+        # Attesa interruptibile
+        slept = 0.0
+        while slept < WIFI_KEEPALIVE_INTERVAL_S and not _shutdown.is_set():
+            time.sleep(0.5)
+            slept += 0.5
+
+
 # ============================================================
 # STARTUP CHECK
 # ============================================================
 def print_check(label, ok, ok_text, fail_text):
-    tag = "OK" if ok else "!!"
     msg = f"{label}: {ok_text if ok else fail_text}"
     if ok:
         log.info(f"[check] {msg}")
@@ -988,6 +1069,10 @@ def main():
 
     # WiFi monitor thread
     threading.Thread(target=wifi_monitor_loop, daemon=True, name="WifiMon").start()
+
+    # WiFi keepalive thread (per hotspot iPhone)
+    threading.Thread(target=wifi_keepalive_loop, daemon=True, name="WifiKeepalive").start()
+    log.info(f"[wifi] keepalive started (ping gateway every {int(WIFI_KEEPALIVE_INTERVAL_S)}s)")
 
     # GPS thread
     threading.Thread(target=gps_thread_func, daemon=True, name="GarminGps").start()

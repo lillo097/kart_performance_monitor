@@ -2,3 +2,37 @@ sudo systemctl restart kart-telemetry.service
 sudo systemctl status kart-telemetry.service --no-pager
 sudo systemctl stop kart-telemetry.service --no-pager
 journalctl -u kart-telemetry.service -f
+
+# Live dello script di sync (il più utile)
+journalctl -u sync-logs.service -f -o cat
+
+# Live con prefissi systemd (vedi anche lo start/stop)
+journalctl -u sync-logs.service -f
+
+# Solo ultime 50 righe (storico, senza follow)
+journalctl -u sync-logs.service -n 50 --no-pager
+
+# Ultime 10 minuti
+journalctl -u sync-logs.service --since "10 minutes ago"
+
+# Solo oggi
+journalctl -u sync-logs.service --since today
+
+# Solo le righe dello script (senza systemd)
+journalctl -u sync-logs.service -o cat | grep -E 'push|skip|rsync|logs:'
+
+TIMER
+
+# Prossima esecuzione + ultima
+systemctl list-timers sync-logs.timer --no-pager
+
+# Live aggiornato ogni secondo
+watch -n 1 'systemctl list-timers sync-logs.timer'
+
+# Stato del timer
+systemctl status sync-logs.timer --no-pager
+
+GIT
+
+# Forza e guarda subito il risultato
+sudo systemctl start sync-logs.service && sleep 3 && journalctl -u sync-logs.service -n 20 --no-pager
