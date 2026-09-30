@@ -14,6 +14,7 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 LOGS_DIR = BASE_DIR / "system_logs"
 SESSIONS_DIR = LOGS_DIR / "sessions"
+APP_SESSIONS_DIR = BASE_DIR / "sessions"
 
 RETENTION_DAYS = 30
 RAW_ROTATE_BYTES = 50 * 1024 * 1024
@@ -65,6 +66,7 @@ class SessionLogger:
         self.session_id = stamp
 
         self.session_dir = session_dir
+        self._app_session_path = APP_SESSIONS_DIR / f"{stamp}_raspi.json"
         self._boot_path = session_dir / "boot.json"
         self._raw_path = session_dir / "raw.jsonl"
         self._events_path = session_dir / "events.jsonl"
@@ -86,6 +88,7 @@ class SessionLogger:
             "nmea_timeouts": 0,
             "raw_rotations": 0,
         }
+        self._warmup_samples = []
 
         self._sensors_at_boot = {}
         self._sensors_now = {}
@@ -166,6 +169,17 @@ class SessionLogger:
                 }
                 self._raw_handle.write(_safe_json(rec) + "\n")
                 self._counters["samples_published"] += 1
+                self._warmup_samples.append({
+                    "received_at_epoch": rec["ts_epoch"],
+                    "latitude": payload.get("latitude"),
+                    "longitude": payload.get("longitude"),
+                    "speed_kmph": payload.get("speed_kmph"),
+                    "satellites_used": payload.get("satellites_used"),
+                    "hdop": payload.get("hdop"),
+                    "temperature_c": payload.get("temperature_c"),
+                    "as5600_rpm": payload.get("as5600_rpm"),
+                    "ir_rpm": payload.get("ir_rpm"),
+                })
 
                 # GPS valido?
                 if payload.get("fix_valid") and payload.get("latitude") and payload.get("longitude"):
@@ -259,15 +273,81 @@ class SessionLogger:
                 "log_file": self._log_path.name,
             }
 
+    def _build_app_session_payload(self):
+        now = time.time()
+        warmup_fields = (
+            "received_at_epoch",
+            "latitude",
+            "longitude",
+            "speed_kmph",
+            "satellites_used",
+            "hdop",
+            "temperature_c",
+            "as5600_rpm",
+            "ir_rpm",
+        )
+
+        with self._lock:
+            samples = {
+                field: [sample[field] for sample in self._warmup_samples]
+                for field in warmup_fields
+            }
+            return {
+                "schema_version": 12,
+                "saved_at": _iso_now(),
+                "status": self._boot_status,
+                "driver": {},
+                "track": {},
+                "track_config": {},
+                "track_id": None,
+                "mqtt_topic": self._mqtt_meta.get("topic"),
+                "started_at": self._started_iso,
+                "paused_at": None,
+                "paused_total_s": 0.0,
+                "ended_at": self._ended_iso,
+                "data_age_at_start_s": None,
+                "data_age_samples": {"at_epoch": [], "data_age_s": []},
+                "session_elapsed_s": round(now - self._started_epoch, 3),
+                "summary": {
+                    "raw_samples_received": self._counters["samples_published"],
+                    "track_points_saved": 0,
+                    "valid_gps_samples": self._counters["valid_gps_samples"],
+                    "filtered_out_samples": 0,
+                    "laps_completed": 0,
+                    "laps_aborted": 0,
+                    "data_age_samples_recorded": 0,
+                },
+                "best_lap_time_s": None,
+                "best_sector_times_s": [],
+                "ideal_lap_time_s": None,
+                "reference_lap_number": None,
+                "reference_lap_time_s": None,
+                "laps": [],
+                "current_lap_in_progress": None,
+                "warmup_and_pitlane_raw": samples,
+                "track_state": None,
+                "cooldown_active": None,
+                "delta_live_s": None,
+                "last_sector_result": None,
+                "last_aborted_lap": None,
+            }
+
     def update_boot_json(self, force=False):
         now = time.time()
         if not force and (now - self._last_boot_update) < BOOT_UPDATE_INTERVAL_S:
             return
         try:
             _atomic_write_json(self._boot_path, self._build_boot_payload())
-            self._last_boot_update = now
         except Exception as e:
             self._log.error(f"[SESSION] boot update failed: {e}")
+        try:
+            APP_SESSIONS_DIR.mkdir(parents=True, exist_ok=True)
+            _atomic_write_json(
+                self._app_session_path, self._build_app_session_payload()
+            )
+            self._last_boot_update = now
+        except Exception as e:
+            self._log.error(f"[SESSION] app session update failed: {e}")
 
     # ------------------------------------------------------------------
     # Cleanup
@@ -320,4 +400,11 @@ class SessionLogger:
                 _atomic_write_json(self._boot_path, self._build_boot_payload())
             except Exception as e:
                 self._log.error(f"[SESSION] final boot write failed: {e}")
+            try:
+                APP_SESSIONS_DIR.mkdir(parents=True, exist_ok=True)
+                _atomic_write_json(
+                    self._app_session_path, self._build_app_session_payload()
+                )
+            except Exception as e:
+                self._log.error(f"[SESSION] final app session write failed: {e}")
             self._log.info(f"[SESSION] closed id={self.session_id} reason={reason}")

@@ -4510,7 +4510,7 @@ async function refresh() {
         const sessionStatus = data.session_status || "idle";
         const statusLabels = {
             idle: "IN ATTESA",
-            running: "IN CORSO",
+            running: "RUNNING",
             paused: "IN PAUSA",
             stopped: "STOP"
         };

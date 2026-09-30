@@ -126,7 +126,7 @@
   function updateSessionState(status) {
     const labels = {
       idle: "IN ATTESA",
-      running: "IN CORSO",
+      running: "RUNNING",
       paused: "IN PAUSA",
       stopped: "STOP",
     };
