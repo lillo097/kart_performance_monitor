@@ -152,6 +152,7 @@ WIFI_KEEPALIVE_INTERVAL_S = 30.0
 
 # Rate-limit per log ed eventi ripetuti (evita di riempire il .log)
 LOG_RATE_LIMIT_S = 300.0  # 5 minuti
+WATCHDOG_INTERVAL_S = 10.0
 
 APP_VERSION = "2.1.1"
 
@@ -1114,11 +1115,14 @@ def main():
     last_publish = 0.0
     last_status_check = 0.0
     last_boot_update = 0.0
+    last_watchdog = time.monotonic()
 
     try:
         while not _shutdown.is_set():
-            notify_watchdog()
             now = time.monotonic()
+            if now - last_watchdog >= WATCHDOG_INTERVAL_S:
+                notify_watchdog()
+                last_watchdog = now
 
             if (now - last_ntc) >= NTC_READ_INTERVAL_S:
                 last_ntc = now
