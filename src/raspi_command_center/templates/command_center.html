@@ -1,0 +1,648 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0a1019">
+  <title>Centro di comando · Kart Telemetry</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0a1019;
+      --panel: #111a27;
+      --panel-raised: #162232;
+      --line: #253348;
+      --text: #edf3fb;
+      --muted: #96a7bc;
+      --green: #43d9a3;
+      --red: #ff6c79;
+      --amber: #f5bd58;
+      --blue: #77aaff;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-synthesis: none;
+      text-rendering: optimizeLegibility;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        radial-gradient(ellipse at 15% -20%, #19334a 0, transparent 42%),
+        var(--bg);
+      color: var(--text);
+      padding: max(16px, env(safe-area-inset-top)) 18px
+        max(24px, env(safe-area-inset-bottom));
+    }
+    button, input, select { font: inherit; }
+    button { color: inherit; }
+    .shell { width: min(1180px, 100%); margin: 0 auto; }
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin: 8px 0 22px;
+    }
+    .eyebrow {
+      color: var(--green);
+      font: 700 11px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace;
+      letter-spacing: .16em;
+      text-transform: uppercase;
+    }
+    h1 { margin: 5px 0 0; font-size: clamp(23px, 4vw, 34px); letter-spacing: -.035em; }
+    .connection {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      flex: 0 0 auto;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 9px 12px;
+      color: var(--muted);
+      background: #111a27c9;
+      font-size: 12px;
+    }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: #77869a; }
+    .dot.online { background: var(--green); box-shadow: 0 0 12px #43d9a380; }
+    .dot.offline { background: var(--red); }
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: linear-gradient(155deg, #152131, var(--panel) 62%);
+      box-shadow: 0 14px 38px #0000001c;
+    }
+    .access-panel { padding: 16px; margin-bottom: 18px; }
+    .access-row { display: flex; gap: 10px; align-items: center; }
+    .field { flex: 1; min-width: 0; }
+    label, .label {
+      display: block;
+      margin-bottom: 7px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 650;
+    }
+    input, select {
+      width: 100%;
+      min-height: 46px;
+      border: 1px solid #304158;
+      border-radius: 11px;
+      padding: 0 12px;
+      outline: none;
+      background: #0b131e;
+      color: var(--text);
+    }
+    input:focus, select:focus { border-color: var(--blue); box-shadow: 0 0 0 3px #77aaff20; }
+    .button {
+      display: inline-flex;
+      min-height: 44px;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      border: 1px solid #34465e;
+      border-radius: 11px;
+      padding: 0 14px;
+      background: #1b293b;
+      color: var(--text);
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform .12s ease, filter .12s ease, border-color .12s ease;
+      touch-action: manipulation;
+    }
+    .button:hover { filter: brightness(1.14); border-color: #526b8a; }
+    .button:active { transform: scale(.98); }
+    .button:disabled { opacity: .45; cursor: not-allowed; }
+    .button.primary { color: #06251b; background: var(--green); border-color: var(--green); }
+    .button.danger { color: #31080d; background: var(--red); border-color: var(--red); }
+    .button.warning { color: #2b1b03; background: var(--amber); border-color: var(--amber); }
+    .button.subtle { background: #111a27; }
+    .notice { min-height: 18px; margin-top: 10px; color: var(--muted); font-size: 12px; }
+    .notice.error { color: var(--red); }
+    .notice.success { color: var(--green); }
+    .section-head {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 12px;
+      margin: 25px 2px 11px;
+    }
+    h2 { margin: 0; font-size: 17px; letter-spacing: -.02em; }
+    .section-hint { color: var(--muted); font-size: 12px; }
+    .service-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+    .service-card { padding: 16px; min-width: 0; }
+    .service-head { display: flex; justify-content: space-between; align-items: start; gap: 12px; }
+    .service-title { font-size: 15px; font-weight: 750; }
+    .unit-name { margin-top: 4px; color: var(--muted); font: 11px ui-monospace, monospace; }
+    .state {
+      flex: 0 0 auto;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 6px 9px;
+      color: var(--muted);
+      font: 700 10px ui-monospace, monospace;
+      text-transform: uppercase;
+    }
+    .state.active { color: var(--green); border-color: #286951; background: #143528; }
+    .state.failed { color: var(--red); border-color: #70404a; background: #351b24; }
+    .state.inactive { color: var(--amber); border-color: #67532d; background: #302716; }
+    .metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 17px 0; }
+    .metric {
+      min-width: 0;
+      border-radius: 10px;
+      padding: 10px;
+      background: #0c1420;
+    }
+    .metric-label {
+      color: var(--muted);
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+    }
+    .metric-value {
+      overflow: hidden;
+      margin-top: 5px;
+      font: 600 12px ui-monospace, SFMono-Regular, Menlo, monospace;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .service-actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .service-actions .button { min-height: 42px; padding: 0 8px; font-size: 12px; }
+    .log-panel { overflow: hidden; margin-top: 18px; }
+    .log-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: end;
+      gap: 10px;
+      border-bottom: 1px solid var(--line);
+      padding: 14px;
+      background: #111a27;
+    }
+    .log-toolbar .field { flex: 1 1 140px; }
+    .log-toolbar select, .log-toolbar input { min-height: 42px; }
+    .check-control {
+      display: inline-flex;
+      min-height: 42px;
+      align-items: center;
+      gap: 8px;
+      padding: 0 6px;
+      color: var(--muted);
+      font-size: 12px;
+      white-space: nowrap;
+    }
+    .check-control input { width: 17px; min-height: 17px; accent-color: var(--green); }
+    .log-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 11px 14px;
+      border-bottom: 1px solid #1d2a3b;
+      color: var(--muted);
+      font: 11px ui-monospace, monospace;
+    }
+    .live-indicator { display: inline-flex; align-items: center; gap: 7px; }
+    .log-window {
+      height: min(54vh, 530px);
+      min-height: 280px;
+      overflow: auto;
+      overscroll-behavior: contain;
+      padding: 8px 0;
+      background: #080d14;
+      scrollbar-color: #34445a #0b111a;
+    }
+    .log-line {
+      display: grid;
+      grid-template-columns: 36px minmax(0, 1fr);
+      gap: 9px;
+      padding: 4px 13px;
+      color: #c7d2e1;
+      font: 11px/1.55 ui-monospace, SFMono-Regular, Menlo, monospace;
+      overflow-wrap: anywhere;
+      white-space: pre-wrap;
+    }
+    .log-line:hover { background: #121c2a; }
+    .log-line .index { color: #52647b; text-align: right; user-select: none; }
+    .log-line.error .message { color: #ff9299; }
+    .log-line.warning .message { color: #f5c86f; }
+    .log-line.success .message { color: #73dfb1; }
+    .empty-log { padding: 36px 16px; color: var(--muted); text-align: center; font-size: 13px; }
+    .footnote { margin: 12px 4px 0; color: var(--muted); font-size: 11px; line-height: 1.5; }
+    .hidden { display: none !important; }
+
+    @media (max-width: 680px) {
+      body { padding-left: max(12px, env(safe-area-inset-left)); padding-right: max(12px, env(safe-area-inset-right)); }
+      .topbar { align-items: start; margin-top: 4px; }
+      .connection { padding: 8px 10px; font-size: 11px; }
+      .access-panel { padding: 13px; border-radius: 15px; }
+      .service-grid { grid-template-columns: 1fr; gap: 10px; }
+      .service-card { padding: 14px; border-radius: 15px; }
+      .section-head { margin-top: 22px; }
+      .section-hint { text-align: right; }
+      .log-toolbar { gap: 8px; padding: 11px; }
+      .log-toolbar .field { flex: 1 1 calc(50% - 8px); }
+      .log-toolbar .search-field { flex-basis: 100%; }
+      .log-toolbar > .button { flex: 1; }
+      .log-window { height: 48vh; min-height: 260px; }
+      .log-line { grid-template-columns: 28px minmax(0, 1fr); padding: 4px 9px; font-size: 10px; }
+    }
+    @media (max-width: 380px) {
+      .topbar { gap: 8px; }
+      .connection { max-width: 105px; font-size: 10px; }
+      .metrics { gap: 5px; }
+      .metric { padding: 8px 6px; }
+      .metric-value { font-size: 11px; }
+      .service-actions { gap: 6px; }
+      .service-actions .button { font-size: 11px; }
+    }
+    @media (min-width: 1000px) {
+      body { padding-top: 34px; }
+      .log-window { height: 56vh; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar">
+      <div>
+        <div class="eyebrow">Kart telemetry · operations</div>
+        <h1>Centro di comando</h1>
+      </div>
+      <div id="connection" class="connection" role="status" aria-live="polite">
+        <span id="connection-dot" class="dot"></span>
+        <span id="connection-label">Non connesso</span>
+      </div>
+    </header>
+
+    <section class="panel access-panel" aria-label="Stato della connessione">
+      <div class="access-row">
+        <div id="notice" class="notice" aria-live="polite">
+          Connessione in corso al Raspberry…
+        </div>
+      </div>
+    </section>
+
+    <div class="section-head">
+      <h2>Servizi Raspberry</h2>
+      <span id="last-updated" class="section-hint">Stato in attesa</span>
+    </div>
+    <section id="service-grid" class="service-grid" aria-live="polite">
+      <article class="panel service-card" data-service="kart-telemetry">
+        <div class="service-head">
+          <div>
+            <div class="service-title">Kart Telemetry</div>
+            <div class="unit-name">kart-telemetry.service</div>
+          </div>
+          <span class="state">SCONOSCIUTO</span>
+        </div>
+        <div class="metrics">
+          <div class="metric"><div class="metric-label">Processo</div><div class="metric-value" data-value="pid">—</div></div>
+          <div class="metric"><div class="metric-label">Avviato</div><div class="metric-value" data-value="started">—</div></div>
+          <div class="metric"><div class="metric-label">Esito</div><div class="metric-value" data-value="result">—</div></div>
+        </div>
+        <div class="service-actions">
+          <button class="button primary" data-action="start" disabled>Avvia</button>
+          <button class="button warning" data-action="restart" disabled>Riavvia</button>
+          <button class="button danger" data-action="stop" disabled>Ferma</button>
+        </div>
+      </article>
+      <article class="panel service-card" data-service="sync-logs">
+        <div class="service-head">
+          <div>
+            <div class="service-title">Sincronizzazione log</div>
+            <div class="unit-name">sync-logs.service</div>
+          </div>
+          <span class="state">SCONOSCIUTO</span>
+        </div>
+        <div class="metrics">
+          <div class="metric"><div class="metric-label">Stato</div><div class="metric-value" data-value="substate">—</div></div>
+          <div class="metric"><div class="metric-label">Ultima attivazione</div><div class="metric-value" data-value="started">—</div></div>
+          <div class="metric"><div class="metric-label">Esito</div><div class="metric-value" data-value="result">—</div></div>
+        </div>
+        <div class="service-actions">
+          <button class="button primary" data-action="start" disabled>Avvia</button>
+          <button class="button warning" data-action="restart" disabled>Riavvia</button>
+          <button class="button danger" data-action="stop" disabled>Ferma</button>
+        </div>
+      </article>
+    </section>
+
+    <div class="section-head">
+      <h2>Log di sistema</h2>
+      <span class="section-hint">journalctl · flusso live</span>
+    </div>
+    <section class="panel log-panel" aria-label="Log live Raspberry">
+      <div class="log-toolbar">
+        <div class="field">
+          <label for="log-service">Servizio</label>
+          <select id="log-service">
+            <option value="kart-telemetry">Kart Telemetry</option>
+            <option value="sync-logs">Sincronizzazione log</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="level-filter">Livello</label>
+          <select id="level-filter">
+            <option value="all">Tutti</option>
+            <option value="error">Errori</option>
+            <option value="warning">Avvisi</option>
+            <option value="success">Info / OK</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="history-lines">Righe iniziali</label>
+          <select id="history-lines">
+            <option value="100">Ultime 100</option>
+            <option value="250" selected>Ultime 250</option>
+            <option value="500">Ultime 500</option>
+          </select>
+        </div>
+        <div class="field search-field">
+          <label for="search-filter">Cerca nei log</label>
+          <input id="search-filter" type="search" placeholder="Es. MQTT, GPS, error">
+        </div>
+        <label class="check-control"><input id="autoscroll" type="checkbox" checked> Segui live</label>
+        <button id="copy-logs" class="button subtle" type="button">Copia</button>
+        <button id="clear-logs" class="button subtle" type="button">Pulisci vista</button>
+      </div>
+      <div class="log-head">
+        <span>OUTPUT RASPBERRY</span>
+        <span class="live-indicator"><span id="live-dot" class="dot"></span><span id="live-label">FERMO</span></span>
+      </div>
+      <div id="log-window" class="log-window" role="log" aria-live="off" aria-relevant="additions text">
+        <div id="empty-log" class="empty-log">In attesa del flusso dei log…</div>
+      </div>
+    </section>
+    <p class="footnote">
+      I controlli eseguono esclusivamente start, stop o restart del servizio selezionato.
+      Non cancellano log o sessioni. Comandi, stato e log viaggiano tramite MQTT.
+    </p>
+  </main>
+
+  <script>
+    (() => {
+      const notice = document.getElementById("notice");
+      const connectionDot = document.getElementById("connection-dot");
+      const connectionLabel = document.getElementById("connection-label");
+      const lastUpdated = document.getElementById("last-updated");
+      const logWindow = document.getElementById("log-window");
+      const emptyLog = document.getElementById("empty-log");
+      const liveDot = document.getElementById("live-dot");
+      const liveLabel = document.getElementById("live-label");
+      const logService = document.getElementById("log-service");
+      const historyLines = document.getElementById("history-lines");
+      const levelFilter = document.getElementById("level-filter");
+      const searchFilter = document.getElementById("search-filter");
+      const autoscroll = document.getElementById("autoscroll");
+      const lines = [];
+      let streamController = null;
+      let statusTimer = null;
+
+      function setNotice(message, kind = "") {
+        notice.textContent = message;
+        notice.className = `notice ${kind}`;
+      }
+
+      function setConnected(connected, text) {
+        connectionDot.className = `dot ${connected ? "online" : "offline"}`;
+        connectionLabel.textContent = text;
+      }
+
+      function classifyLine(text) {
+        if (/\b(error|critical|fatal|exception|failed|failure)\b/i.test(text)) return "error";
+        if (/\b(warn|warning|timeout|retry|degraded)\b/i.test(text)) return "warning";
+        if (/\b(connected|started|success|ready|published)\b/i.test(text)) return "success";
+        return "";
+      }
+
+      function renderLogs() {
+        const query = searchFilter.value.trim().toLowerCase();
+        const selectedLevel = levelFilter.value;
+        const visible = lines.filter((text) => {
+          const severity = classifyLine(text);
+          return (!query || text.toLowerCase().includes(query))
+            && (selectedLevel === "all" || severity === selectedLevel);
+        });
+        const wasAtBottom = logWindow.scrollHeight - logWindow.scrollTop - logWindow.clientHeight < 70;
+        logWindow.replaceChildren();
+        if (!visible.length) {
+          const empty = document.createElement("div");
+          empty.className = "empty-log";
+          empty.textContent = lines.length ? "Nessuna riga corrisponde ai filtri." : "In attesa delle righe dal Raspberry…";
+          logWindow.append(empty);
+          return;
+        }
+        const fragment = document.createDocumentFragment();
+        visible.forEach((text, rowIndex) => {
+          const row = document.createElement("div");
+          row.className = `log-line ${classifyLine(text)}`;
+          const logIndex = document.createElement("span");
+          logIndex.className = "index";
+          logIndex.textContent = String(rowIndex + 1);
+          const message = document.createElement("span");
+          message.className = "message";
+          message.textContent = text;
+          row.append(logIndex, message);
+          fragment.append(row);
+        });
+        logWindow.append(fragment);
+        if (autoscroll.checked && wasAtBottom) logWindow.scrollTop = logWindow.scrollHeight;
+      }
+
+      function addLine(text) {
+        if (emptyLog?.isConnected) emptyLog.remove();
+        lines.push(text);
+        if (lines.length > 1500) lines.splice(0, lines.length - 1500);
+        renderLogs();
+      }
+
+      async function api(path, options = {}) {
+        const response = await fetch(path, options);
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || data.ok === false) throw new Error(data.error || `Richiesta fallita (${response.status})`);
+        return data;
+      }
+
+      function formatTime(value) {
+        if (!value || value === "n/a") return "—";
+        const date = new Date(value);
+        return Number.isNaN(date.getTime())
+          ? value.replace(/ [A-Z]{3,4}$/, "")
+          : date.toLocaleString("it-IT", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+      }
+
+      function paintService(service) {
+        const card = document.querySelector(`[data-service="${service.id}"]`);
+        if (!card) return;
+        card.querySelector(".unit-name").textContent = service.unit;
+        const state = card.querySelector(".state");
+        const isActive = service.active_state === "active";
+        state.textContent = `${service.active_state} · ${service.sub_state}`;
+        state.className = `state ${isActive ? "active" : service.active_state === "failed" ? "failed" : "inactive"}`;
+        card.querySelector('[data-value="pid"]').textContent = service.main_pid === "0" ? "—" : service.main_pid;
+        card.querySelector('[data-value="substate"]').textContent = service.sub_state || "—";
+        card.querySelector('[data-value="started"]').textContent = formatTime(service.active_since || service.last_started);
+        card.querySelector('[data-value="result"]').textContent = service.result || "—";
+        card.querySelectorAll("[data-action]").forEach((button) => { button.disabled = false; });
+        const stop = card.querySelector('[data-action="stop"]');
+        const start = card.querySelector('[data-action="start"]');
+        const restart = card.querySelector('[data-action="restart"]');
+        stop.disabled = !isActive;
+        start.disabled = isActive;
+        restart.disabled = false;
+      }
+
+      async function refreshStatus() {
+        try {
+          const data = await api("/api/command-center/services");
+          data.services.forEach(paintService);
+          lastUpdated.textContent = `Aggiornato ${new Date().toLocaleTimeString("it-IT")}`;
+          const health = data.health;
+          if (health.agent_online) {
+            setConnected(true, `Raspberry ${health.device_id} connesso`);
+            setNotice("Connessione al Raspberry attiva tramite MQTT.");
+          } else if (health.mqtt_connected) {
+            setConnected(false, "Agente Raspberry offline");
+            setNotice("Server collegato al broker, in attesa dell’agente Raspberry.", "error");
+          } else {
+            setConnected(false, "Broker MQTT non raggiungibile");
+            setNotice("Connessione MQTT non attiva. Verifica broker e rete.", "error");
+          }
+          if (!health.agent_online) {
+            document.querySelectorAll("[data-action]").forEach((button) => { button.disabled = true; });
+          }
+        } catch (error) {
+          setConnected(false, "Configurazione non valida");
+          setNotice(error.message, "error");
+          document.querySelectorAll("[data-action]").forEach((button) => { button.disabled = true; });
+        }
+      }
+
+      async function stopStream() {
+        if (streamController) streamController.abort();
+        streamController = null;
+        liveDot.className = "dot";
+        liveLabel.textContent = "FERMO";
+      }
+
+      async function startStream() {
+        await stopStream();
+        streamController = new AbortController();
+        liveDot.className = "dot online";
+        liveLabel.textContent = "LIVE";
+        try {
+          const response = await fetch(
+            `/api/command-center/logs/live?service=${encodeURIComponent(logService.value)}&lines=${historyLines.value}`,
+            { signal: streamController.signal },
+          );
+          if (!response.ok || !response.body) {
+            const data = await response.json().catch(() => ({}));
+            throw new Error(data.error || `Flusso log non disponibile (${response.status})`);
+          }
+          const reader = response.body.getReader();
+          const decoder = new TextDecoder();
+          let buffer = "";
+          while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+            const events = buffer.split("\n\n");
+            buffer = events.pop() || "";
+            for (const event of events) {
+              const dataLine = event.split("\n").find((line) => line.startsWith("data: "));
+              if (!dataLine) continue;
+              const payload = JSON.parse(dataLine.slice(6));
+              if (payload.error) throw new Error(payload.error);
+              if (payload.line) addLine(payload.line);
+            }
+          }
+          if (!streamController.signal.aborted) {
+            liveDot.className = "dot offline";
+            liveLabel.textContent = "DISCONNESSO";
+          }
+        } catch (error) {
+          if (error.name !== "AbortError") {
+            liveDot.className = "dot offline";
+            liveLabel.textContent = "ERRORE";
+            setNotice(error.message, "error");
+          }
+        }
+      }
+
+      async function initialize() {
+        try {
+          await api("/api/command-center/config");
+          setNotice("Dashboard avviata. Connessione ai servizi Raspberry…");
+          await refreshStatus();
+          lines.length = 0;
+          startStream();
+          if (statusTimer) clearInterval(statusTimer);
+          statusTimer = setInterval(refreshStatus, 5000);
+        } catch (error) {
+          setConnected(false, "Configurazione mancante");
+          setNotice(error.message, "error");
+          await stopStream();
+          document.querySelectorAll("[data-action]").forEach((button) => { button.disabled = true; });
+        }
+      }
+
+      async function runAction(button) {
+        const card = button.closest("[data-service]");
+        const serviceId = card.dataset.service;
+        const action = button.dataset.action;
+        const title = card.querySelector(".service-title").textContent;
+        const labels = { start: "avviare", stop: "fermare", restart: "riavviare" };
+        if (!window.confirm(`Confermi di ${labels[action]} ${title}?`)) return;
+
+        card.querySelectorAll("[data-action]").forEach((control) => { control.disabled = true; });
+        setNotice(`${action === "restart" ? "Riavvio" : action === "start" ? "Avvio" : "Arresto"} in corso: ${title}…`);
+        let succeeded = false;
+        try {
+          await api(`/api/command-center/services/${serviceId}/${action}`, { method: "POST" });
+          setNotice(`${title}: comando ${action} completato.`, "success");
+          succeeded = true;
+        } catch (error) {
+          setNotice(error.message, "error");
+        } finally {
+          await refreshStatus();
+          if (succeeded && serviceId === logService.value) startStream();
+        }
+      }
+
+      document.querySelectorAll("[data-action]").forEach((button) => {
+        button.addEventListener("click", () => runAction(button));
+      });
+      logService.addEventListener("change", () => {
+        lines.length = 0;
+        renderLogs();
+        startStream();
+      });
+      historyLines.addEventListener("change", () => {
+        lines.length = 0;
+        renderLogs();
+        startStream();
+      });
+      levelFilter.addEventListener("change", renderLogs);
+      searchFilter.addEventListener("input", renderLogs);
+      document.getElementById("clear-logs").addEventListener("click", () => {
+        lines.length = 0;
+        renderLogs();
+      });
+      document.getElementById("copy-logs").addEventListener("click", async (event) => {
+        try {
+          await navigator.clipboard.writeText(lines.join("\n"));
+          event.currentTarget.textContent = "Copiato";
+          setTimeout(() => { event.currentTarget.textContent = "Copia"; }, 1400);
+        } catch {
+          setNotice("Il browser non consente la copia degli appunti.", "error");
+        }
+      });
+      window.addEventListener("pagehide", stopStream);
+
+      document.querySelectorAll("[data-action]").forEach((button) => { button.disabled = true; });
+      initialize();
+    })();
+  </script>
+</body>
+</html>
