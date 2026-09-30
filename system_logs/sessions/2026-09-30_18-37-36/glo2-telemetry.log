@@ -30,3 +30,10 @@
 2026-09-30 18:41:11.393 [WARNING] [main    ] [mqtt] disconnected rc=128 (unknown); paho will retry [total=3]
 2026-09-30 18:41:27.155 [INFO ] [main    ] [mqtt] connected (session_present=True)
 2026-09-30 18:41:43.102 [WARNING] [main    ] [wifi] no active connection
+2026-09-30 18:42:03.547 [WARNING] [main    ] [wifi] no active connection
+2026-09-30 18:42:12.869 [WARNING] [main    ] [mqtt] disconnected rc=141 (keepalive_timeout); paho will retry [total=4]
+2026-09-30 18:42:42.832 [WARNING] [main    ] [gps] connect failed: timed out; retry in 3.0s (attempt 52, next log in 300s if still failing)
+2026-09-30 18:43:25.430 [INFO ] [main    ] [as5600] detected at 0x36 (magnet_detected=False)
+2026-09-30 18:43:25.441 [WARNING] [main    ] [as5600] not detected at 0x36
+2026-09-30 18:47:43.020 [WARNING] [main    ] [gps] connect failed: timed out; retry in 3.0s (attempt 102, next log in 300s if still failing)
+2026-09-30 18:52:43.227 [WARNING] [main    ] [gps] connect failed: timed out; retry in 3.0s (attempt 152, next log in 300s if still failing)

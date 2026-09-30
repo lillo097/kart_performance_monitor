@@ -13,3 +13,10 @@
 {"ts_epoch": 1790786471.394, "ts_iso": "2026-09-30T18:41:11.394+02:00", "event": "mqtt_disconnect", "rc": 128, "meaning": "unknown", "total_disconnects": 3}
 {"ts_epoch": 1790786487.156, "ts_iso": "2026-09-30T18:41:27.156+02:00", "event": "mqtt_connect", "broker": "broker.hivemq.com", "port": 1883, "client_id": "RPi-KART-2ccf677d1465", "session_present": true}
 {"ts_epoch": 1790786503.103, "ts_iso": "2026-09-30T18:41:43.102+02:00", "event": "wifi_disconnect"}
+{"ts_epoch": 1790786523.548, "ts_iso": "2026-09-30T18:42:03.548+02:00", "event": "wifi_disconnect"}
+{"ts_epoch": 1790786532.871, "ts_iso": "2026-09-30T18:42:12.870+02:00", "event": "mqtt_disconnect", "rc": 141, "meaning": "keepalive_timeout", "total_disconnects": 4}
+{"ts_epoch": 1790786562.833, "ts_iso": "2026-09-30T18:42:42.832+02:00", "event": "bt_connect_failed", "reason": "timed out", "backoff_s": 3.0, "attempt": 52}
+{"ts_epoch": 1790786605.431, "ts_iso": "2026-09-30T18:43:25.431+02:00", "event": "sensor_appeared", "sensor": "as5600", "address": "0x36"}
+{"ts_epoch": 1790786605.442, "ts_iso": "2026-09-30T18:43:25.442+02:00", "event": "sensor_lost", "sensor": "as5600"}
+{"ts_epoch": 1790786863.024, "ts_iso": "2026-09-30T18:47:43.023+02:00", "event": "bt_connect_failed", "reason": "timed out", "backoff_s": 3.0, "attempt": 102}
+{"ts_epoch": 1790787163.237, "ts_iso": "2026-09-30T18:52:43.237+02:00", "event": "bt_connect_failed", "reason": "timed out", "backoff_s": 3.0, "attempt": 152}
