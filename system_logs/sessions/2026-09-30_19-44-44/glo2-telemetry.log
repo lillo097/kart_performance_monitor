@@ -23,3 +23,10 @@
 2026-09-30 19:44:44.848 [INFO ] [main    ] [wifi] connected ssid=WINDTRE-E9B808 ip=192.168.1.25 mac=2c:cf:67:7d:14:65
 2026-09-30 19:44:50.612 [WARNING] [main    ] [gps] connect failed: timed out; retry in 1.0s (attempt 1, next log in 300s if still failing)
 2026-09-30 19:44:50.871 [INFO ] [main    ] [mqtt] connected (session_present=True)
+2026-09-30 19:45:22.657 [WARNING] [main    ] [mqtt] disconnected rc=128 (unknown); paho will retry [total=1]
+2026-09-30 19:45:29.012 [INFO ] [main    ] [mqtt] connected (session_present=True)
+2026-09-30 19:47:05.485 [WARNING] [main    ] [mqtt] disconnected rc=141 (keepalive_timeout); paho will retry [total=2]
+2026-09-30 19:47:10.792 [INFO ] [main    ] [mqtt] connected (session_present=True)
+2026-09-30 19:47:27.162 [INFO ] [main    ] [main] signal 15 received, shutting down
+2026-09-30 19:47:32.287 [INFO ] [session ] [SESSION] closed id=2026-09-30_19-44-44 reason=shutdown
+2026-09-30 19:47:32.288 [INFO ] [main    ] === shutdown complete ===
