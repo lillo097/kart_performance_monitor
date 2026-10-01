@@ -329,6 +329,90 @@
     </section>
 
     <div class="section-head">
+      <h2>Dati sensori MQTT</h2>
+      <span class="section-hint">Telemetria live dal kart</span>
+    </div>
+    <section class="panel" style="padding: 16px; margin-bottom: 18px;" aria-label="Dati sensori in tempo reale">
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
+        <!-- GPS Data -->
+        <div class="metric">
+          <div class="metric-label">GPS Fix</div>
+          <div class="metric-value" id="sensor-fix-valid">—</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">Satelliti</div>
+          <div class="metric-value" id="sensor-satellites">—</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">Velocità (km/h)</div>
+          <div class="metric-value" id="sensor-speed">—</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">Latitudine</div>
+          <div class="metric-value" id="sensor-latitude">—</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">Longitudine</div>
+          <div class="metric-value" id="sensor-longitude">—</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">HDOP</div>
+          <div class="metric-value" id="sensor-hdop">—</div>
+        </div>
+        <!-- Temperature -->
+        <div class="metric">
+          <div class="metric-label">Temperatura (°C)</div>
+          <div class="metric-value" id="sensor-temperature">—</div>
+        </div>
+        <!-- AS5600 -->
+        <div class="metric">
+          <div class="metric-label">AS5600 Angolo (°)</div>
+          <div class="metric-value" id="sensor-as5600-angle">—</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">AS5600 RPM</div>
+          <div class="metric-value" id="sensor-as5600-rpm">—</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">AS5600 Magnete</div>
+          <div class="metric-value" id="sensor-as5600-magnet">—</div>
+        </div>
+        <!-- IR RPM -->
+        <div class="metric">
+          <div class="metric-label">IR RPM</div>
+          <div class="metric-value" id="sensor-ir-rpm">—</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">IR Impulsi totali</div>
+          <div class="metric-value" id="sensor-ir-pulses">—</div>
+        </div>
+      </div>
+      <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center;">
+        <span style="font-size: 11px; color: var(--muted);">
+          <span id="sensor-status-dot" class="dot"></span>
+          <span id="sensor-update-label" style="margin-left: 8px;">In attesa dati…</span>
+        </span>
+        <span style="font-size: 10px; color: var(--muted);" id="sensor-age">—</span>
+      </div>
+    </section>
+
+    <div class="section-head">
+      <h2>Controllo sessione</h2>
+      <span class="section-hint">Comandi telemetria</span>
+    </div>
+    <section class="panel" style="padding: 16px; margin-bottom: 18px;" aria-label="Controllo sessione telemetria">
+      <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+        <button id="cooldown-button" class="button" style="flex: 1; min-width: 140px; background: #1c2333; border-color: #3a4a6b; color: #9fd7ff;" type="button">
+          Cooldown
+        </button>
+        <button id="session-button" class="button primary" style="flex: 1; min-width: 140px;" type="button">
+          Start Session
+        </button>
+      </div>
+      <div id="session-command-status" class="notice" style="margin-top: 10px; min-height: 16px;"></div>
+    </section>
+
+    <div class="section-head">
       <h2>Log di sistema</h2>
       <span class="section-hint">journalctl · flusso live</span>
     </div>
@@ -398,6 +482,7 @@
       const lines = [];
       let streamController = null;
       let statusTimer = null;
+      let sensorStreamController = null;
 
       function setNotice(message, kind = "") {
         notice.textContent = message;
@@ -649,8 +734,187 @@
       });
       window.addEventListener("pagehide", stopStream);
 
+      // ============================================================
+      // SENSOR DATA LIVE STREAM
+      // ============================================================
+      function formatValue(value, decimals = 2) {
+        if (value === null || value === undefined) return "—";
+        if (typeof value === "number") return value.toFixed(decimals);
+        return String(value);
+      }
+
+      function updateSensorDisplay(data) {
+        document.getElementById("sensor-fix-valid").textContent = data.fix_valid ? "✓ Valido" : "✗ Non valido";
+        document.getElementById("sensor-satellites").textContent = formatValue(data.satellites_used, 0);
+        document.getElementById("sensor-speed").textContent = formatValue(data.speed_kmph, 1);
+        document.getElementById("sensor-latitude").textContent = formatValue(data.latitude, 6);
+        document.getElementById("sensor-longitude").textContent = formatValue(data.longitude, 6);
+        document.getElementById("sensor-hdop").textContent = formatValue(data.hdop, 2);
+        document.getElementById("sensor-temperature").textContent = formatValue(data.temperature_c, 1);
+        document.getElementById("sensor-as5600-angle").textContent = formatValue(data.as5600_angle_deg, 1);
+        document.getElementById("sensor-as5600-rpm").textContent = formatValue(data.as5600_rpm, 0);
+        document.getElementById("sensor-as5600-magnet").textContent = data.as5600_magnet_ok ? "✓ OK" : "✗ Assente";
+        document.getElementById("sensor-ir-rpm").textContent = formatValue(data.ir_rpm, 0);
+        document.getElementById("sensor-ir-pulses").textContent = formatValue(data.ir_total_pulses, 0);
+
+        const statusDot = document.getElementById("sensor-status-dot");
+        const updateLabel = document.getElementById("sensor-update-label");
+        statusDot.className = "dot online";
+        updateLabel.textContent = "Dati aggiornati";
+      }
+
+      async function stopSensorStream() {
+        if (sensorStreamController) sensorStreamController.abort();
+        sensorStreamController = null;
+        const statusDot = document.getElementById("sensor-status-dot");
+        const updateLabel = document.getElementById("sensor-update-label");
+        statusDot.className = "dot";
+        updateLabel.textContent = "Stream fermato";
+      }
+
+      async function startSensorStream() {
+        await stopSensorStream();
+        sensorStreamController = new AbortController();
+        const statusDot = document.getElementById("sensor-status-dot");
+        const updateLabel = document.getElementById("sensor-update-label");
+        statusDot.className = "dot online";
+        updateLabel.textContent = "Stream attivo";
+
+        try {
+          const response = await fetch(
+            "/api/command-center/sensor-data/live",
+            { signal: sensorStreamController.signal },
+          );
+          if (!response.ok || !response.body) {
+            const data = await response.json().catch(() => ({}));
+            throw new Error(data.error || `Flusso dati sensori non disponibile (${response.status})`);
+          }
+          const reader = response.body.getReader();
+          const decoder = new TextDecoder();
+          let buffer = "";
+          while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+            const events = buffer.split("\n\n");
+            buffer = events.pop() || "";
+            for (const event of events) {
+              const dataLine = event.split("\n").find((line) => line.startsWith("data: "));
+              if (!dataLine) continue;
+              const payload = JSON.parse(dataLine.slice(6));
+              if (payload.error) throw new Error(payload.error);
+              if (payload.data) {
+                updateSensorDisplay(payload.data);
+                const age = document.getElementById("sensor-age");
+                age.textContent = "Adesso";
+              }
+            }
+          }
+          if (!sensorStreamController.signal.aborted) {
+            statusDot.className = "dot offline";
+            updateLabel.textContent = "Stream disconnesso";
+          }
+        } catch (error) {
+          if (error.name !== "AbortError") {
+            statusDot.className = "dot offline";
+            updateLabel.textContent = "Errore stream";
+            setNotice(error.message, "error");
+          }
+        }
+      }
+
+      async function refreshSensorData() {
+        try {
+          const data = await api("/api/command-center/sensor-data");
+          if (data.sensor_data && Object.keys(data.sensor_data).length > 0) {
+            updateSensorDisplay(data.sensor_data);
+            const age = document.getElementById("sensor-age");
+            if (data.data_age !== null) {
+              age.textContent = data.data_age < 5 ? "Adesso" : `${Math.floor(data.data_age)}s fa`;
+            }
+          }
+        } catch (error) {
+          const statusDot = document.getElementById("sensor-status-dot");
+          const updateLabel = document.getElementById("sensor-update-label");
+          statusDot.className = "dot offline";
+          updateLabel.textContent = "Errore lettura dati";
+        }
+      }
+
+      async function initializeSensors() {
+        await refreshSensorData();
+        startSensorStream();
+        setInterval(() => {
+          const age = document.getElementById("sensor-age");
+          const ageText = age.textContent;
+          if (ageText !== "—" && ageText !== "Adesso") {
+            const match = ageText.match(/^(\d+)s fa$/);
+            if (match) {
+              age.textContent = `${parseInt(match[1]) + 5}s fa`;
+            }
+          }
+        }, 5000);
+      }
+
+      window.addEventListener("pagehide", () => {
+        stopStream();
+        stopSensorStream();
+      });
+
+      // ============================================================
+      // SESSION CONTROL
+      // ============================================================
+      const cooldownButton = document.getElementById("cooldown-button");
+      const sessionButton = document.getElementById("session-button");
+      const sessionCommandStatus = document.getElementById("session-command-status");
+
+      function setSessionStatus(message, kind = "") {
+        sessionCommandStatus.textContent = message;
+        sessionCommandStatus.className = `notice ${kind}`;
+      }
+
+      let sessionRunning = false;
+
+      async function sendSessionCommand(command) {
+        const button = command === "cooldown" ? cooldownButton : sessionButton;
+        button.disabled = true;
+        setSessionStatus(
+          command === "cooldown" ? "Invio comando cooldown…" : "Invio comando sessione…",
+          ""
+        );
+
+        try {
+          const data = await api(`/api/command-center/session/${command}`, { method: "POST" });
+          setSessionStatus(data.message || `Comando ${command} inviato.`, "success");
+
+          // Toggle session button appearance after session_toggle command
+          if (command === "session_toggle") {
+            sessionRunning = !sessionRunning;
+            updateSessionButton();
+          }
+        } catch (error) {
+          setSessionStatus(error.message, "error");
+        } finally {
+          button.disabled = false;
+        }
+      }
+
+      function updateSessionButton() {
+        if (sessionRunning) {
+          sessionButton.textContent = "Stop Session";
+          sessionButton.className = "button danger";
+        } else {
+          sessionButton.textContent = "Start Session";
+          sessionButton.className = "button primary";
+        }
+      }
+
+      cooldownButton.addEventListener("click", () => sendSessionCommand("cooldown"));
+      sessionButton.addEventListener("click", () => sendSessionCommand("session_toggle"));
+
       document.querySelectorAll("[data-action]").forEach((button) => { button.disabled = true; });
       initialize();
+      initializeSensors();
     })();
   </script>
 </body>

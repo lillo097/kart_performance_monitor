@@ -23,6 +23,20 @@ class MqttBridge:
         self.status_topic = f"{self.topic_root}/status"
         self.result_topic = f"{self.topic_root}/result"
         self.log_topic = f"{self.topic_root}/logs"
+
+        # Sensor data topics
+        self.sensor_topic = "sensors2mqtt-glo2/esp32/location"
+        self.session_control_topic = "sensors2mqtt-glo2/session/control"
+        self.sensor_status_topics = {
+            "hotspot": "sensors2mqtt-glo2/esp32/status/hotspot",
+            "mqtt": "sensors2mqtt-glo2/esp32/status/mqtt",
+            "ntc": "sensors2mqtt-glo2/esp32/status/ntc",
+            "as5600": "sensors2mqtt-glo2/esp32/status/as5600",
+            "ir_rpm": "sensors2mqtt-glo2/esp32/status/ir_rpm",
+            "gps": "sensors2mqtt-glo2/esp32/status/gps",
+            "alive": "sensors2mqtt-glo2/esp32/status/alive",
+        }
+
         self._lock = threading.RLock()
         self._condition = threading.Condition(self._lock)
         self._connected = False
@@ -34,6 +48,13 @@ class MqttBridge:
             service_id: deque(maxlen=2000)
             for service_id in self.services
         }
+
+        # Sensor data storage
+        self._sensor_data = {}
+        self._sensor_statuses = {key: None for key in self.sensor_status_topics}
+        self._last_sensor_update = 0.0
+        self._sensor_sequence = 0
+        self._sensor_history = deque(maxlen=100)
         self._client = mqtt.Client(
             callback_api_version=mqtt.CallbackAPIVersion.VERSION2,
             client_id=f"kart-command-ui-{self.device_id}-{uuid.uuid4().hex[:8]}",
@@ -71,7 +92,11 @@ class MqttBridge:
             (self.status_topic, 1),
             (self.result_topic, 1),
             (self.log_topic, 0),
+            (self.sensor_topic, 0),
         ])
+        # Subscribe to all sensor status topics
+        for topic in self.sensor_status_topics.values():
+            client.subscribe(topic, 0)
         with self._condition:
             self._connected = True
             self._condition.notify_all()
@@ -88,6 +113,16 @@ class MqttBridge:
             return
         if not isinstance(payload, dict):
             return
+
+        # Handle sensor data topics (no device_id filtering needed)
+        if message.topic == self.sensor_topic:
+            self._accept_sensor_data(payload)
+            return
+        elif message.topic in self.sensor_status_topics.values():
+            self._accept_sensor_status(message.topic, payload)
+            return
+
+        # For command/control topics, verify device_id
         if payload.get("device_id") != self.device_id:
             return
 
@@ -140,6 +175,34 @@ class MqttBridge:
                 "sequence": self._log_sequence,
                 "line": line,
             })
+            self._condition.notify_all()
+
+    def _accept_sensor_data(self, payload):
+        if not isinstance(payload, dict):
+            return
+        with self._condition:
+            self._sensor_data = dict(payload)
+            self._last_sensor_update = time.time()
+            self._sensor_sequence += 1
+            self._sensor_history.append({
+                "sequence": self._sensor_sequence,
+                "data": dict(payload),
+                "timestamp": time.time(),
+            })
+            self._condition.notify_all()
+
+    def _accept_sensor_status(self, topic, payload):
+        if not isinstance(payload, dict):
+            return
+        sensor_name = None
+        for name, status_topic in self.sensor_status_topics.items():
+            if topic == status_topic:
+                sensor_name = name
+                break
+        if sensor_name is None:
+            return
+        with self._condition:
+            self._sensor_statuses[sensor_name] = dict(payload)
             self._condition.notify_all()
 
     def health(self):
@@ -265,3 +328,63 @@ class MqttBridge:
         )
         if info.rc != mqtt.MQTT_ERR_SUCCESS:
             raise RuntimeError(f"Richiesta log MQTT fallita (rc={info.rc}).")
+
+    def sensor_data(self):
+        with self._lock:
+            data_age = time.time() - self._last_sensor_update if self._last_sensor_update else None
+            return {
+                "data": dict(self._sensor_data) if self._sensor_data else {},
+                "statuses": dict(self._sensor_statuses),
+                "last_update": self._last_sensor_update or None,
+                "data_age": data_age,
+            }
+
+    def latest_sensor_sequence(self):
+        with self._lock:
+            return self._sensor_sequence
+
+    def sensor_data_after(self, sequence, timeout=10):
+        with self._condition:
+            self._condition.wait_for(
+                lambda: self._sensor_sequence > sequence,
+                timeout=timeout,
+            )
+            entries = [
+                entry for entry in self._sensor_history
+                if entry["sequence"] > sequence
+            ]
+            return entries
+
+    def publish_session_command(self, command_type):
+        """
+        Publish session control commands to MQTT.
+        command_type: 'session_toggle' or 'cooldown'
+
+        IMPORTANT: These commands are published to the sensor_topic
+        (sensors2mqtt-glo2/esp32/location), NOT to a separate control topic.
+        The app.py server listens on this topic for both sensor data AND commands.
+        """
+        if command_type not in {"session_toggle", "cooldown"}:
+            raise ValueError("Comando non consentito. Usa 'session_toggle' o 'cooldown'.")
+
+        with self._lock:
+            if not self._connected:
+                raise RuntimeError("Dashboard non connessa al broker MQTT.")
+
+        if command_type == "session_toggle":
+            payload = {"session_toggle": True}
+        else:
+            payload = {"cooldown": True}
+
+        # Publish to sensor_topic, NOT session_control_topic
+        # The app.py server subscribes to sensor_topic and handles both data and commands
+        info = self._client.publish(
+            self.sensor_topic,
+            json.dumps(payload, separators=(",", ":")),
+            qos=1,
+            retain=False,
+        )
+        if info.rc != mqtt.MQTT_ERR_SUCCESS:
+            raise RuntimeError(f"Invio comando sessione MQTT fallito (rc={info.rc}).")
+
+        return {"ok": True, "command": command_type, "payload": payload}

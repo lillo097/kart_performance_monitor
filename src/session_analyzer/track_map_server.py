@@ -18,7 +18,7 @@ MAIN_APP_API = "http://127.0.0.1:8080/api/live"
 load_dotenv(BASE_DIR / ".env")
 
 HOST = "0.0.0.0"
-PORT = 8081
+PORT = 8088
 
 app = Flask(__name__)
 

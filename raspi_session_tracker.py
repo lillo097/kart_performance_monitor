@@ -148,7 +148,9 @@ GPS_RECV_TIMEOUT_S = 0.5
 
 WIFI_CHECK_INTERVAL_S = 10.0
 WIFI_LOG_INTERVAL_S   = 60.0
-WIFI_KEEPALIVE_INTERVAL_S = 30.0
+# Ridotto a 5s per mantenere sempre attivo l'hotspot iPhone
+# evitando completamente le disconnessioni da risparmio energetico
+WIFI_KEEPALIVE_INTERVAL_S = 5.0
 
 # Rate-limit per log ed eventi ripetuti (evita di riempire il .log)
 LOG_RATE_LIMIT_S = 300.0  # 5 minuti

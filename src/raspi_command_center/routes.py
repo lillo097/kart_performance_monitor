@@ -167,3 +167,71 @@ def service_action(service_id, action):
         "message": result.get("message", ""),
         "completed_at": result.get("timestamp"),
     })
+
+
+@command_center.get("/api/command-center/sensor-data")
+def sensor_data():
+    mqtt_bridge, error = _bridge_or_error()
+    if error:
+        return error
+
+    data = mqtt_bridge.sensor_data()
+    return jsonify({
+        "ok": True,
+        "sensor_data": data["data"],
+        "sensor_statuses": data["statuses"],
+        "last_update": data["last_update"],
+        "data_age": data["data_age"],
+    })
+
+
+@command_center.get("/api/command-center/sensor-data/live")
+def live_sensor_data():
+    mqtt_bridge, error = _bridge_or_error()
+    if error:
+        return error
+
+    cursor = mqtt_bridge.latest_sensor_sequence()
+
+    @stream_with_context
+    def generate():
+        nonlocal cursor
+        while True:
+            entries = mqtt_bridge.sensor_data_after(cursor, timeout=10)
+            if not entries:
+                yield f": keepalive {int(time.time())}\n\n"
+                continue
+            for entry in entries:
+                cursor = max(cursor, entry["sequence"])
+                yield f"data: {json.dumps({'data': entry['data'], 'timestamp': entry['timestamp']})}\n\n"
+
+    return Response(
+        generate(),
+        mimetype="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+        },
+    )
+
+
+@command_center.post("/api/command-center/session/<command>")
+def session_command(command):
+    mqtt_bridge, error = _bridge_or_error()
+    if error:
+        return error
+    if command not in {"session_toggle", "cooldown"}:
+        return jsonify({"ok": False, "error": "Comando non consentito."}), 400
+
+    try:
+        result = mqtt_bridge.publish_session_command(command)
+    except ValueError as error:
+        return jsonify({"ok": False, "error": str(error)}), 400
+    except RuntimeError as error:
+        return jsonify({"ok": False, "error": str(error)}), 503
+
+    return jsonify({
+        "ok": True,
+        "command": command,
+        "message": f"Comando {command} pubblicato con successo su MQTT.",
+    })
