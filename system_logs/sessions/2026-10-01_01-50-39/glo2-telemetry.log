@@ -1,0 +1,36 @@
+2026-10-01 01:50:39.342 [INFO ] [main    ] [SESSION] started id=2026-10-01_01-50-39
+2026-10-01 01:50:39.343 [INFO ] [main    ] [SESSION] directory=/home/lillo97/kart_performance_monitor/system_logs/sessions/2026-10-01_01-50-39
+2026-10-01 01:50:39.343 [INFO ] [main    ] [SESSION] files=glo2-telemetry.log, boot.json, raw.jsonl, events.jsonl
+2026-10-01 01:50:39.344 [INFO ] [main    ] === Kart Telemetry v2.1.1 starting ===
+2026-10-01 01:50:39.344 [INFO ] [main    ] [main] hostname=raspberrypi pid=639
+2026-10-01 01:50:39.345 [INFO ] [main    ] [main] mqtt_client_id=RPi-KART-1dde5f50f752 broker=broker.hivemq.com:1883
+2026-10-01 01:50:39.346 [INFO ] [main    ] [i2c] bus 1 opened
+2026-10-01 01:50:39.347 [INFO ] [main    ] ====================================================
+2026-10-01 01:50:39.347 [INFO ] [main    ] KART TELEMETRY - STARTUP CHECK
+2026-10-01 01:50:39.348 [INFO ] [main    ] ====================================================
+2026-10-01 01:50:39.349 [WARNING] [main    ] [check] NTC (ADC): no ADC
+2026-10-01 01:50:39.350 [WARNING] [main    ] [check] AS5600 I2C: not found
+2026-10-01 01:50:39.350 [INFO ] [main    ] [check] Garmin GLO2 verification in background
+2026-10-01 01:50:39.351 [INFO ] [main    ] [check] WiFi verification in background
+2026-10-01 01:50:39.351 [INFO ] [main    ] ====================================================
+2026-10-01 01:50:39.691 [INFO ] [main    ] [mqtt] connecting...
+2026-10-01 01:50:39.703 [ERROR] [main    ] [mqtt] initial connect failed: [Errno -3] Temporary failure in name resolution; paho will retry
+2026-10-01 01:50:39.706 [INFO ] [main    ] [wifi] keepalive started (ping gateway every 30s)
+2026-10-01 01:50:39.709 [INFO ] [main    ] [gps] task started
+2026-10-01 01:50:39.710 [INFO ] [main    ] [main] READY (watchdog armed, 30s)
+2026-10-01 01:50:39.711 [INFO ] [main    ] [ntc] reading invalid (open circuit or disconnected)
+2026-10-01 01:50:39.717 [WARNING] [main    ] [as5600] not detected at 0x36
+2026-10-01 01:50:39.883 [WARNING] [main    ] [wifi] no active connection
+2026-10-01 01:50:45.713 [WARNING] [main    ] [gps] connect failed: timed out; retry in 1.0s (attempt 1, next log in 300s if still failing)
+2026-10-01 01:50:46.827 [INFO ] [main    ] [gps] connected to 14:13:0B:C0:B2:1E (socket RFCOMM)
+2026-10-01 01:50:46.890 [INFO ] [main    ] [gps] first NMEA: $GPRMC,085159.9,V,4529.648511,N,00912.37...
+2026-10-01 01:50:52.554 [WARNING] [main    ] [wifi] no active connection
+2026-10-01 01:51:03.062 [WARNING] [main    ] [wifi] no active connection
+2026-10-01 01:51:13.367 [WARNING] [main    ] [wifi] no active connection
+2026-10-01 01:51:23.539 [WARNING] [main    ] [wifi] no active connection
+2026-10-01 01:51:33.749 [WARNING] [main    ] [wifi] no active connection
+2026-10-01 01:51:43.926 [WARNING] [main    ] [wifi] no active connection
+2026-10-01 01:51:54.126 [WARNING] [main    ] [wifi] no active connection
+2026-10-01 01:52:04.294 [WARNING] [main    ] [wifi] no active connection
+2026-10-01 01:52:14.496 [WARNING] [main    ] [wifi] no active connection
+2026-10-01 01:52:24.665 [WARNING] [main    ] [wifi] no active connection
