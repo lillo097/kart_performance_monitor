@@ -2731,13 +2731,25 @@ def on_mqtt_message(client, userdata, message):
 def start_mqtt():
     global mqtt_client
 
-    client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
+    # Usa clean_session=False per mantenere la sessione persistente
+    # e bufferizzare i messaggi durante le disconnessioni
+    client = mqtt.Client(
+        mqtt.CallbackAPIVersion.VERSION2,
+        clean_session=False,
+    )
 
     client.on_connect = on_mqtt_connect
     client.on_disconnect = on_mqtt_disconnect
     client.on_message = on_mqtt_message
 
+    # Configura retry automatico con backoff esponenziale
     client.reconnect_delay_set(min_delay=1, max_delay=30)
+
+    # Configura le code per bufferizzare messaggi durante disconnessioni
+    # max_queued: fino a 200 messaggi in coda (sufficiente per ~20s di GPS a 10Hz)
+    # max_inflight: massimo 20 messaggi in transito simultaneamente
+    client.max_queued_messages_set(200)
+    client.max_inflight_messages_set(20)
 
     client.connect_async(
         MQTT_CONFIG["broker"],
