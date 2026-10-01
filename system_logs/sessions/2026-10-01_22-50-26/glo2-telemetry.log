@@ -1,0 +1,35 @@
+2026-10-01 22:50:26.548 [INFO ] [main    ] [SESSION] started id=2026-10-01_22-50-26
+2026-10-01 22:50:26.549 [INFO ] [main    ] [SESSION] directory=/home/lillo97/kart_performance_monitor/system_logs/sessions/2026-10-01_22-50-26
+2026-10-01 22:50:26.550 [INFO ] [main    ] [SESSION] files=glo2-telemetry.log, boot.json, raw.jsonl, events.jsonl
+2026-10-01 22:50:26.551 [INFO ] [main    ] === Kart Telemetry v2.1.1 starting ===
+2026-10-01 22:50:26.552 [INFO ] [main    ] [main] hostname=raspberrypi pid=861
+2026-10-01 22:50:26.552 [INFO ] [main    ] [main] mqtt_client_id=RPi-KART-2ccf677d1465 broker=broker.hivemq.com:1883
+2026-10-01 22:50:26.554 [INFO ] [main    ] [i2c] bus 1 opened
+2026-10-01 22:50:26.557 [INFO ] [main    ] ====================================================
+2026-10-01 22:50:26.558 [INFO ] [main    ] KART TELEMETRY - STARTUP CHECK
+2026-10-01 22:50:26.559 [INFO ] [main    ] ====================================================
+2026-10-01 22:50:26.559 [WARNING] [main    ] [check] NTC (ADC): no ADC
+2026-10-01 22:50:26.564 [WARNING] [main    ] [check] AS5600 I2C: not found
+2026-10-01 22:50:26.565 [INFO ] [main    ] [check] Garmin GLO2 verification in background
+2026-10-01 22:50:26.565 [INFO ] [main    ] [check] WiFi verification in background
+2026-10-01 22:50:26.566 [INFO ] [main    ] ====================================================
+2026-10-01 22:50:28.225 [INFO ] [main    ] [wifi] active ssid=iPhone di Livio ip=172.20.10.2
+2026-10-01 22:50:28.233 [INFO ] [main    ] [mqtt] connecting...
+2026-10-01 22:50:30.260 [INFO ] [main    ] [wifi] keepalive started (ping gateway every 5s)
+2026-10-01 22:50:30.263 [INFO ] [main    ] [gps] task started
+2026-10-01 22:50:30.263 [INFO ] [main    ] [main] READY (watchdog armed, 30s)
+2026-10-01 22:50:30.274 [INFO ] [main    ] [ntc] reading invalid (open circuit or disconnected)
+2026-10-01 22:50:30.315 [WARNING] [main    ] [as5600] not detected at 0x36
+2026-10-01 22:50:30.317 [INFO ] [main    ] [mqtt] connected (session_present=True)
+2026-10-01 22:50:31.805 [INFO ] [main    ] [wifi] connected ssid=iPhone di Livio ip=172.20.10.2 mac=2c:cf:67:7d:14:65
+2026-10-01 22:50:36.281 [WARNING] [main    ] [gps] connect failed: timed out; retry in 1.0s (attempt 1, next log in 300s if still failing)
+2026-10-01 22:51:23.143 [WARNING] [main    ] [wifi] no active connection
+2026-10-01 22:51:33.558 [INFO ] [main    ] [wifi] connected ssid=iPhone di Livio ip=172.20.10.2 mac=2c:cf:67:7d:14:65
+2026-10-01 22:52:58.652 [WARNING] [main    ] [mqtt] disconnected rc=141 (keepalive_timeout); paho will retry [total=1]
+2026-10-01 22:53:12.229 [INFO ] [main    ] [mqtt] connected (session_present=True)
+2026-10-01 22:53:40.874 [WARNING] [main    ] [mqtt] disconnected rc=141 (keepalive_timeout); paho will retry [total=3]
+2026-10-01 22:53:53.942 [INFO ] [main    ] [mqtt] connected (session_present=True)
+2026-10-01 22:54:22.226 [WARNING] [main    ] [mqtt] disconnected rc=141 (keepalive_timeout); paho will retry [total=5]
+2026-10-01 22:54:41.626 [INFO ] [main    ] [mqtt] connected (session_present=True)
+2026-10-01 22:55:04.322 [WARNING] [main    ] [mqtt] disconnected rc=141 (keepalive_timeout); paho will retry [total=7]
+2026-10-01 22:55:06.174 [INFO ] [main    ] [mqtt] connected (session_present=True)
