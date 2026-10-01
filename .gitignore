@@ -9,6 +9,8 @@ current/
 __pycache__/
 *.pyc
 *.pyo
+*.json
+*.jsnol
 
 # IDE / secrets
 .idea/
