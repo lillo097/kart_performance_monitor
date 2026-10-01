@@ -29,3 +29,5 @@
 2026-10-01 19:42:58.224 [INFO ] [main    ] [wifi] connected ssid=iPhone di Livio ip=172.20.10.2 mac=2c:cf:67:7d:14:65
 2026-10-01 19:43:05.518 [INFO ] [session ] [SESSION] associated session_guid=93e94dca-e9fa-49f0-bcad-19e2909a3cf5
 2026-10-01 19:43:05.535 [INFO ] [main    ] [SESSION] received session_guid=93e94dca-e9fa-49f0-bcad-19e2909a3cf5
+2026-10-01 19:47:57.681 [WARNING] [main    ] [wifi] no active connection
+2026-10-01 19:48:07.901 [INFO ] [main    ] [wifi] connected ssid=iPhone di Livio ip=172.20.10.2 mac=2c:cf:67:7d:14:65

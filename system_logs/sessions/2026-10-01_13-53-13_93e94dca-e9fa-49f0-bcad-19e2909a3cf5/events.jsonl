@@ -11,3 +11,5 @@
 {"ts_epoch": 1790876567.953, "ts_iso": "2026-10-01T19:42:47.953+02:00", "event": "wifi_disconnect"}
 {"ts_epoch": 1790876578.225, "ts_iso": "2026-10-01T19:42:58.224+02:00", "event": "wifi_connect", "ssid": "iPhone di Livio", "ip": "172.20.10.2", "mac": "2c:cf:67:7d:14:65"}
 {"ts_epoch": 1790876585.494, "ts_iso": "2026-10-01T19:43:05.494+02:00", "event": "session_associated", "session_guid": "93e94dca-e9fa-49f0-bcad-19e2909a3cf5"}
+{"ts_epoch": 1790876877.685, "ts_iso": "2026-10-01T19:47:57.685+02:00", "event": "wifi_disconnect"}
+{"ts_epoch": 1790876887.903, "ts_iso": "2026-10-01T19:48:07.902+02:00", "event": "wifi_connect", "ssid": "iPhone di Livio", "ip": "172.20.10.2", "mac": "2c:cf:67:7d:14:65"}
