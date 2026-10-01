@@ -2733,8 +2733,10 @@ def start_mqtt():
 
     # Usa clean_session=False per mantenere la sessione persistente
     # e bufferizzare i messaggi durante le disconnessioni
+    # NOTA: clean_session=False richiede un client_id per identificare la sessione
     client = mqtt.Client(
         mqtt.CallbackAPIVersion.VERSION2,
+        client_id="kart-performance-monitor-server",
         clean_session=False,
     )
 

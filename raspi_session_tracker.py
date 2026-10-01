@@ -786,16 +786,30 @@ def on_mqtt_message(client, userdata, message):
         if not isinstance(payload, dict):
             raise ValueError("session control payload must be a JSON object")
 
-        if payload.get("event") != "session_started":
-            return
+        event = payload.get("event")
 
-        session_guid = str(uuid.UUID(str(payload.get("session_guid", ""))))
-        if session_logger is None:
-            raise RuntimeError("session logger is not initialized")
+        # Gestione avvio sessione
+        if event == "session_started":
+            session_guid = str(uuid.UUID(str(payload.get("session_guid", ""))))
+            if session_logger is None:
+                raise RuntimeError("session logger is not initialized")
 
-        session_logger.set_session_guid(session_guid)
-        log = setup_logging(session_logger.session_dir)
-        log.info(f"[SESSION] received session_guid={session_guid}")
+            session_logger.start_session(session_guid)
+            log = setup_logging(session_logger.session_dir)
+            log.info(f"[SESSION] received session_started, guid={session_guid}")
+
+        # Gestione stop sessione
+        elif event == "session_stopped":
+            if session_logger is None:
+                raise RuntimeError("session logger is not initialized")
+
+            session_guid = payload.get("session_guid")
+            log.info(f"[SESSION] received session_stopped, guid={session_guid}")
+            session_logger.stop_session(reason="mqtt_stop_command")
+
+        else:
+            log.warning(f"[mqtt] unknown session control event: {event}")
+
     except (UnicodeDecodeError, json.JSONDecodeError, ValueError, RuntimeError, OSError) as error:
         log.error(f"[mqtt] invalid session control message: {error}")
 

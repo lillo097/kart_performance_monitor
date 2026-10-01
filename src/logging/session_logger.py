@@ -51,32 +51,25 @@ class SessionLogger:
         SESSIONS_DIR.mkdir(parents=True, exist_ok=True)
         self._cleanup_old_sessions()
 
-        created_at = datetime.now()
-        stamp = created_at.strftime("%Y-%m-%d_%H-%M-%S")
-        session_dir = SESSIONS_DIR / stamp
-        suffix = 1
-        while True:
-            try:
-                session_dir.mkdir()
-                break
-            except FileExistsError:
-                session_dir = SESSIONS_DIR / f"{stamp}_{suffix:02d}"
-                suffix += 1
-
-        stamp = session_dir.name
-        self.session_id = stamp
-        self._session_boot_stamp = stamp
+        # Stato della sessione
         self.session_guid = None
+        self._session_active = False  # True solo quando la sessione è avviata via MQTT
+        self._session_boot_stamp = None
+        self.session_id = None
+        self.session_dir = None
 
-        self.session_dir = session_dir
-        self._app_session_path = APP_SESSIONS_DIR / f"{stamp}_raspi.json"
-        self._boot_path = session_dir / "boot.json"
-        self._raw_path = session_dir / "raw.jsonl"
-        self._events_path = session_dir / "events.jsonl"
-        self._log_path = session_dir / "glo2-telemetry.log"
+        # Buffer in memoria per eventi e campioni finché la sessione non è avviata
+        self._events_buffer = []
+        self._raw_buffer = []
 
-        self._raw_handle = open(self._raw_path, "a", encoding="utf-8", buffering=1)
-        self._events_handle = open(self._events_path, "a", encoding="utf-8", buffering=1)
+        # File handles (None finché la sessione non è avviata)
+        self._raw_handle = None
+        self._events_handle = None
+        self._boot_path = None
+        self._raw_path = None
+        self._events_path = None
+        self._log_path = None
+        self._app_session_path = None
 
         self._started_epoch = time.time()
         self._started_iso = _iso_now()
@@ -101,62 +94,96 @@ class SessionLogger:
 
         self._boot_status = "running"
 
-        self._log.info(f"[SESSION] started id={stamp}")
-        self._log.info(f"[SESSION] directory={self.session_dir}")
-        self._log.info(f"[SESSION] boot={self._boot_path.name}")
-        self._log.info(f"[SESSION] raw={self._raw_path.name}")
-        self._log.info(f"[SESSION] events={self._events_path.name}")
+        self._log.info("[SESSION] logger initialized (buffering mode - waiting for session start)")
 
-    def set_session_guid(self, session_guid):
+    def start_session(self, session_guid):
+        """Avvia una nuova sessione: crea la directory e salva il buffer su disco."""
         normalized_guid = str(uuid.UUID(str(session_guid)))
 
         with self._lock:
-            if self.session_guid == normalized_guid:
+            # Se c'è già una sessione attiva con lo stesso GUID, ignora
+            if self._session_active and self.session_guid == normalized_guid:
+                self._log.warning(f"[SESSION] session already active with guid={normalized_guid}")
                 return
 
-            session_dir = SESSIONS_DIR / (
-                f"{self._session_boot_stamp}_{normalized_guid}"
-            )
-            if session_dir.exists():
-                raise FileExistsError(
-                    f"Session directory already exists: {session_dir}"
-                )
+            # Se c'è una sessione attiva diversa, chiudila prima
+            if self._session_active and self.session_guid != normalized_guid:
+                self._log.info(f"[SESSION] closing previous session before starting new one")
+                self._close_session_files()
 
-            if self.session_guid is None:
-                self.session_dir.rename(session_dir)
-            else:
-                self.update_boot_json(force=True)
-                self._raw_handle.close()
-                self._events_handle.close()
+            # Crea directory di sessione con timestamp + GUID
+            created_at = datetime.now()
+            stamp = created_at.strftime("%Y-%m-%d_%H-%M-%S")
+            session_dir = SESSIONS_DIR / f"{stamp}_{normalized_guid}"
+
+            suffix = 1
+            while session_dir.exists():
+                session_dir = SESSIONS_DIR / f"{stamp}_{suffix:02d}_{normalized_guid}"
+                suffix += 1
+
+            try:
                 session_dir.mkdir()
+            except FileExistsError:
+                self._log.error(f"[SESSION] failed to create directory {session_dir}")
+                raise
 
-            self.session_dir = session_dir
+            self._session_boot_stamp = stamp
+            self.session_guid = normalized_guid
             self.session_id = session_dir.name
+            self.session_dir = session_dir
             self._boot_path = session_dir / "boot.json"
             self._raw_path = session_dir / "raw.jsonl"
             self._events_path = session_dir / "events.jsonl"
             self._log_path = session_dir / "glo2-telemetry.log"
-            self._app_session_path = (
-                APP_SESSIONS_DIR
-                / f"{session_dir.name}_raspi.json"
-            )
-            self.session_guid = normalized_guid
+            self._app_session_path = APP_SESSIONS_DIR / f"{session_dir.name}_raspi.json"
+
+            # Apri i file di log
+            self._raw_handle = open(self._raw_path, "a", encoding="utf-8", buffering=1)
+            self._events_handle = open(self._events_path, "a", encoding="utf-8", buffering=1)
+
+            # Reset contatori per nuova sessione
+            self._started_epoch = time.time()
+            self._started_iso = _iso_now()
+            self._ended_iso = None
+            self._boot_status = "running"
             self._counters["raw_rotations"] = 0
+            self._warmup_samples = []
 
-            if self._raw_handle.closed:
-                self._raw_handle = open(
-                    self._raw_path, "a", encoding="utf-8", buffering=1
-                )
-            if self._events_handle.closed:
-                self._events_handle = open(
-                    self._events_path, "a", encoding="utf-8", buffering=1
-                )
+            # Scrivi il buffer accumulato su disco
+            self._flush_buffers_to_disk()
 
+            # Scrivi evento di associazione sessione
             self.log_event("session_associated", session_guid=normalized_guid)
+
+            # Aggiorna boot.json
             self.update_boot_json(force=True)
-            self._log.info(
-                f"[SESSION] associated session_guid={normalized_guid}"
-            )
+
+            self._session_active = True
+            self._log.info(f"[SESSION] started and saved to disk: {self.session_dir}")
+            self._log.info(f"[SESSION] session_guid={normalized_guid}")
+
+    def _flush_buffers_to_disk(self):
+        """Scrive i buffer in memoria sui file su disco."""
+        try:
+            # Scrivi eventi bufferizzati
+            for event_record in self._events_buffer:
+                self._events_handle.write(_safe_json(event_record) + "\n")
+
+            # Scrivi campioni raw bufferizzati
+            for raw_record in self._raw_buffer:
+                self._raw_handle.write(_safe_json(raw_record) + "\n")
+
+            self._log.info(f"[SESSION] flushed {len(self._events_buffer)} events and {len(self._raw_buffer)} raw samples to disk")
+
+            # Svuota i buffer
+            self._events_buffer.clear()
+            self._raw_buffer.clear()
+        except Exception as e:
+            self._log.error(f"[SESSION] failed to flush buffers: {e}")
+
+    def set_session_guid(self, session_guid):
+        """Alias per start_session per compatibilità con codice esistente."""
+        self.start_session(session_guid)
 
     # ------------------------------------------------------------------
     # Meta (chiamati all'avvio da app.py)
@@ -206,7 +233,16 @@ class SessionLogger:
                     "event": event_name,
                     **data,
                 }
-                self._events_handle.write(_safe_json(rec) + "\n")
+
+                # Se la sessione è attiva, scrivi su disco
+                if self._session_active and self._events_handle:
+                    self._events_handle.write(_safe_json(rec) + "\n")
+                else:
+                    # Altrimenti bufferizza in memoria
+                    self._events_buffer.append(rec)
+                    # Limita dimensione buffer (max 1000 eventi)
+                    if len(self._events_buffer) > 1000:
+                        self._events_buffer.pop(0)
             except Exception as e:
                 self._log.error(f"[SESSION] log_event failed: {e}")
 
@@ -221,7 +257,17 @@ class SessionLogger:
                     "ts_iso": _iso_now(),
                     "payload": payload,
                 }
-                self._raw_handle.write(_safe_json(rec) + "\n")
+
+                # Se la sessione è attiva, scrivi su disco
+                if self._session_active and self._raw_handle:
+                    self._raw_handle.write(_safe_json(rec) + "\n")
+                else:
+                    # Altrimenti bufferizza in memoria
+                    self._raw_buffer.append(rec)
+                    # Limita dimensione buffer (max 10000 campioni, ~2MB)
+                    if len(self._raw_buffer) > 10000:
+                        self._raw_buffer.pop(0)
+
                 self._counters["samples_published"] += 1
                 self._warmup_samples.append({
                     "received_at_epoch": rec["ts_epoch"],
@@ -239,12 +285,13 @@ class SessionLogger:
                 if payload.get("fix_valid") and payload.get("latitude") and payload.get("longitude"):
                     self._counters["valid_gps_samples"] += 1
 
-                # Rotazione
-                try:
-                    if self._raw_handle.tell() >= RAW_ROTATE_BYTES:
-                        self._rotate_raw()
-                except Exception:
-                    pass
+                # Rotazione (solo se sessione attiva)
+                if self._session_active and self._raw_handle:
+                    try:
+                        if self._raw_handle.tell() >= RAW_ROTATE_BYTES:
+                            self._rotate_raw()
+                    except Exception:
+                        pass
 
             except Exception as e:
                 self._log.error(f"[SESSION] log_raw_sample failed: {e}")
@@ -389,6 +436,10 @@ class SessionLogger:
             }
 
     def update_boot_json(self, force=False):
+        # Salta se la sessione non è attiva
+        if not self._session_active:
+            return
+
         now = time.time()
         if not force and (now - self._last_boot_update) < BOOT_UPDATE_INTERVAL_S:
             return
@@ -432,30 +483,33 @@ class SessionLogger:
             )
 
     # ------------------------------------------------------------------
-    # Chiusura
+    # Stop sessione (da comando MQTT)
     # ------------------------------------------------------------------
-    def close(self, reason="shutdown"):
+    def stop_session(self, reason="session_stopped"):
+        """Stoppa la sessione corrente e salva i file su disco."""
         with self._lock:
+            if not self._session_active:
+                self._log.warning("[SESSION] no active session to stop")
+                return
+
             self._boot_status = "stopped"
             self._ended_iso = _iso_now()
-            try:
-                self.log_event("service_stop", reason=reason,
-                               uptime_s=round(time.time() - self._started_epoch, 3),
-                               samples_published=self._counters["samples_published"])
-            except Exception:
-                pass
-            try:
-                self._raw_handle.close()
-            except Exception:
-                pass
-            try:
-                self._events_handle.close()
-            except Exception:
-                pass
+
+            # Scrivi evento di stop
+            self.log_event("service_stop", reason=reason,
+                          uptime_s=round(time.time() - self._started_epoch, 3),
+                          samples_published=self._counters["samples_published"])
+
+            # Chiudi i file
+            self._close_session_files()
+
+            # Scrivi boot.json finale
             try:
                 _atomic_write_json(self._boot_path, self._build_boot_payload())
             except Exception as e:
                 self._log.error(f"[SESSION] final boot write failed: {e}")
+
+            # Scrivi app session file finale
             try:
                 APP_SESSIONS_DIR.mkdir(parents=True, exist_ok=True)
                 _atomic_write_json(
@@ -463,4 +517,62 @@ class SessionLogger:
                 )
             except Exception as e:
                 self._log.error(f"[SESSION] final app session write failed: {e}")
-            self._log.info(f"[SESSION] closed id={self.session_id} reason={reason}")
+
+            self._log.info(f"[SESSION] stopped and saved: {self.session_id} reason={reason}")
+
+            # Reset stato per eventuale nuova sessione
+            self._session_active = False
+            self.session_guid = None
+            self.session_id = None
+
+            # Reset contatori
+            self._started_epoch = time.time()
+            self._started_iso = _iso_now()
+            self._ended_iso = None
+            self._boot_status = "running"
+            self._counters = {
+                "samples_published": 0,
+                "valid_gps_samples": 0,
+                "mqtt_reconnects": 0,
+                "bt_reconnects": 0,
+                "nmea_timeouts": 0,
+                "raw_rotations": 0,
+            }
+            self._warmup_samples = []
+
+            # Ricomincia a bufferizzare per eventuale prossima sessione
+            self._log.info("[SESSION] ready for next session (buffering mode)")
+
+    def _close_session_files(self):
+        """Chiude i file handle della sessione corrente."""
+        try:
+            if self._raw_handle:
+                self._raw_handle.close()
+                self._raw_handle = None
+        except Exception as e:
+            self._log.error(f"[SESSION] failed to close raw handle: {e}")
+
+        try:
+            if self._events_handle:
+                self._events_handle.close()
+                self._events_handle = None
+        except Exception as e:
+            self._log.error(f"[SESSION] failed to close events handle: {e}")
+
+    # ------------------------------------------------------------------
+    # Chiusura (chiamato allo shutdown del servizio)
+    # ------------------------------------------------------------------
+    def close(self, reason="shutdown"):
+        """Chiude il logger. Se c'è una sessione attiva, la salva; altrimenti scarta il buffer."""
+        with self._lock:
+            if self._session_active:
+                # Sessione attiva: salva tutto
+                self._log.info(f"[SESSION] saving active session before shutdown")
+                self.stop_session(reason=reason)
+            else:
+                # Nessuna sessione attiva: scarta il buffer
+                self._log.info(f"[SESSION] discarding buffered data (no active session)")
+                self._events_buffer.clear()
+                self._raw_buffer.clear()
+
+            self._log.info(f"[SESSION] logger closed, reason={reason}")
