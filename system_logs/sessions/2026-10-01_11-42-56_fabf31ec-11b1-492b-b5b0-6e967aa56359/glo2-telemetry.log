@@ -26,3 +26,7 @@
 2026-10-01 11:43:05.785 [INFO ] [main    ] [mqtt] connected (session_present=False)
 2026-10-01 13:38:47.733 [INFO ] [session ] [SESSION] associated session_guid=fabf31ec-11b1-492b-b5b0-6e967aa56359
 2026-10-01 13:38:47.746 [INFO ] [main    ] [SESSION] received session_guid=fabf31ec-11b1-492b-b5b0-6e967aa56359
+2026-10-01 13:41:47.681 [WARNING] [main    ] [wifi] no active connection
+2026-10-01 13:41:57.899 [INFO ] [main    ] [wifi] connected ssid=iPhone di Livio ip=172.20.10.2 mac=2c:cf:67:7d:14:65
+2026-10-01 13:52:07.809 [WARNING] [main    ] [wifi] no active connection
+2026-10-01 13:52:18.068 [INFO ] [main    ] [wifi] connected ssid=iPhone di Livio ip=172.20.10.2 mac=2c:cf:67:7d:14:65

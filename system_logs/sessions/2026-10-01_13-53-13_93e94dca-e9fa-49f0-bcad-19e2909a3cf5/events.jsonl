@@ -1,0 +1,13 @@
+{"ts_epoch": 1790855593.823, "ts_iso": "2026-10-01T13:53:13.823+02:00", "event": "service_start", "pid": 663, "app_version": "2.1.1", "hostname": "raspberrypi"}
+{"ts_epoch": 1790855593.829, "ts_iso": "2026-10-01T13:53:13.828+02:00", "event": "hardware_check", "ntc": false, "as5600": false, "ir_rpm": false, "gps": false}
+{"ts_epoch": 1790855594.202, "ts_iso": "2026-10-01T13:53:14.202+02:00", "event": "wifi_connect", "ssid": "iPhone di Livio", "ip": "172.20.10.2", "mac": "2c:cf:67:7d:14:65"}
+{"ts_epoch": 1790855594.497, "ts_iso": "2026-10-01T13:53:14.497+02:00", "event": "sensor_lost", "sensor": "ntc"}
+{"ts_epoch": 1790855594.502, "ts_iso": "2026-10-01T13:53:14.501+02:00", "event": "sensor_lost", "sensor": "as5600"}
+{"ts_epoch": 1790855594.526, "ts_iso": "2026-10-01T13:53:14.526+02:00", "event": "mqtt_connect", "broker": "broker.hivemq.com", "port": 1883, "client_id": "RPi-KART-2ccf677d1465", "session_present": false}
+{"ts_epoch": 1790855594.735, "ts_iso": "2026-10-01T13:53:14.735+02:00", "event": "wifi_connect", "ssid": "iPhone di Livio", "ip": "172.20.10.2", "mac": "2c:cf:67:7d:14:65"}
+{"ts_epoch": 1790855600.498, "ts_iso": "2026-10-01T13:53:20.498+02:00", "event": "bt_connect_failed", "reason": "timed out", "backoff_s": 1.0, "attempt": 1}
+{"ts_epoch": 1790855601.535, "ts_iso": "2026-10-01T13:53:21.534+02:00", "event": "bt_connect", "mac": "14:13:0B:C0:B2:1E", "rfcomm_channel": 1, "attempt": 2}
+{"ts_epoch": 1790855601.629, "ts_iso": "2026-10-01T13:53:21.629+02:00", "event": "first_nmea", "sentence": "$GPRMC,174220.1,V,4529.052035,N,00909.160369,E,,,011026,001.8,E,N*13"}
+{"ts_epoch": 1790876567.953, "ts_iso": "2026-10-01T19:42:47.953+02:00", "event": "wifi_disconnect"}
+{"ts_epoch": 1790876578.225, "ts_iso": "2026-10-01T19:42:58.224+02:00", "event": "wifi_connect", "ssid": "iPhone di Livio", "ip": "172.20.10.2", "mac": "2c:cf:67:7d:14:65"}
+{"ts_epoch": 1790876585.494, "ts_iso": "2026-10-01T19:43:05.494+02:00", "event": "session_associated", "session_guid": "93e94dca-e9fa-49f0-bcad-19e2909a3cf5"}

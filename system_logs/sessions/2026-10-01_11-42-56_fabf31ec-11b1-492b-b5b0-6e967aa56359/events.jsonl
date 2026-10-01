@@ -8,3 +8,7 @@
 {"ts_epoch": 1790847781.551, "ts_iso": "2026-10-01T11:43:01.550+02:00", "event": "first_nmea", "sentence": "$GPRMC,113613.8,A,4529.626683,N,00912.413685,E,000.06,216.1,011026,001.9,E,A*36"}
 {"ts_epoch": 1790847785.787, "ts_iso": "2026-10-01T11:43:05.786+02:00", "event": "mqtt_connect", "broker": "broker.hivemq.com", "port": 1883, "client_id": "RPi-KART-2ccf677d1465", "session_present": false}
 {"ts_epoch": 1790854727.648, "ts_iso": "2026-10-01T13:38:47.647+02:00", "event": "session_associated", "session_guid": "fabf31ec-11b1-492b-b5b0-6e967aa56359"}
+{"ts_epoch": 1790854907.684, "ts_iso": "2026-10-01T13:41:47.683+02:00", "event": "wifi_disconnect"}
+{"ts_epoch": 1790854917.9, "ts_iso": "2026-10-01T13:41:57.900+02:00", "event": "wifi_connect", "ssid": "iPhone di Livio", "ip": "172.20.10.2", "mac": "2c:cf:67:7d:14:65"}
+{"ts_epoch": 1790855527.816, "ts_iso": "2026-10-01T13:52:07.816+02:00", "event": "wifi_disconnect"}
+{"ts_epoch": 1790855538.069, "ts_iso": "2026-10-01T13:52:18.068+02:00", "event": "wifi_connect", "ssid": "iPhone di Livio", "ip": "172.20.10.2", "mac": "2c:cf:67:7d:14:65"}

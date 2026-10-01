@@ -1,15 +1,15 @@
 {
   "schema_version": 13,
   "client_side": true,
-  "session_guid": "fabf31ec-11b1-492b-b5b0-6e967aa56359",
-  "saved_at": "2026-10-01T13:53:42.241+02:00",
+  "session_guid": "93e94dca-e9fa-49f0-bcad-19e2909a3cf5",
+  "saved_at": "2026-10-01T19:46:47.476+02:00",
   "status": "running",
   "driver": {},
   "track": {},
   "track_config": {},
   "track_id": null,
   "mqtt_topic": "sensors2mqtt-glo2/esp32/location",
-  "started_at": "2026-10-01T11:42:56.554+02:00",
+  "started_at": "2026-10-01T13:53:13.818+02:00",
   "paused_at": null,
   "paused_total_s": 0.0,
   "ended_at": null,
@@ -18,11 +18,11 @@
     "at_epoch": [],
     "data_age_s": []
   },
-  "session_elapsed_s": 7845.687,
+  "session_elapsed_s": 21213.657,
   "summary": {
-    "raw_samples_received": 5207,
+    "raw_samples_received": 1365,
     "track_points_saved": 0,
-    "valid_gps_samples": 5157,
+    "valid_gps_samples": 1260,
     "filtered_out_samples": 0,
     "laps_completed": 0,
     "laps_aborted": 0,
@@ -78,10 +78,10 @@
       "gps": true
     },
     "counters": {
-      "samples_published": 5207,
-      "valid_gps_samples": 5157,
+      "samples_published": 1365,
+      "valid_gps_samples": 1260,
       "mqtt_reconnects": 0,
-      "bt_reconnects": 0,
+      "bt_reconnects": 1,
       "nmea_timeouts": 0,
       "raw_rotations": 0
     }
