@@ -2,7 +2,7 @@
   "schema_version": 13,
   "client_side": true,
   "session_guid": "4f2841e0-cbd1-41ca-ac65-31a715821ee2",
-  "saved_at": "2026-10-01T11:22:06.040+02:00",
+  "saved_at": "2026-10-01T11:27:36.054+02:00",
   "status": "running",
   "driver": {},
   "track": {},
@@ -18,9 +18,9 @@
     "at_epoch": [],
     "data_age_s": []
   },
-  "session_elapsed_s": 34158.304,
+  "session_elapsed_s": 34488.318,
   "summary": {
-    "raw_samples_received": 8186,
+    "raw_samples_received": 9803,
     "track_points_saved": 0,
     "valid_gps_samples": 0,
     "filtered_out_samples": 0,
@@ -78,7 +78,7 @@
       "gps": true
     },
     "counters": {
-      "samples_published": 8186,
+      "samples_published": 9803,
       "valid_gps_samples": 0,
       "mqtt_reconnects": 0,
       "bt_reconnects": 0,
