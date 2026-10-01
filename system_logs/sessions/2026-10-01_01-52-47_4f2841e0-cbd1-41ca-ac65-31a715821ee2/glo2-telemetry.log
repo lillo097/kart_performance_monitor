@@ -1,3 +1,8 @@
 2026-10-01 11:07:46.068 [INFO ] [main    ] [SESSION] received session_guid=4f2841e0-cbd1-41ca-ac65-31a715821ee2
 2026-10-01 11:10:36.091 [WARNING] [main    ] [wifi] no active connection
 2026-10-01 11:10:46.316 [INFO ] [main    ] [wifi] connected ssid=iPhone di Livio ip=172.20.10.2 mac=2c:cf:67:7d:14:65
+2026-10-01 11:31:13.163 [WARNING] [main    ] [wifi] no active connection
+2026-10-01 11:31:23.416 [INFO ] [main    ] [wifi] connected ssid=iPhone di Livio ip=172.20.10.2 mac=2c:cf:67:7d:14:65
+2026-10-01 11:35:42.722 [INFO ] [main    ] [main] signal 15 received, shutting down
+2026-10-01 11:35:44.638 [INFO ] [session ] [SESSION] closed id=2026-10-01_01-52-47_4f2841e0-cbd1-41ca-ac65-31a715821ee2 reason=shutdown
+2026-10-01 11:35:44.638 [INFO ] [main    ] === shutdown complete ===

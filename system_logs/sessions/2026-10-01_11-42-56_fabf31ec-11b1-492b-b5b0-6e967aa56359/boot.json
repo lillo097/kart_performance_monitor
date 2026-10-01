@@ -1,27 +1,28 @@
 {
-  "schema_version": 12,
+  "schema_version": 13,
   "client_side": true,
-  "saved_at": "2026-09-29T18:46:25.512+02:00",
-  "status": "stopped",
+  "session_guid": "fabf31ec-11b1-492b-b5b0-6e967aa56359",
+  "saved_at": "2026-10-01T13:40:42.211+02:00",
+  "status": "running",
   "driver": {},
   "track": {},
   "track_config": {},
   "track_id": null,
   "mqtt_topic": "sensors2mqtt-glo2/esp32/location",
-  "started_at": "2026-09-29T18:41:41.769+02:00",
+  "started_at": "2026-10-01T11:42:56.554+02:00",
   "paused_at": null,
   "paused_total_s": 0.0,
-  "ended_at": "2026-09-29T18:46:25.511+02:00",
+  "ended_at": null,
   "data_age_at_start_s": null,
   "data_age_samples": {
     "at_epoch": [],
     "data_age_s": []
   },
-  "session_elapsed_s": 283.743,
+  "session_elapsed_s": 7065.658,
   "summary": {
-    "raw_samples_received": 1122,
+    "raw_samples_received": 1348,
     "track_points_saved": 0,
-    "valid_gps_samples": 0,
+    "valid_gps_samples": 1329,
     "filtered_out_samples": 0,
     "laps_completed": 0,
     "laps_aborted": 0,
@@ -53,11 +54,11 @@
   "client_meta": {
     "hostname": "raspberrypi",
     "python_version": "3.13.5",
-    "app_version": "2.1.0",
-    "mqtt_client_id": "RPi-KART-7bdaee6eaf80",
+    "app_version": "2.1.1",
+    "mqtt_client_id": "RPi-KART-2ccf677d1465",
     "wifi": {
-      "ssid": "WINDTRE-E9B808",
-      "ip": "192.168.1.25",
+      "ssid": "iPhone di Livio",
+      "ip": "172.20.10.2",
       "mac": "2c:cf:67:7d:14:65",
       "rssi": null
     },
@@ -73,11 +74,12 @@
     },
     "sensors_now": {
       "ntc": false,
-      "as5600": false
+      "as5600": false,
+      "gps": true
     },
     "counters": {
-      "samples_published": 1122,
-      "valid_gps_samples": 0,
+      "samples_published": 1348,
+      "valid_gps_samples": 1329,
       "mqtt_reconnects": 0,
       "bt_reconnects": 0,
       "nmea_timeouts": 0,
