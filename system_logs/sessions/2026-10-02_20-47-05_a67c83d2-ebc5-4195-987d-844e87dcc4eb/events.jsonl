@@ -1,0 +1,14 @@
+{"ts_epoch": 1790964842.079, "ts_iso": "2026-10-02T20:14:02.078+02:00", "event": "service_start", "pid": 665, "app_version": "2.1.1", "hostname": "raspberrypi"}
+{"ts_epoch": 1790964842.081, "ts_iso": "2026-10-02T20:14:02.081+02:00", "event": "hardware_check", "ntc": false, "as5600": false, "ir_rpm": false, "gps": false}
+{"ts_epoch": 1790964844.721, "ts_iso": "2026-10-02T20:14:04.720+02:00", "event": "wifi_connect", "ssid": "iPhone di Livio", "ip": "172.20.10.2", "mac": "2c:cf:67:7d:14:65"}
+{"ts_epoch": 1790964845.587, "ts_iso": "2026-10-02T20:14:05.586+02:00", "event": "sensor_lost", "sensor": "ntc"}
+{"ts_epoch": 1790964845.632, "ts_iso": "2026-10-02T20:14:05.631+02:00", "event": "mqtt_connect", "broker": "broker.hivemq.com", "port": 1883, "client_id": "RPi-KART-2ccf677d1465", "session_present": true}
+{"ts_epoch": 1790964845.634, "ts_iso": "2026-10-02T20:14:05.633+02:00", "event": "sensor_lost", "sensor": "as5600"}
+{"ts_epoch": 1790964845.812, "ts_iso": "2026-10-02T20:14:05.811+02:00", "event": "wifi_connect", "ssid": "iPhone di Livio", "ip": "172.20.10.2", "mac": "2c:cf:67:7d:14:65"}
+{"ts_epoch": 1790964851.579, "ts_iso": "2026-10-02T20:14:11.579+02:00", "event": "bt_connect_failed", "reason": "timed out", "backoff_s": 1.0, "attempt": 1}
+{"ts_epoch": 1790964852.613, "ts_iso": "2026-10-02T20:14:12.612+02:00", "event": "bt_connect", "mac": "14:13:0B:C0:B2:1E", "rfcomm_channel": 1, "attempt": 2}
+{"ts_epoch": 1790964852.76, "ts_iso": "2026-10-02T20:14:12.759+02:00", "event": "first_nmea", "sentence": "$GPRMC,184401.0,A,4529.636810,N,00912.400326,E,000.12,193.2,021026,001.9,E,A*31"}
+{"ts_epoch": 1790966663.739, "ts_iso": "2026-10-02T20:44:23.739+02:00", "event": "bt_connect", "mac": "14:13:0B:C0:B2:1E", "rfcomm_channel": 1, "attempt": 4}
+{"ts_epoch": 1790966663.808, "ts_iso": "2026-10-02T20:44:23.807+02:00", "event": "first_nmea", "sentence": "$GPRMC,184423.7,A,4529.632238,N,00912.406903,E,000.04,193.2,021026,001.9,E,A*3E"}
+{"ts_epoch": 1790966668.177, "ts_iso": "2026-10-02T20:44:28.176+02:00", "event": "wifi_disconnect"}
+{"ts_epoch": 1790966678.414, "ts_iso": "2026-10-02T20:44:38.414+02:00", "event": "wifi_connect", "ssid": "iPhone di Livio", "ip": "172.20.10.2", "mac": "2c:cf:67:7d:14:65"}
