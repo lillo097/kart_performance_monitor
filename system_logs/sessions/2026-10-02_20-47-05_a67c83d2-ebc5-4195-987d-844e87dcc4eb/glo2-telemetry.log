@@ -1,1 +1,3 @@
 2026-10-02 20:47:05.217 [INFO ] [main    ] [SESSION] received session_started, guid=a67c83d2-ebc5-4195-987d-844e87dcc4eb
+2026-10-02 20:49:40.771 [WARNING] [main    ] [wifi] no active connection
+2026-10-02 20:49:51.023 [INFO ] [main    ] [wifi] connected ssid=iPhone di Livio ip=172.20.10.2 mac=2c:cf:67:7d:14:65

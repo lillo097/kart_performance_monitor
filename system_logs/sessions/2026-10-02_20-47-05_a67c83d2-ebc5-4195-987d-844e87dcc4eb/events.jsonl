@@ -12,3 +12,5 @@
 {"ts_epoch": 1790966663.808, "ts_iso": "2026-10-02T20:44:23.807+02:00", "event": "first_nmea", "sentence": "$GPRMC,184423.7,A,4529.632238,N,00912.406903,E,000.04,193.2,021026,001.9,E,A*3E"}
 {"ts_epoch": 1790966668.177, "ts_iso": "2026-10-02T20:44:28.176+02:00", "event": "wifi_disconnect"}
 {"ts_epoch": 1790966678.414, "ts_iso": "2026-10-02T20:44:38.414+02:00", "event": "wifi_connect", "ssid": "iPhone di Livio", "ip": "172.20.10.2", "mac": "2c:cf:67:7d:14:65"}
+{"ts_epoch": 1790966980.773, "ts_iso": "2026-10-02T20:49:40.773+02:00", "event": "wifi_disconnect"}
+{"ts_epoch": 1790966991.024, "ts_iso": "2026-10-02T20:49:51.024+02:00", "event": "wifi_connect", "ssid": "iPhone di Livio", "ip": "172.20.10.2", "mac": "2c:cf:67:7d:14:65"}
