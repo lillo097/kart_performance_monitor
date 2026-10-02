@@ -1,0 +1,37 @@
+2026-10-02 12:46:00.625 [INFO ] [main    ] [SESSION] started id=2026-10-02_12-46-00
+2026-10-02 12:46:00.626 [INFO ] [main    ] [SESSION] directory=/home/lillo97/kart_performance_monitor/system_logs/sessions/2026-10-02_12-46-00
+2026-10-02 12:46:00.626 [INFO ] [main    ] [SESSION] files=glo2-telemetry.log, boot.json, raw.jsonl, events.jsonl
+2026-10-02 12:46:00.627 [INFO ] [main    ] === Kart Telemetry v2.1.1 starting ===
+2026-10-02 12:46:00.627 [INFO ] [main    ] [main] hostname=raspberrypi pid=711
+2026-10-02 12:46:00.628 [INFO ] [main    ] [main] mqtt_client_id=RPi-KART-2ccf677d1465 broker=broker.hivemq.com:1883
+2026-10-02 12:46:00.629 [INFO ] [main    ] [i2c] bus 1 opened
+2026-10-02 12:46:00.630 [INFO ] [main    ] ====================================================
+2026-10-02 12:46:00.631 [INFO ] [main    ] KART TELEMETRY - STARTUP CHECK
+2026-10-02 12:46:00.632 [INFO ] [main    ] ====================================================
+2026-10-02 12:46:00.632 [WARNING] [main    ] [check] NTC (ADC): no ADC
+2026-10-02 12:46:00.634 [WARNING] [main    ] [check] AS5600 I2C: not found
+2026-10-02 12:46:00.635 [INFO ] [main    ] [check] Garmin GLO2 verification in background
+2026-10-02 12:46:00.636 [INFO ] [main    ] [check] WiFi verification in background
+2026-10-02 12:46:00.636 [INFO ] [main    ] ====================================================
+2026-10-02 12:46:01.731 [INFO ] [main    ] [wifi] active ssid=WINDTRE-E9B808 ip=192.168.1.25
+2026-10-02 12:46:01.732 [INFO ] [main    ] [mqtt] connecting...
+2026-10-02 12:46:02.065 [INFO ] [main    ] [wifi] keepalive started (ping gateway every 5s)
+2026-10-02 12:46:02.069 [INFO ] [main    ] [gps] task started
+2026-10-02 12:46:02.071 [INFO ] [main    ] [main] READY (watchdog armed, 30s)
+2026-10-02 12:46:02.073 [INFO ] [main    ] [ntc] reading invalid (open circuit or disconnected)
+2026-10-02 12:46:02.076 [WARNING] [main    ] [as5600] not detected at 0x36
+2026-10-02 12:46:02.093 [INFO ] [main    ] [mqtt] connected (session_present=True)
+2026-10-02 12:46:02.341 [INFO ] [main    ] [wifi] connected ssid=WINDTRE-E9B808 ip=192.168.1.25 mac=2c:cf:67:7d:14:65
+2026-10-02 12:46:08.091 [WARNING] [main    ] [gps] connect failed: timed out; retry in 1.0s (attempt 1, next log in 300s if still failing)
+2026-10-02 12:47:16.961 [WARNING] [main    ] [mqtt] disconnected rc=128 (unknown); paho will retry [total=1]
+2026-10-02 12:47:18.112 [WARNING] [main    ] [wifi] no active connection
+2026-10-02 12:47:28.243 [INFO ] [main    ] [mqtt] connected (session_present=True)
+2026-10-02 12:47:28.606 [INFO ] [main    ] [wifi] connected ssid=WINDTRE-E9B808 ip=192.168.1.25 mac=2c:cf:67:7d:14:65
+2026-10-02 12:48:19.052 [WARNING] [main    ] [mqtt] disconnected rc=141 (keepalive_timeout); paho will retry [total=2]
+2026-10-02 12:48:22.715 [INFO ] [main    ] [mqtt] connected (session_present=True)
+2026-10-02 12:49:00.526 [WARNING] [main    ] [mqtt] disconnected rc=141 (keepalive_timeout); paho will retry [total=4]
+2026-10-02 12:49:10.712 [INFO ] [main    ] [mqtt] connected (session_present=True)
+2026-10-02 12:49:41.075 [WARNING] [main    ] [mqtt] disconnected rc=128 (unknown); paho will retry [total=6]
+2026-10-02 12:49:46.795 [INFO ] [main    ] [mqtt] connected (session_present=True)
+2026-10-02 12:50:40.132 [WARNING] [main    ] [mqtt] disconnected rc=141 (keepalive_timeout); paho will retry [total=7]
+2026-10-02 12:51:00.460 [INFO ] [main    ] [mqtt] connected (session_present=True)
