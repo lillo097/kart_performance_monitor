@@ -1,0 +1,9 @@
+2026-10-02 16:45:02.378 [INFO ] [main    ] [SESSION] received session_started, guid=81d08481-463e-4a30-9e81-342c9c44f1d8
+2026-10-02 16:45:21.703 [INFO ] [main    ] [SESSION] received session_stopped, guid=81d08481-463e-4a30-9e81-342c9c44f1d8
+2026-10-02 16:45:21.716 [INFO ] [session ] [SESSION] stopped and saved: 2026-10-02_16-45-02_81d08481-463e-4a30-9e81-342c9c44f1d8 reason=mqtt_stop_command
+2026-10-02 16:45:21.717 [INFO ] [session ] [SESSION] ready for next session (buffering mode)
+2026-10-02 16:45:47.777 [INFO ] [main    ] [main] signal 15 received, shutting down
+2026-10-02 16:45:50.139 [WARNING] [main    ] [mqtt] disconnected rc=141 (keepalive_timeout); paho will retry [total=1]
+2026-10-02 16:45:50.141 [INFO ] [session ] [SESSION] discarding buffered data (no active session)
+2026-10-02 16:45:50.142 [INFO ] [session ] [SESSION] logger closed, reason=shutdown
+2026-10-02 16:45:50.143 [INFO ] [main    ] === shutdown complete ===
