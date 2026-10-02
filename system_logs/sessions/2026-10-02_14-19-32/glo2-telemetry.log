@@ -37,3 +37,38 @@
 2026-10-02 14:23:47.982 [INFO ] [main    ] [mqtt] connected (session_present=True)
 2026-10-02 14:24:24.455 [WARNING] [main    ] [mqtt] disconnected rc=128 (unknown); paho will retry [total=7]
 2026-10-02 14:24:29.714 [INFO ] [main    ] [mqtt] connected (session_present=True)
+2026-10-02 14:25:03.537 [WARNING] [main    ] [gps] connect failed: timed out; retry in 3.0s (attempt 52, next log in 300s if still failing)
+2026-10-02 14:25:05.540 [WARNING] [main    ] [mqtt] disconnected rc=141 (keepalive_timeout); paho will retry [total=8]
+2026-10-02 14:25:42.467 [WARNING] [main    ] [wifi] no active connection
+2026-10-02 14:25:47.711 [INFO ] [main    ] [mqtt] connected (session_present=True)
+2026-10-02 14:25:52.973 [INFO ] [main    ] [wifi] connected ssid=WINDTRE-E9B808 ip=192.168.1.25 mac=2c:cf:67:7d:14:65
+2026-10-02 14:26:49.467 [WARNING] [main    ] [mqtt] disconnected rc=141 (keepalive_timeout); paho will retry [total=11]
+2026-10-02 14:27:00.598 [INFO ] [main    ] [mqtt] connected (session_present=True)
+2026-10-02 14:27:48.812 [WARNING] [main    ] [mqtt] disconnected rc=128 (unknown); paho will retry [total=13]
+2026-10-02 14:27:54.251 [INFO ] [main    ] [mqtt] connected (session_present=True)
+2026-10-02 14:28:30.609 [WARNING] [main    ] [mqtt] disconnected rc=141 (keepalive_timeout); paho will retry [total=14]
+2026-10-02 14:28:35.895 [INFO ] [main    ] [mqtt] connected (session_present=True)
+2026-10-02 14:29:32.742 [WARNING] [main    ] [mqtt] disconnected rc=141 (keepalive_timeout); paho will retry [total=16]
+2026-10-02 14:29:36.102 [INFO ] [main    ] [mqtt] connected (session_present=True)
+2026-10-02 14:30:03.697 [WARNING] [main    ] [gps] connect failed: timed out; retry in 3.0s (attempt 102, next log in 300s if still failing)
+2026-10-02 14:30:52.334 [WARNING] [main    ] [wifi] no active connection
+2026-10-02 14:30:55.170 [WARNING] [main    ] [mqtt] disconnected rc=141 (keepalive_timeout); paho will retry [total=18]
+2026-10-02 14:31:02.553 [INFO ] [main    ] [wifi] connected ssid=WINDTRE-E9B808 ip=192.168.1.25 mac=2c:cf:67:7d:14:65
+2026-10-02 14:31:06.588 [INFO ] [main    ] [mqtt] connected (session_present=True)
+2026-10-02 14:33:19.659 [WARNING] [main    ] [mqtt] disconnected rc=141 (keepalive_timeout); paho will retry [total=20]
+2026-10-02 14:33:48.084 [INFO ] [main    ] [mqtt] connected (session_present=True)
+2026-10-02 14:34:37.112 [WARNING] [main    ] [mqtt] disconnected rc=128 (unknown); paho will retry [total=23]
+2026-10-02 14:34:48.614 [INFO ] [main    ] [mqtt] connected (session_present=True)
+2026-10-02 14:35:03.857 [WARNING] [main    ] [gps] connect failed: timed out; retry in 3.0s (attempt 152, next log in 300s if still failing)
+2026-10-02 14:35:59.111 [WARNING] [main    ] [mqtt] disconnected rc=141 (keepalive_timeout); paho will retry [total=24]
+2026-10-02 14:36:00.444 [INFO ] [main    ] [mqtt] connected (session_present=True)
+2026-10-02 14:36:02.122 [WARNING] [main    ] [wifi] no active connection
+2026-10-02 14:36:12.334 [INFO ] [main    ] [wifi] connected ssid=WINDTRE-E9B808 ip=192.168.1.25 mac=2c:cf:67:7d:14:65
+2026-10-02 14:36:40.949 [WARNING] [main    ] [mqtt] disconnected rc=141 (keepalive_timeout); paho will retry [total=26]
+2026-10-02 14:36:42.288 [INFO ] [main    ] [mqtt] connected (session_present=True)
+2026-10-02 14:38:04.945 [WARNING] [main    ] [mqtt] disconnected rc=141 (keepalive_timeout); paho will retry [total=28]
+2026-10-02 14:38:18.476 [INFO ] [main    ] [mqtt] connected (session_present=True)
+2026-10-02 14:38:46.918 [WARNING] [main    ] [mqtt] disconnected rc=141 (keepalive_timeout); paho will retry [total=30]
+2026-10-02 14:38:54.506 [INFO ] [main    ] [mqtt] connected (session_present=True)
+2026-10-02 14:39:28.995 [WARNING] [main    ] [mqtt] disconnected rc=141 (keepalive_timeout); paho will retry [total=32]
+2026-10-02 14:39:36.400 [INFO ] [main    ] [mqtt] connected (session_present=True)
