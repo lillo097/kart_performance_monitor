@@ -68,3 +68,6 @@
 {"ts_epoch": 1790939810.934, "ts_iso": "2026-10-02T13:16:50.934+02:00", "event": "bt_connect_failed", "reason": "timed out", "backoff_s": 3.0, "attempt": 302}
 {"ts_epoch": 1790940111.082, "ts_iso": "2026-10-02T13:21:51.081+02:00", "event": "bt_connect_failed", "reason": "timed out", "backoff_s": 3.0, "attempt": 352}
 {"ts_epoch": 1790940411.239, "ts_iso": "2026-10-02T13:26:51.239+02:00", "event": "bt_connect_failed", "reason": "timed out", "backoff_s": 3.0, "attempt": 402}
+{"ts_epoch": 1790940711.383, "ts_iso": "2026-10-02T13:31:51.383+02:00", "event": "bt_connect_failed", "reason": "timed out", "backoff_s": 3.0, "attempt": 452}
+{"ts_epoch": 1790941011.528, "ts_iso": "2026-10-02T13:36:51.527+02:00", "event": "bt_connect_failed", "reason": "timed out", "backoff_s": 3.0, "attempt": 502}
+{"ts_epoch": 1790941311.686, "ts_iso": "2026-10-02T13:41:51.686+02:00", "event": "bt_connect_failed", "reason": "timed out", "backoff_s": 3.0, "attempt": 552}
