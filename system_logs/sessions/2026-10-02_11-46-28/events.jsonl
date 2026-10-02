@@ -1,0 +1,11 @@
+{"ts_epoch": 1790934388.188, "ts_iso": "2026-10-02T11:46:28.188+02:00", "event": "service_start", "pid": 662, "app_version": "2.1.1", "hostname": "raspberrypi"}
+{"ts_epoch": 1790934388.193, "ts_iso": "2026-10-02T11:46:28.193+02:00", "event": "hardware_check", "ntc": false, "as5600": false, "ir_rpm": false, "gps": false}
+{"ts_epoch": 1790934388.615, "ts_iso": "2026-10-02T11:46:28.615+02:00", "event": "wifi_connect", "ssid": "iPhone di Livio", "ip": "172.20.10.2", "mac": "2c:cf:67:7d:14:65"}
+{"ts_epoch": 1790934388.809, "ts_iso": "2026-10-02T11:46:28.808+02:00", "event": "sensor_lost", "sensor": "ntc"}
+{"ts_epoch": 1790934388.814, "ts_iso": "2026-10-02T11:46:28.814+02:00", "event": "sensor_lost", "sensor": "as5600"}
+{"ts_epoch": 1790934389.091, "ts_iso": "2026-10-02T11:46:29.090+02:00", "event": "wifi_connect", "ssid": "iPhone di Livio", "ip": "172.20.10.2", "mac": "2c:cf:67:7d:14:65"}
+{"ts_epoch": 1790934393.433, "ts_iso": "2026-10-02T11:46:33.432+02:00", "event": "mqtt_connect", "broker": "broker.hivemq.com", "port": 1883, "client_id": "RPi-KART-2ccf677d1465", "session_present": true}
+{"ts_epoch": 1790934394.932, "ts_iso": "2026-10-02T11:46:34.931+02:00", "event": "bt_connect_failed", "reason": "timed out", "backoff_s": 1.0, "attempt": 1}
+{"ts_epoch": 1790934579.347, "ts_iso": "2026-10-02T11:49:39.347+02:00", "event": "mqtt_disconnect", "rc": 141, "meaning": "keepalive_timeout", "total_disconnects": 1}
+{"ts_epoch": 1790934661.364, "ts_iso": "2026-10-02T11:51:01.363+02:00", "event": "mqtt_connect", "broker": "broker.hivemq.com", "port": 1883, "client_id": "RPi-KART-2ccf677d1465", "session_present": true}
+{"ts_epoch": 1790934689.317, "ts_iso": "2026-10-02T11:51:29.317+02:00", "event": "mqtt_disconnect", "rc": 141, "meaning": "keepalive_timeout", "total_disconnects": 6}
