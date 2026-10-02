@@ -77,3 +77,4 @@
 {"ts_epoch": 1790942512.298, "ts_iso": "2026-10-02T14:01:52.298+02:00", "event": "bt_connect_failed", "reason": "timed out", "backoff_s": 3.0, "attempt": 752}
 {"ts_epoch": 1790942812.449, "ts_iso": "2026-10-02T14:06:52.449+02:00", "event": "bt_connect_failed", "reason": "timed out", "backoff_s": 3.0, "attempt": 802}
 {"ts_epoch": 1790943112.6, "ts_iso": "2026-10-02T14:11:52.600+02:00", "event": "bt_connect_failed", "reason": "timed out", "backoff_s": 3.0, "attempt": 852}
+{"ts_epoch": 1790943412.751, "ts_iso": "2026-10-02T14:16:52.751+02:00", "event": "bt_connect_failed", "reason": "timed out", "backoff_s": 3.0, "attempt": 902}
