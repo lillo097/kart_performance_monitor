@@ -10,3 +10,8 @@
 {"ts_epoch": 1790979428.27, "ts_iso": "2026-10-03T00:17:08.270+02:00", "event": "first_nmea", "sentence": "$GPRMC,221708.1,A,4527.481253,N,00911.553382,E,000.07,203.2,021026,001.8,E,D*3B"}
 {"ts_epoch": 1790979429.362, "ts_iso": "2026-10-03T00:17:09.362+02:00", "event": "wifi_disconnect"}
 {"ts_epoch": 1790979439.595, "ts_iso": "2026-10-03T00:17:19.594+02:00", "event": "wifi_connect", "ssid": "iPhone di Livio", "ip": "172.20.10.2", "mac": "2c:cf:67:7d:14:65"}
+{"ts_epoch": 1790979739.438, "ts_iso": "2026-10-03T00:22:19.437+02:00", "event": "wifi_disconnect"}
+{"ts_epoch": 1790979749.72, "ts_iso": "2026-10-03T00:22:29.719+02:00", "event": "wifi_connect", "ssid": "iPhone di Livio", "ip": "172.20.10.2", "mac": "2c:cf:67:7d:14:65"}
+{"ts_epoch": 1790980016.479, "ts_iso": "2026-10-03T00:26:56.479+02:00", "event": "wifi_disconnect"}
+{"ts_epoch": 1790980026.763, "ts_iso": "2026-10-03T00:27:06.762+02:00", "event": "wifi_disconnect"}
+{"ts_epoch": 1790980035.589, "ts_iso": "2026-10-03T00:27:15.589+02:00", "event": "mqtt_disconnect", "rc": 141, "meaning": "keepalive_timeout", "total_disconnects": 1}
