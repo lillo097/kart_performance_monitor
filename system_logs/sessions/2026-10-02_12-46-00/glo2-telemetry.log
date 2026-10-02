@@ -91,3 +91,6 @@
 2026-10-02 13:46:51.840 [WARNING] [main    ] [gps] connect failed: timed out; retry in 3.0s (attempt 602, next log in 300s if still failing)
 2026-10-02 13:51:51.996 [WARNING] [main    ] [gps] connect failed: timed out; retry in 3.0s (attempt 652, next log in 300s if still failing)
 2026-10-02 13:56:52.148 [WARNING] [main    ] [gps] connect failed: timed out; retry in 3.0s (attempt 702, next log in 300s if still failing)
+2026-10-02 14:01:52.294 [WARNING] [main    ] [gps] connect failed: timed out; retry in 3.0s (attempt 752, next log in 300s if still failing)
+2026-10-02 14:06:52.448 [WARNING] [main    ] [gps] connect failed: timed out; retry in 3.0s (attempt 802, next log in 300s if still failing)
+2026-10-02 14:11:52.599 [WARNING] [main    ] [gps] connect failed: timed out; retry in 3.0s (attempt 852, next log in 300s if still failing)
