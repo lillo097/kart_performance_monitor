@@ -149,3 +149,9 @@
 2026-10-02 15:07:37.467 [INFO ] [main    ] [mqtt] connected (session_present=True)
 2026-10-02 15:08:52.819 [WARNING] [main    ] [mqtt] disconnected rc=141 (keepalive_timeout); paho will retry [total=88]
 2026-10-02 15:09:19.418 [INFO ] [main    ] [mqtt] connected (session_present=True)
+2026-10-02 15:09:57.141 [WARNING] [main    ] [mqtt] disconnected rc=141 (keepalive_timeout); paho will retry [total=91]
+2026-10-02 15:10:01.451 [INFO ] [main    ] [mqtt] connected (session_present=True)
+2026-10-02 15:10:04.953 [WARNING] [main    ] [gps] connect failed: timed out; retry in 3.0s (attempt 502, next log in 300s if still failing)
+2026-10-02 15:10:05.292 [INFO ] [main    ] [main] signal 15 received, shutting down
+2026-10-02 15:10:08.260 [INFO ] [session ] [SESSION] closed id=2026-10-02_14-19-32 reason=shutdown
+2026-10-02 15:10:08.260 [INFO ] [main    ] === shutdown complete ===
