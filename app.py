@@ -2559,10 +2559,45 @@ def publish_session_control(event):
         )
         if result.rc != mqtt.MQTT_ERR_SUCCESS:
             raise RuntimeError(f"MQTT publish returned rc={result.rc}")
+
+        # Pubblica anche lo stato sessione per sincronizzare il Command Center
+        publish_session_status()
+
         return True
     except Exception as error:
         runtime["last_error"] = f"Session control publish failed: {error}"
         print(f"[MQTT] {runtime['last_error']}")
+        return False
+
+
+def publish_session_status():
+    """Pubblica lo stato corrente della sessione su MQTT per sincronizzare il Command Center."""
+    client = mqtt_client
+    if client is None:
+        return False
+
+    payload = {
+        "status": session.get("status", "idle"),
+        "session_guid": session.get("session_guid"),
+        "driver": session.get("driver", {}).get("id") if session.get("driver") else None,
+        "track_id": current_track_id,
+        "started_at": session.get("started_at"),
+        "timestamp": datetime.now().isoformat(),
+    }
+
+    try:
+        result = client.publish(
+            MQTT_CONFIG["session_status_topic"],
+            json.dumps(payload),
+            qos=1,
+            retain=True,
+        )
+        if result.rc == mqtt.MQTT_ERR_SUCCESS:
+            print(f"[MQTT] Published session status: {session.get('status')}")
+            return True
+        return False
+    except Exception as error:
+        print(f"[MQTT] Session status publish failed: {error}")
         return False
 
 

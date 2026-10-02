@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#0a1019">
   <title>Centro di comando · Kart Telemetry</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js"></script>
   <style>
     :root {
       color-scheme: dark;
@@ -911,6 +912,63 @@
 
       cooldownButton.addEventListener("click", () => sendSessionCommand("cooldown"));
       sessionButton.addEventListener("click", () => sendSessionCommand("session_toggle"));
+
+      // ============================================================
+      // MQTT SESSION STATUS LISTENER
+      // ============================================================
+      function subscribeToSessionStatus() {
+        // Verifica se Paho MQTT è disponibile
+        if (typeof Paho === 'undefined' || !Paho.MQTT) {
+          console.warn("[MQTT] Paho MQTT client not available");
+          return;
+        }
+
+        const clientId = "command-center-" + Math.random().toString(36).substr(2, 9);
+        const client = new Paho.MQTT.Client("broker.hivemq.com", 8000, "/mqtt", clientId);
+
+        client.onConnectionLost = (response) => {
+          console.warn("[MQTT] Connection lost:", response.errorMessage);
+          // Riconnetti dopo 5 secondi
+          setTimeout(() => subscribeToSessionStatus(), 5000);
+        };
+
+        client.onMessageArrived = (message) => {
+          if (message.destinationName === "sensors2mqtt-glo2/session/status") {
+            try {
+              const status = JSON.parse(message.payloadString);
+              console.log("[MQTT] Session status received:", status);
+
+              // Aggiorna lo stato della sessione
+              sessionRunning = (status.status === "running" || status.status === "paused");
+              updateSessionButton();
+
+              // Mostra notifica
+              if (status.status === "running") {
+                setSessionStatus(`Sessione attiva: ${status.driver || 'unknown'}`, "success");
+              } else if (status.status === "stopped") {
+                setSessionStatus("Sessione stoppata", "");
+              }
+            } catch (error) {
+              console.error("[MQTT] Failed to parse session status:", error);
+            }
+          }
+        };
+
+        client.connect({
+          onSuccess: () => {
+            console.log("[MQTT] Connected to broker for session status");
+            client.subscribe("sensors2mqtt-glo2/session/status");
+          },
+          onFailure: (error) => {
+            console.error("[MQTT] Connection failed:", error.errorMessage);
+            // Riprova dopo 10 secondi
+            setTimeout(() => subscribeToSessionStatus(), 10000);
+          }
+        });
+      }
+
+      // Avvia il listener MQTT
+      subscribeToSessionStatus();
 
       document.querySelectorAll("[data-action]").forEach((button) => { button.disabled = true; });
       initialize();

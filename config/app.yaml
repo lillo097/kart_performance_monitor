@@ -9,6 +9,7 @@ mqtt:
   websocket_path: "/mqtt"
   topic: "sensors2mqtt-glo2/esp32/location"
   session_control_topic: "sensors2mqtt-glo2/session/control"
+  session_status_topic: "sensors2mqtt-glo2/session/status"
   keepalive_s: 60
 
 dashboard:
