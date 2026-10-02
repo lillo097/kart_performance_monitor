@@ -7,3 +7,5 @@
 {"ts_epoch": 1790936161.068, "ts_iso": "2026-10-02T12:16:01.067+02:00", "event": "wifi_connect", "ssid": "WINDTRE-E9B808", "ip": "192.168.1.25", "mac": "2c:cf:67:7d:14:65"}
 {"ts_epoch": 1790936278.046, "ts_iso": "2026-10-02T12:17:58.046+02:00", "event": "wifi_disconnect"}
 {"ts_epoch": 1790936288.239, "ts_iso": "2026-10-02T12:18:08.239+02:00", "event": "wifi_disconnect"}
+{"ts_epoch": 1790936418.453, "ts_iso": "2026-10-02T12:20:18.453+02:00", "event": "bt_connect_failed", "reason": "timed out", "backoff_s": 3.0, "attempt": 52}
+{"ts_epoch": 1790936718.613, "ts_iso": "2026-10-02T12:25:18.613+02:00", "event": "bt_connect_failed", "reason": "timed out", "backoff_s": 3.0, "attempt": 102}

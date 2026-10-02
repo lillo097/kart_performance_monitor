@@ -25,3 +25,5 @@
 2026-10-02 12:16:01.060 [INFO ] [main    ] [wifi] connected ssid=WINDTRE-E9B808 ip=192.168.1.25 mac=2c:cf:67:7d:14:65
 2026-10-02 12:17:58.043 [WARNING] [main    ] [wifi] no active connection
 2026-10-02 12:18:08.238 [WARNING] [main    ] [wifi] no active connection
+2026-10-02 12:20:18.450 [WARNING] [main    ] [gps] connect failed: timed out; retry in 3.0s (attempt 52, next log in 300s if still failing)
+2026-10-02 12:25:18.611 [WARNING] [main    ] [gps] connect failed: timed out; retry in 3.0s (attempt 102, next log in 300s if still failing)

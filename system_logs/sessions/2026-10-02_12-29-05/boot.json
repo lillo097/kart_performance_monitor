@@ -2,14 +2,14 @@
   "schema_version": 13,
   "client_side": true,
   "session_guid": null,
-  "saved_at": "2026-10-02T12:29:46.995+02:00",
+  "saved_at": "2026-10-02T12:35:12.606+02:00",
   "status": "running",
   "driver": {},
   "track": {},
   "track_config": {},
   "track_id": null,
   "mqtt_topic": "sensors2mqtt-glo2/esp32/location",
-  "started_at": "2026-10-02T12:14:27.025+02:00",
+  "started_at": "2026-10-02T12:29:05.073+02:00",
   "paused_at": null,
   "paused_total_s": 0.0,
   "ended_at": null,
@@ -18,9 +18,9 @@
     "at_epoch": [],
     "data_age_s": []
   },
-  "session_elapsed_s": 919.97,
+  "session_elapsed_s": 367.532,
   "summary": {
-    "raw_samples_received": 4341,
+    "raw_samples_received": 1369,
     "track_points_saved": 0,
     "valid_gps_samples": 0,
     "filtered_out_samples": 0,
@@ -55,7 +55,7 @@
     "hostname": "raspberrypi",
     "python_version": "3.13.5",
     "app_version": "2.1.1",
-    "mqtt_client_id": "RPi-KART-f3c2fe0feadd",
+    "mqtt_client_id": "RPi-KART-2ccf677d1465",
     "wifi": {
       "ssid": "WINDTRE-E9B808",
       "ip": "192.168.1.25",
@@ -77,9 +77,9 @@
       "as5600": false
     },
     "counters": {
-      "samples_published": 4341,
+      "samples_published": 1369,
       "valid_gps_samples": 0,
-      "mqtt_reconnects": 0,
+      "mqtt_reconnects": 3,
       "bt_reconnects": 0,
       "nmea_timeouts": 0,
       "raw_rotations": 0
