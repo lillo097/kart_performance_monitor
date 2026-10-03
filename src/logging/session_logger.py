@@ -231,15 +231,33 @@ class SessionLogger:
             self._log.info(f"[SESSION] session_guid={normalized_guid}")
 
     def _flush_buffers_to_disk(self):
-        """Scrive i buffer in memoria sui file su disco."""
-        try:
-            # Scrivi eventi bufferizzati
-            for event_record in self._events_buffer:
-                self._events_handle.write(_safe_json(event_record) + "\n")
+        """Scrive i buffer in memoria sui file su disco.
 
-            # Scrivi campioni raw bufferizzati
-            for raw_record in self._raw_buffer:
-                self._raw_handle.write(_safe_json(raw_record) + "\n")
+        Va invocata PRIMA di aprire `_raw_handle`/`_events_handle` (modalità
+        "pre-apertura"): apre i file al momento, così `start_session()` può
+        mantenere gli handle a `None` fino a flush completato ed evitare che i
+        log interni vengano scritti fuori ordine.
+        """
+        try:
+            if self._events_buffer:
+                target = self._events_handle
+                close_after = target is None
+                if close_after:
+                    target = open(self._events_path, "a", encoding="utf-8", buffering=1)
+                for event_record in self._events_buffer:
+                    target.write(_safe_json(event_record) + "\n")
+                if close_after:
+                    target.close()
+
+            if self._raw_buffer:
+                target = self._raw_handle
+                close_after = target is None
+                if close_after:
+                    target = open(self._raw_path, "a", encoding="utf-8", buffering=1)
+                for raw_record in self._raw_buffer:
+                    target.write(_safe_json(raw_record) + "\n")
+                if close_after:
+                    target.close()
 
             self._log.info(f"[SESSION] flushed {len(self._events_buffer)} events and {len(self._raw_buffer)} raw samples to disk")
 
@@ -268,6 +286,35 @@ class SessionLogger:
         """
         return self._text_handle is not None
 
+    def _write_text_line(self, line):
+        """Scrive una riga sul file di log di sessione, con auto-recupero.
+
+        `_text_handle` è un file aperto in unbuffered; se un ramo di scrittura
+        lo chiude inavvertitamente, `write()` solleva ValueError e la riga
+        andrebbe persa. In quel caso riapriamo il file in append (stesso path)
+        così il log di sessione continua a raccogliere le righe successive.
+
+        Restituisce True se la riga è stata scritta, False se finisce nel buffer.
+        """
+        if line is None:
+            return True
+        line = str(line)
+        if self._text_handle is not None:
+            try:
+                self._text_handle.write(line + "\n")
+                return True
+            except ValueError:
+                # Handle chiuso inavvertitamente: prova a riaprirlo
+                try:
+                    self._text_handle = open(self._log_path, "a",
+                                             encoding="utf-8", buffering=1)
+                    self._text_handle.write(line + "\n")
+                    return True
+                except Exception:
+                    self._text_handle = None
+        self._text_buffer.append(line)
+        return False
+
     def format_logging_record(self, record):
         """Formatta un record di logging nel formato usato dal file di sessione."""
         return self._text_handler.format(record)
@@ -276,10 +323,7 @@ class SessionLogger:
         """Appende una riga già formattata (record di logging) al log di sessione."""
         with self._lock:
             try:
-                if self.session_log_active:
-                    self._text_handle.write(line + "\n")
-                else:
-                    self._text_buffer.append(line)
+                self._write_text_line(line)
             except Exception as e:
                 self._log.error(f"[SESSION] failed to append log line: {e}")
 
@@ -295,10 +339,7 @@ class SessionLogger:
                 return
             formatted = f"{self._format_line_ts()} [{tag}] {line}"
             try:
-                if self.session_log_active:
-                    self._text_handle.write(formatted + "\n")
-                else:
-                    self._text_buffer.append(formatted)
+                self._write_text_line(formatted)
             except Exception as e:
                 self._log.error(f"[SESSION] failed to append captured line: {e}")
 
