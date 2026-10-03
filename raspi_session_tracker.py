@@ -105,7 +105,7 @@ STATUS_TOPIC_IR_RPM  = "sensors2mqtt-glo2/esp32/status/ir_rpm"
 STATUS_TOPIC_GPS     = "sensors2mqtt-glo2/esp32/status/gps"
 ALIVE_TOPIC          = "sensors2mqtt-glo2/esp32/status/alive"
 
-MQTT_KEEPALIVE_S        = 20
+MQTT_KEEPALIVE_S        = 60
 MQTT_PUBLISH_INTERVAL_S = 0.200
 STATUS_CHECK_INTERVAL_S = 2.000
 MQTT_RECONNECT_MIN_S    = 1
@@ -148,9 +148,9 @@ GPS_RECV_TIMEOUT_S = 0.5
 
 WIFI_CHECK_INTERVAL_S = 10.0
 WIFI_LOG_INTERVAL_S   = 60.0
-# Ridotto a 5s per mantenere sempre attivo l'hotspot iPhone
-# evitando completamente le disconnessioni da risparmio energetico
-WIFI_KEEPALIVE_INTERVAL_S = 5.0
+# Ping ogni 30s per mantenere attivo l'hotspot iPhone senza sovraccaricarlo.
+# Valori troppo bassi (es. 5s) causano disconnessioni per power management iOS.
+WIFI_KEEPALIVE_INTERVAL_S = 30.0
 
 # Rate-limit per log ed eventi ripetuti (evita di riempire il .log)
 LOG_RATE_LIMIT_S = 300.0  # 5 minuti

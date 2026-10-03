@@ -2587,11 +2587,12 @@ def publish_session_status():
     }
 
     try:
+        # NON usare retain=True per evitare che il RPi riceva stati obsoleti al riavvio
         result = client.publish(
             MQTT_CONFIG["session_status_topic"],
             json.dumps(payload),
             qos=1,
-            retain=True,
+            retain=False,
         )
         if result.rc == mqtt.MQTT_ERR_SUCCESS:
             print(f"[MQTT] Published session status: {session.get('status')}")
