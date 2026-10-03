@@ -214,6 +214,12 @@ _last_ntc_state = None
 _last_as5600_state = None
 _last_gps_state = None
 
+# Tracking WiFi disconnections
+_wifi_connected = False
+_wifi_disconnect_time = None
+_wifi_reconnect_attempts = 0
+_samples_during_disconnect = 0
+
 # Rate-limit timestamps (inizializzati a -LIMIT così il primo errore logga subito)
 _last_gps_err_log_ts = -LOG_RATE_LIMIT_S
 _last_mqtt_disconn_log_ts = -LOG_RATE_LIMIT_S
@@ -252,7 +258,7 @@ def is_network_connected():
         return False
 
 def get_wifi_info():
-    """Legge SSID/IP/MAC da /sys e nmcli. Ritorna dict o {}."""
+    """Legge SSID/IP/MAC/RSSI da /sys e nmcli. Ritorna dict o {}."""
     info = {}
     try:
         r = subprocess.run(
@@ -275,6 +281,23 @@ def get_wifi_info():
         if os.path.exists(mac_path):
             with open(mac_path) as f:
                 info["mac"] = f.read().strip()
+
+        # Ottieni RSSI (signal strength)
+        try:
+            r = subprocess.run(
+                ["iwconfig", "wlan0"],
+                capture_output=True, text=True, timeout=2,
+            )
+            for line in r.stdout.splitlines():
+                if "Signal level" in line:
+                    # Estrai RSSI: "Signal level=-65 dBm"
+                    import re
+                    match = re.search(r'Signal level[=:](-?\d+)', line)
+                    if match:
+                        info["rssi"] = int(match.group(1))
+                    break
+        except Exception:
+            pass
     except Exception:
         pass
     return info
@@ -795,8 +818,13 @@ def on_mqtt_message(client, userdata, message):
                 raise RuntimeError("session logger is not initialized")
 
             session_logger.start_session(session_guid)
+
+            # Re-inizializza il logging per scrivere sulla directory della sessione
             log = setup_logging(session_logger.session_dir)
+
             log.info(f"[SESSION] received session_started, guid={session_guid}")
+            log.info(f"[SESSION] directory={session_logger.session_dir}")
+            log.info(f"[SESSION] files=glo2-telemetry.log, boot.json, raw.jsonl, events.jsonl")
 
         # Gestione stop sessione
         elif event == "session_stopped":
@@ -806,6 +834,10 @@ def on_mqtt_message(client, userdata, message):
             session_guid = payload.get("session_guid")
             log.info(f"[SESSION] received session_stopped, guid={session_guid}")
             session_logger.stop_session(reason="mqtt_stop_command")
+
+            # Torna al logging su stdout dopo lo stop della sessione
+            log = setup_logging(session_dir=None)
+            log.info(f"[SESSION] session stopped, logging reverted to stdout")
 
         else:
             log.warning(f"[mqtt] unknown session control event: {event}")
@@ -886,6 +918,8 @@ def update_and_publish_component_statuses():
 # TELEMETRIA
 # ============================================================
 def publish_telemetry():
+    global _samples_during_disconnect
+
     if mqtt_client is None:
         return
     with gps_lock:
@@ -918,6 +952,10 @@ def publish_telemetry():
     except Exception as e:
         log.error(f"[mqtt] publish failed: {e}")
 
+    # Conta campioni durante disconnessione WiFi
+    if not _wifi_connected:
+        _samples_during_disconnect += 1
+
     if session_logger:
         session_logger.log_raw_sample(payload)
 
@@ -927,6 +965,8 @@ def publish_telemetry():
 # ============================================================
 def wifi_monitor_loop():
     global _last_wifi_snapshot, _last_wifi_log_time
+    global _wifi_connected, _wifi_disconnect_time, _wifi_reconnect_attempts, _samples_during_disconnect
+
     while not _shutdown.is_set():
         try:
             info = get_wifi_info()
@@ -938,25 +978,93 @@ def wifi_monitor_loop():
                 prev_key = (_last_wifi_snapshot.get("ssid"),
                             _last_wifi_snapshot.get("ip"))
 
-            if snapshot_key != prev_key:
+            # Transizione: connesso -> disconnesso
+            if prev_key and prev_key[0] and not snapshot_key[0]:
+                _wifi_connected = False
+                _wifi_disconnect_time = now
+                _wifi_reconnect_attempts = 0
+                _samples_during_disconnect = 0
+
+                log.warning("[wifi] connection lost")
+                if session_logger:
+                    rssi = _last_wifi_snapshot.get("rssi")
+                    duration_s = round(now - _last_wifi_log_time, 1) if _last_wifi_log_time else None
+
+                    session_logger.log_event(
+                        "wifi_disconnect",
+                        ssid=_last_wifi_snapshot.get("ssid"),
+                        last_rssi=rssi,
+                        connection_duration_s=duration_s,
+                        mqtt_connected=mqtt_connected,
+                        gps_connected=bt_connected,
+                    )
+
+            # Durante disconnessione: conta tentativi
+            elif not _wifi_connected and not snapshot_key[0]:
+                _wifi_reconnect_attempts += 1
+                if session_logger and _wifi_reconnect_attempts % 5 == 0:  # Log ogni 5 tentativi
+                    elapsed = round(now - _wifi_disconnect_time, 1) if _wifi_disconnect_time else 0
+                    session_logger.log_event(
+                        "wifi_reconnect_attempt",
+                        attempt=_wifi_reconnect_attempts,
+                        elapsed_s=elapsed,
+                        samples_buffered=_samples_during_disconnect,
+                    )
+
+            # Transizione: disconnesso -> connesso
+            elif not prev_key or not prev_key[0]:
                 if info.get("ssid"):
-                    log.info(f"[wifi] connected ssid={info.get('ssid')} ip={info.get('ip')} mac={info.get('mac')}")
+                    was_disconnected = not _wifi_connected
+                    _wifi_connected = True
+                    downtime_s = round(now - _wifi_disconnect_time, 1) if _wifi_disconnect_time and was_disconnected else 0
+
+                    log.info(f"[wifi] connected ssid={info.get('ssid')} ip={info.get('ip')} mac={info.get('mac')} rssi={info.get('rssi', 'N/A')} dBm")
+
                     if session_logger:
-                        session_logger.log_event("wifi_connect",
-                                                 ssid=info.get("ssid"),
-                                                 ip=info.get("ip"),
-                                                 mac=info.get("mac"))
-                        session_logger.set_wifi(info.get("ssid"), info.get("ip"),
-                                                info.get("mac"))
-                else:
-                    log.warning("[wifi] no active connection")
-                    if session_logger:
-                        session_logger.log_event("wifi_disconnect")
+                        event_data = {
+                            "ssid": info.get("ssid"),
+                            "ip": info.get("ip"),
+                            "mac": info.get("mac"),
+                            "rssi": info.get("rssi"),
+                        }
+
+                        if was_disconnected:
+                            event_data.update({
+                                "reconnect_time_s": downtime_s,
+                                "reconnect_attempts": _wifi_reconnect_attempts,
+                                "samples_during_disconnect": _samples_during_disconnect,
+                                "mqtt_connected": mqtt_connected,
+                                "gps_connected": bt_connected,
+                            })
+
+                        session_logger.log_event("wifi_connect", **event_data)
+                        session_logger.set_wifi(info.get("ssid"), info.get("ip"), info.get("mac"), info.get("rssi"))
+
+                    _last_wifi_snapshot = info
+                    _last_wifi_log_time = now
+                    _wifi_disconnect_time = None
+                    _samples_during_disconnect = 0
+
+            # Cambio IP/SSID
+            elif snapshot_key != prev_key:
+                log.info(f"[wifi] network changed from {prev_key[0]} to {info.get('ssid')}")
+                if session_logger:
+                    session_logger.log_event(
+                        "wifi_network_change",
+                        old_ssid=prev_key[0],
+                        new_ssid=info.get("ssid"),
+                        new_ip=info.get("ip"),
+                        new_rssi=info.get("rssi"),
+                    )
                 _last_wifi_snapshot = info
                 _last_wifi_log_time = now
+
+            # Stessa connessione: log periodico con RSSI
             elif now - _last_wifi_log_time > WIFI_LOG_INTERVAL_S and info.get("ssid"):
-                log.debug(f"[wifi] still on {info.get('ssid')} ({info.get('ip')})")
+                rssi = info.get("rssi", "N/A")
+                log.debug(f"[wifi] still on {info.get('ssid')} ({info.get('ip')}) rssi={rssi} dBm")
                 _last_wifi_log_time = now
+
         except Exception as e:
             log.debug(f"[wifi] monitor error: {e}")
         time.sleep(WIFI_CHECK_INTERVAL_S)
@@ -1053,11 +1161,12 @@ def main():
     signal.signal(signal.SIGINT, _handle_signal)
 
     session_logger = SessionLogger(app_version=APP_VERSION)
-    log = setup_logging(session_logger.session_dir)
 
-    log.info(f"[SESSION] started id={session_logger.session_id}")
-    log.info(f"[SESSION] directory={session_logger.session_dir}")
-    log.info("[SESSION] files=glo2-telemetry.log, boot.json, raw.jsonl, events.jsonl")
+    # Setup logging iniziale su stdout/journalctl (nessuna directory sessione ancora)
+    log = setup_logging(session_dir=None)
+
+    log.info(f"[SESSION] logger initialized in buffering mode")
+    log.info("[SESSION] waiting for session start via MQTT")
     log.info(f"=== Kart Telemetry v{APP_VERSION} starting ===")
     log.info(f"[main] hostname={socket.gethostname()} pid={os.getpid()}")
     log.info(f"[main] mqtt_client_id={MQTT_CLIENT_ID} broker={MQTT_BROKER}:{MQTT_PORT}")
