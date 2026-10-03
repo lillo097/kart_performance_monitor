@@ -44,3 +44,5 @@
 2026-10-03 19:42:55.692 [WARNING] [main    ] [gps] connect failed: [Errno 16] Device or resource busy; retry in 3.0s (attempt 43, next log in 300s if still failing)
 2026-10-03 19:43:26.749 [INFO ] [main    ] [gps] connected to 14:13:0B:C0:B2:1E (socket RFCOMM)
 2026-10-03 19:43:26.811 [INFO ] [main    ] [gps] first NMEA: $GPRMC,174324.3,V,4529.669890,N,00912.45...
+2026-10-03 19:58:24.487 [WARNING] [main    ] [wifi] connection lost
+2026-10-03 20:03:34.605 [WARNING] [main    ] [wifi] connection lost
