@@ -1171,9 +1171,21 @@ def main():
     # Setup logging iniziale su stdout/journalctl (nessuna directory sessione ancora)
     log = setup_logging(session_dir=None)
 
+    # Cattura eccezioni non gestite: main thread e worker thread (loggati
+    # come [CRITICAL] nel log di sessione, bufferizzate se sessione non attiva)
+    def _main_excepthook(exc_type, exc_value, exc_tb):
+        session_logger.append_exception(exc_type, exc_value, exc_tb, thread_name="main")
+        sys.__excepthook__(exc_type, exc_value, exc_tb)
+
+    sys.excepthook = _main_excepthook
+    SessionLogger.install_thread_excepthook()
+
     log.info(f"[SESSION] logger initialized in buffering mode")
     log.info("[SESSION] waiting for session start via MQTT")
-    log.info(f"=== Kart Telemetry v{APP_VERSION} starting ===")
+    _started_at = time.strftime("%Y-%m-%d %H:%M:%S")
+    log.info("=" * 60)
+    log.info(f"=== SERVICE START v{APP_VERSION} pid={os.getpid()} at {_started_at} ===")
+    log.info("=" * 60)
     log.info(f"[main] hostname={socket.gethostname()} pid={os.getpid()}")
     log.info(f"[main] mqtt_client_id={MQTT_CLIENT_ID} broker={MQTT_BROKER}:{MQTT_PORT}")
 

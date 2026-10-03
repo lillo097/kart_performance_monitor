@@ -6,9 +6,12 @@ import logging
 import os
 import platform
 import shutil
+import sys
 import threading
 import time
+import traceback
 import uuid
+from collections import deque
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -20,6 +23,45 @@ APP_SESSIONS_DIR = BASE_DIR / "sessions"
 RETENTION_DAYS = 30
 RAW_ROTATE_BYTES = 50 * 1024 * 1024
 BOOT_UPDATE_INTERVAL_S = 30.0
+TEXT_BUFFER_MAX_LINES = 100_000
+
+_TEXT_FMT = "%(asctime)s.%(msecs)03d [%(levelname)-5s] [%(name)-8s] %(message)s"
+_TEXT_DATE = "%Y-%m-%d %H:%M:%S"
+
+# Singleton: permette ai hook di cattura (stdout/stderr/warnings) di
+# raggiungere l'istanza di SessionLogger senza importare il main.
+_current_session_logger = None
+
+
+def _thread_excepthook(args):
+    """threading.excepthook: cattura le eccezioni non gestite dei worker
+    thread e le logga come [CRITICAL] nel log di sessione.
+
+    Sostituisce l'handler di default (che stampa solo su stderr) così da
+    non emettere il traceback due volte: qui lo scriviamo una volta su
+    journalctl (stream originale) e una volta nel log di sessione.
+    """
+    tb_text = "".join(traceback.format_exception(args.exc_type, args.exc_value,
+                                                 args.exc_traceback))
+    thread_name = args.thread.name if args.thread else "unknown"
+    # Journalctl: scrivi sullo stream originale (evitando il wrapper di cattura)
+    err = sys.stderr
+    while hasattr(err, "_original"):
+        err = err._original
+    try:
+        err.write(f"Exception in thread {thread_name!r}:\n{tb_text}")
+        err.flush()
+    except Exception:
+        pass
+    sl = _current_session_logger
+    if sl is not None:
+        sl.append_exception(args.exc_type, args.exc_value, args.exc_traceback,
+                            thread_name=thread_name)
+
+
+def get_current_session_logger():
+    """Restituisce l'istanza corrente di SessionLogger (None se inesistente)."""
+    return _current_session_logger
 
 
 def _iso_now():
@@ -62,9 +104,16 @@ class SessionLogger:
         self._events_buffer = []
         self._raw_buffer = []
 
+        # Buffer testuale (righe di log/.stdout/stderr/warnings/exceptioni)
+        # max TEXT_BUFFER_MAX_LINES: scartato se il servizio termina senza mai
+        # aver avviato una sessione, altrimenti scritto retroattivamente.
+        self._text_buffer = deque(maxlen=TEXT_BUFFER_MAX_LINES)
+        self._text_handler = logging.Formatter(_TEXT_FMT, datefmt=_TEXT_DATE)
+
         # File handles (None finché la sessione non è avviata)
         self._raw_handle = None
         self._events_handle = None
+        self._text_handle = None
         self._boot_path = None
         self._raw_path = None
         self._events_path = None
@@ -93,6 +142,10 @@ class SessionLogger:
         self._gps_meta = {}
 
         self._boot_status = "running"
+
+        # Registra il singleton usato dagli hook di cattura
+        global _current_session_logger
+        _current_session_logger = self
 
         self._log.info("[SESSION] logger initialized (buffering mode - waiting for session start)")
 
@@ -137,9 +190,14 @@ class SessionLogger:
             self._log_path = session_dir / "glo2-telemetry.log"
             self._app_session_path = APP_SESSIONS_DIR / f"{session_dir.name}_raspi.json"
 
-            # Apri i file di log
-            self._raw_handle = open(self._raw_path, "a", encoding="utf-8", buffering=1)
-            self._events_handle = open(self._events_path, "a", encoding="utf-8", buffering=1)
+            # Chiudi l'eventuale file di log della sessione precedente
+            # (lasciato aperto da stop_session) per non perdere handle
+            try:
+                if self._text_handle:
+                    self._text_handle.close()
+                    self._text_handle = None
+            except Exception:
+                pass
 
             # Reset contatori per nuova sessione
             self._started_epoch = time.time()
@@ -149,16 +207,26 @@ class SessionLogger:
             self._counters["raw_rotations"] = 0
             self._warmup_samples = []
 
-            # Scrivi il buffer accumulato su disco
-            self._flush_buffers_to_disk()
+            # Flush retroattivo, PRIMA di aprire gli handle, per non intrecciare
+            # le righe bufferizzate con i log interni di questo metodo. L'ordine
+            # cronologico nel file resta: boot -> ... -> "session started".
+            self._flush_text_buffer()      # righe log/stdout/stderr/warnings pre-sessione
+            self._flush_buffers_to_disk()  # eventi e campioni raw pre-sessione
 
-            # Scrivi evento di associazione sessione
+            # Solo ora gli handle sono pronti: da qui in poi ogni riga (log,
+            # stdout/stderr, warnings, eccezioni) va in coda al file di sessione
+            self._raw_handle = open(self._raw_path, "a", encoding="utf-8", buffering=1)
+            self._events_handle = open(self._events_path, "a", encoding="utf-8", buffering=1)
+            self._text_handle = open(self._log_path, "a", encoding="utf-8", buffering=1)
+
+            self._session_active = True
+
+            # Scrivi evento di associazione sessione + inizio sessione
             self.log_event("session_associated", session_guid=normalized_guid)
 
             # Aggiorna boot.json
             self.update_boot_json(force=True)
 
-            self._session_active = True
             self._log.info(f"[SESSION] started and saved to disk: {self.session_dir}")
             self._log.info(f"[SESSION] session_guid={normalized_guid}")
 
@@ -184,6 +252,111 @@ class SessionLogger:
     def set_session_guid(self, session_guid):
         """Alias per start_session per compatibilità con codice esistente."""
         self.start_session(session_guid)
+
+    # ------------------------------------------------------------------
+    # Captured text lines (logging records, stdout/stderr, warnings,
+    # unhandled exceptions) — scritte su disco o bufferizzate in RAM
+    # ------------------------------------------------------------------
+    @property
+    def session_log_active(self):
+        """True se il file di log di sessione è aperto e scrivibile.
+
+        La condizione si basa su _text_handle (e non su _session_active)
+        perché, per specifica, le righe loggate dopo session_stopped
+        restano in coda al file di sessione corrente fino allo shutdown
+        del servizio.
+        """
+        return self._text_handle is not None
+
+    def format_logging_record(self, record):
+        """Formatta un record di logging nel formato usato dal file di sessione."""
+        return self._text_handler.format(record)
+
+    def append_formatted_line(self, line):
+        """Appende una riga già formattata (record di logging) al log di sessione."""
+        with self._lock:
+            try:
+                if self.session_log_active:
+                    self._text_handle.write(line + "\n")
+                else:
+                    self._text_buffer.append(line)
+            except Exception as e:
+                self._log.error(f"[SESSION] failed to append log line: {e}")
+
+    def append_captured_line(self, tag, line):
+        """Appende una riga catturata (stdout/stderr/warnings) con tag al log di sessione.
+
+        `tag` è "stdout", "stderr" o "py.warnings". La riga è salvata
+        nell'ordine in cui è stata emessa, indipendentemente dallo stato
+        della sessione (buffer in RAM se nessuna sessione attiva).
+        """
+        with self._lock:
+            if not line:
+                return
+            formatted = f"{self._format_line_ts()} [{tag}] {line}"
+            try:
+                if self.session_log_active:
+                    self._text_handle.write(formatted + "\n")
+                else:
+                    self._text_buffer.append(formatted)
+            except Exception as e:
+                self._log.error(f"[SESSION] failed to append captured line: {e}")
+
+    def append_exception(self, exc_type, exc_value, exc_tb, thread_name="main"):
+        """Logga un'eccezione non gestita (main o worker thread) come [CRITICAL]."""
+        tb_lines = traceback.format_exception(exc_type, exc_value, exc_tb)
+        formatted = (f"{self._format_line_ts()} [CRITICAL] [exception:{thread_name}] "
+                     f"unhandled exception:\n" + "".join(tb_lines).rstrip())
+        with self._lock:
+            try:
+                if self.session_log_active:
+                    self._text_handle.write(formatted + "\n")
+                else:
+                    self._text_buffer.append(formatted)
+            except Exception:
+                pass
+
+    def _format_line_ts(self):
+        return datetime.now().astimezone().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
+
+    @staticmethod
+    def install_thread_excepthook():
+        """Abilita la cattura delle eccezioni non gestite dei worker thread.
+        Chiamare una sola volta all'avvio del servizio."""
+        threading.excepthook = _thread_excepthook
+
+    def _flush_text_buffer(self):
+        """Scrive le righe di testo bufferizzate sul file di sessione.
+
+        Va invocata PRIMA di aprire `_text_handle` (modalità "pre-apertura"):
+        scrive direttamente sul path e consuma il buffer sotto `_lock`, in modo
+        che i writer concorrenti vedano lo stato già aggiornato e non restino
+        righe intrappolate nel buffer (race con deque(maxlen)).
+        """
+        with self._lock:
+            if not self._text_buffer:
+                return
+            # Snapshot + clear atomici: nessuno può appendere tra le due operazioni
+            pending = list(self._text_buffer)
+            self._text_buffer.clear()
+
+            if self._text_handle:
+                # Handle già aperto: scrivi su di esso (percorso usato solo se
+                # questa funzione viene richiamata dopo l'apertura)
+                target = self._text_handle
+                for line in pending:
+                    target.write(line + "\n")
+            else:
+                # Pre-apertura: apri in append, scrivi, chiudi subito, così le
+                # righe finiscono in testa al file in ordine cronologico
+                with open(self._log_path, "a", encoding="utf-8", buffering=1) as fh:
+                    for line in pending:
+                        fh.write(line + "\n")
+
+            try:
+                self._log.info(f"[SESSION] flushed {len(pending)} buffered log lines to session file")
+            except Exception:
+                pass
 
     # ------------------------------------------------------------------
     # Meta (chiamati all'avvio da app.py)
@@ -500,8 +673,10 @@ class SessionLogger:
                           uptime_s=round(time.time() - self._started_epoch, 3),
                           samples_published=self._counters["samples_published"])
 
-            # Chiudi i file
-            self._close_session_files()
+            # Chiudi i file (il file di log testuale resta aperto: le righe
+            # successive devono restare in coda al file di questa sessione
+            # finché il servizio non viene riavviato)
+            self._close_session_files(close_text=False)
 
             # Scrivi boot.json finale
             try:
@@ -543,8 +718,13 @@ class SessionLogger:
             # Ricomincia a bufferizzare per eventuale prossima sessione
             self._log.info("[SESSION] ready for next session (buffering mode)")
 
-    def _close_session_files(self):
-        """Chiude i file handle della sessione corrente."""
+    def _close_session_files(self, close_text=True):
+        """Chiude i file handle della sessione corrente.
+
+        `close_text=False` mantiene aperto il file di log testuale
+        (usato da stop_session: le righe successive restano in coda al
+        file della sessione appena fermata).
+        """
         try:
             if self._raw_handle:
                 self._raw_handle.close()
@@ -558,6 +738,13 @@ class SessionLogger:
                 self._events_handle = None
         except Exception as e:
             self._log.error(f"[SESSION] failed to close events handle: {e}")
+
+        try:
+            if self._text_handle and close_text:
+                self._text_handle.close()
+                self._text_handle = None
+        except Exception as e:
+            self._log.error(f"[SESSION] failed to close text handle: {e}")
 
     # ------------------------------------------------------------------
     # Chiusura (chiamato allo shutdown del servizio)
@@ -574,5 +761,10 @@ class SessionLogger:
                 self._log.info(f"[SESSION] discarding buffered data (no active session)")
                 self._events_buffer.clear()
                 self._raw_buffer.clear()
+
+            # Chiudi il file di log testuale (aperto sia con sessione attiva
+            # che dopo session_stopped) e scarta il buffer residuo
+            self._close_session_files()
+            self._text_buffer.clear()
 
             self._log.info(f"[SESSION] logger closed, reason={reason}")
