@@ -1,0 +1,13 @@
+{"ts_epoch": 1791035073.624, "ts_iso": "2026-10-03T15:44:33.624+02:00", "event": "service_start", "pid": 714, "app_version": "2.1.1", "hostname": "raspberrypi"}
+{"ts_epoch": 1791035073.627, "ts_iso": "2026-10-03T15:44:33.627+02:00", "event": "hardware_check", "ntc": false, "as5600": false, "ir_rpm": false, "gps": false}
+{"ts_epoch": 1791035075.136, "ts_iso": "2026-10-03T15:44:35.136+02:00", "event": "wifi_connect", "ssid": "WINDTRE-E9B808", "ip": "192.168.1.25", "mac": "2c:cf:67:7d:14:65"}
+{"ts_epoch": 1791035075.463, "ts_iso": "2026-10-03T15:44:35.463+02:00", "event": "sensor_lost", "sensor": "ntc"}
+{"ts_epoch": 1791035075.465, "ts_iso": "2026-10-03T15:44:35.465+02:00", "event": "sensor_lost", "sensor": "as5600"}
+{"ts_epoch": 1791035075.478, "ts_iso": "2026-10-03T15:44:35.478+02:00", "event": "mqtt_connect", "broker": "broker.hivemq.com", "port": 1883, "client_id": "RPi-KART-2ccf677d1465", "session_present": true}
+{"ts_epoch": 1791035075.709, "ts_iso": "2026-10-03T15:44:35.708+02:00", "event": "wifi_connect", "ssid": "WINDTRE-E9B808", "ip": "192.168.1.25", "mac": "2c:cf:67:7d:14:65", "rssi": -23, "reconnect_time_s": 0, "reconnect_attempts": 0, "samples_during_disconnect": 2, "mqtt_connected": true, "gps_connected": false}
+{"ts_epoch": 1791035081.554, "ts_iso": "2026-10-03T15:44:41.553+02:00", "event": "bt_connect_failed", "reason": "timed out", "backoff_s": 1.0, "attempt": 1}
+{"ts_epoch": 1791035082.57, "ts_iso": "2026-10-03T15:44:42.569+02:00", "event": "bt_connect", "mac": "14:13:0B:C0:B2:1E", "rfcomm_channel": 1, "attempt": 2}
+{"ts_epoch": 1791035082.983, "ts_iso": "2026-10-03T15:44:42.983+02:00", "event": "first_nmea", "sentence": "$GPRMC,134522.8,V,4529.631126,N,00912.402802,E,,,031026,001.9,E,N*15"}
+{"ts_epoch": 1791035147.445, "ts_iso": "2026-10-03T15:45:47.445+02:00", "event": "wifi_disconnect", "ssid": "WINDTRE-E9B808", "last_rssi": -23, "connection_duration_s": 71.7, "mqtt_connected": true, "gps_connected": false}
+{"ts_epoch": 1791035150.667, "ts_iso": "2026-10-03T15:45:50.667+02:00", "event": "bt_connect", "mac": "14:13:0B:C0:B2:1E", "rfcomm_channel": 1, "attempt": 10}
+{"ts_epoch": 1791035150.802, "ts_iso": "2026-10-03T15:45:50.801+02:00", "event": "first_nmea", "sentence": "$GPRMC,134553.4,V,4529.631126,N,00912.402802,E,,,031026,001.9,E,N*1F"}

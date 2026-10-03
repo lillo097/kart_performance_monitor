@@ -1,0 +1,3 @@
+2026-10-03 15:47:56.148 [INFO ] [main    ] [SESSION] received session_started, guid=7bc65c14-273b-466c-875b-6236ea2bc1c5
+2026-10-03 15:47:56.149 [INFO ] [main    ] [SESSION] directory=/home/lillo97/kart_performance_monitor/system_logs/sessions/2026-10-03_15-47-55_7bc65c14-273b-466c-875b-6236ea2bc1c5
+2026-10-03 15:47:56.150 [INFO ] [main    ] [SESSION] files=glo2-telemetry.log, boot.json, raw.jsonl, events.jsonl
