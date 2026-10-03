@@ -11,3 +11,4 @@
 {"ts_epoch": 1791065271.917, "ts_iso": "2026-10-04T00:07:51.917+02:00", "event": "wifi_disconnect", "ssid": "Galaxy A33 5G 2FBF", "last_rssi": -9, "connection_duration_s": 13.0, "mqtt_connected": true, "gps_connected": true}
 {"ts_epoch": 1791065280.302, "ts_iso": "2026-10-04T00:08:00.301+02:00", "event": "session_associated", "session_guid": "b996610f-c20e-4110-b6bf-a4dd2b35e5b0"}
 {"ts_epoch": 1791065582.388, "ts_iso": "2026-10-04T00:13:02.387+02:00", "event": "wifi_disconnect", "ssid": "Galaxy A33 5G 2FBF", "last_rssi": -9, "connection_duration_s": 13.0, "mqtt_connected": true, "gps_connected": true}
+{"ts_epoch": 1791066731.398, "ts_iso": "2026-10-04T00:32:11.397+02:00", "event": "service_stop", "reason": "mqtt_stop_command", "uptime_s": 1451.158, "samples_published": 7397}
