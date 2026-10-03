@@ -1,1 +1,2 @@
 {"ts_epoch": 1791047019.246, "ts_iso": "2026-10-03T19:03:39.246+02:00", "event": "session_associated", "session_guid": "5ab0e996-5f30-4275-816d-a7975919b849"}
+{"ts_epoch": 1791047213.075, "ts_iso": "2026-10-03T19:06:53.075+02:00", "event": "wifi_disconnect", "ssid": "Galaxy A33 5G 2FBF", "last_rssi": -18, "connection_duration_s": 13.0, "mqtt_connected": true, "gps_connected": true}

@@ -31,3 +31,4 @@
 2026-10-03 19:03:39.267 [INFO ] [main    ] [SESSION] received session_started, guid=5ab0e996-5f30-4275-816d-a7975919b849
 2026-10-03 19:03:39.267 [INFO ] [main    ] [SESSION] directory=/home/lillo97/kart_performance_monitor/system_logs/sessions/2026-10-03_19-03-39_5ab0e996-5f30-4275-816d-a7975919b849
 2026-10-03 19:03:39.268 [INFO ] [main    ] [SESSION] files=glo2-telemetry.log, boot.json, raw.jsonl, events.jsonl
+2026-10-03 19:06:53.068 [WARNING] [main    ] [wifi] connection lost
