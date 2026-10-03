@@ -10,3 +10,4 @@
 {"ts_epoch": 1791051198.982, "ts_iso": "2026-10-03T20:13:18.981+02:00", "event": "first_nmea", "sentence": "$GPRMC,182034.3,V,4529.670982,N,00912.388721,E,,,031026,001.9,E,N*19"}
 {"ts_epoch": 1791051662.264, "ts_iso": "2026-10-03T20:21:02.263+02:00", "event": "wifi_disconnect", "ssid": "Galaxy A33 5G 2FBF", "last_rssi": -22, "connection_duration_s": 13.0, "mqtt_connected": true, "gps_connected": true}
 {"ts_epoch": 1791051784.315, "ts_iso": "2026-10-03T20:23:04.314+02:00", "event": "session_associated", "session_guid": "3189d72b-3467-482a-8872-ea05a002ee2e"}
+{"ts_epoch": 1791051972.716, "ts_iso": "2026-10-03T20:26:12.715+02:00", "event": "wifi_disconnect", "ssid": "Galaxy A33 5G 2FBF", "last_rssi": -22, "connection_duration_s": 13.0, "mqtt_connected": true, "gps_connected": true}
