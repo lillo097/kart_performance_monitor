@@ -1,6 +1,0 @@
-2026-10-03 00:17:34.466 [INFO ] [main    ] [SESSION] received session_started, guid=e704e03a-8d89-4bf4-8a68-401b39045416
-2026-10-03 00:22:19.431 [WARNING] [main    ] [wifi] no active connection
-2026-10-03 00:22:29.718 [INFO ] [main    ] [wifi] connected ssid=iPhone di Livio ip=172.20.10.2 mac=2c:cf:67:7d:14:65
-2026-10-03 00:26:56.478 [WARNING] [main    ] [wifi] no active connection
-2026-10-03 00:27:06.762 [WARNING] [main    ] [wifi] no active connection
-2026-10-03 00:27:15.588 [WARNING] [main    ] [mqtt] disconnected rc=141 (keepalive_timeout); paho will retry [total=1]
