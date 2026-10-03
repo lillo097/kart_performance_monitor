@@ -11,3 +11,5 @@
 {"ts_epoch": 1791035147.445, "ts_iso": "2026-10-03T15:45:47.445+02:00", "event": "wifi_disconnect", "ssid": "WINDTRE-E9B808", "last_rssi": -23, "connection_duration_s": 71.7, "mqtt_connected": true, "gps_connected": false}
 {"ts_epoch": 1791035150.667, "ts_iso": "2026-10-03T15:45:50.667+02:00", "event": "bt_connect", "mac": "14:13:0B:C0:B2:1E", "rfcomm_channel": 1, "attempt": 10}
 {"ts_epoch": 1791035150.802, "ts_iso": "2026-10-03T15:45:50.801+02:00", "event": "first_nmea", "sentence": "$GPRMC,134553.4,V,4529.631126,N,00912.402802,E,,,031026,001.9,E,N*1F"}
+{"ts_epoch": 1791035458.195, "ts_iso": "2026-10-03T15:50:58.195+02:00", "event": "wifi_disconnect", "ssid": "WINDTRE-E9B808", "last_rssi": -23, "connection_duration_s": 54.1, "mqtt_connected": true, "gps_connected": true}
+{"ts_epoch": 1791035470.918, "ts_iso": "2026-10-03T15:51:10.918+02:00", "event": "service_stop", "reason": "mqtt_stop_command", "uptime_s": 194.904, "samples_published": 1781}

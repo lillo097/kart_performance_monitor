@@ -1,28 +1,28 @@
 {
   "schema_version": 13,
   "client_side": true,
-  "session_guid": "7bc65c14-273b-466c-875b-6236ea2bc1c5",
-  "saved_at": "2026-10-03T15:51:10.919+02:00",
+  "session_guid": "99d8d226-3a35-4e4f-92fa-3a4ce39ecba7",
+  "saved_at": "2026-10-03T16:02:46.124+02:00",
   "status": "stopped",
   "driver": {},
   "track": {},
   "track_config": {},
   "track_id": null,
   "mqtt_topic": "sensors2mqtt-glo2/esp32/location",
-  "started_at": "2026-10-03T15:47:56.014+02:00",
+  "started_at": "2026-10-03T16:00:35.776+02:00",
   "paused_at": null,
   "paused_total_s": 0.0,
-  "ended_at": "2026-10-03T15:51:10.918+02:00",
+  "ended_at": "2026-10-03T16:02:46.124+02:00",
   "data_age_at_start_s": null,
   "data_age_samples": {
     "at_epoch": [],
     "data_age_s": []
   },
-  "session_elapsed_s": 194.905,
+  "session_elapsed_s": 130.349,
   "summary": {
-    "raw_samples_received": 1781,
+    "raw_samples_received": 1209,
     "track_points_saved": 0,
-    "valid_gps_samples": 1247,
+    "valid_gps_samples": 1191,
     "filtered_out_samples": 0,
     "laps_completed": 0,
     "laps_aborted": 0,
@@ -60,7 +60,7 @@
       "ssid": "WINDTRE-E9B808",
       "ip": "192.168.1.25",
       "mac": "2c:cf:67:7d:14:65",
-      "rssi": -23
+      "rssi": -27
     },
     "gps": {
       "mac": "14:13:0B:C0:B2:1E",
@@ -78,10 +78,10 @@
       "gps": true
     },
     "counters": {
-      "samples_published": 1781,
-      "valid_gps_samples": 1247,
+      "samples_published": 1209,
+      "valid_gps_samples": 1191,
       "mqtt_reconnects": 0,
-      "bt_reconnects": 2,
+      "bt_reconnects": 0,
       "nmea_timeouts": 0,
       "raw_rotations": 0
     }

@@ -1,0 +1,6 @@
+2026-10-03 16:00:35.859 [INFO ] [main    ] [SESSION] received session_started, guid=99d8d226-3a35-4e4f-92fa-3a4ce39ecba7
+2026-10-03 16:00:35.860 [INFO ] [main    ] [SESSION] directory=/home/lillo97/kart_performance_monitor/system_logs/sessions/2026-10-03_16-00-35_99d8d226-3a35-4e4f-92fa-3a4ce39ecba7
+2026-10-03 16:00:35.861 [INFO ] [main    ] [SESSION] files=glo2-telemetry.log, boot.json, raw.jsonl, events.jsonl
+2026-10-03 16:02:46.123 [INFO ] [main    ] [SESSION] received session_stopped, guid=99d8d226-3a35-4e4f-92fa-3a4ce39ecba7
+2026-10-03 16:02:46.174 [INFO ] [session ] [SESSION] stopped and saved: 2026-10-03_16-00-35_99d8d226-3a35-4e4f-92fa-3a4ce39ecba7 reason=mqtt_stop_command
+2026-10-03 16:02:46.176 [INFO ] [session ] [SESSION] ready for next session (buffering mode)
