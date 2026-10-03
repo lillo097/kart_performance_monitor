@@ -37,3 +37,5 @@
 2026-10-03 19:28:21.769 [INFO ] [session ] [SESSION] ready for next session (buffering mode)
 2026-10-03 19:28:21.771 [INFO ] [main    ] [SESSION] session stopped, logging reverted to stdout
 2026-10-03 19:32:40.596 [WARNING] [main    ] [wifi] connection lost
+2026-10-03 19:37:40.789 [INFO ] [main    ] [main] signal 15 received, shutting down
+2026-10-03 19:37:41.845 [INFO ] [session ] [SESSION] discarding buffered data (no active session)

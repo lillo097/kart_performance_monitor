@@ -1,0 +1,17 @@
+{"ts_epoch": 1791049063.176, "ts_iso": "2026-10-03T19:37:43.176+02:00", "event": "service_start", "pid": 5343, "app_version": "2.1.1", "hostname": "raspberrypi"}
+{"ts_epoch": 1791049063.18, "ts_iso": "2026-10-03T19:37:43.180+02:00", "event": "hardware_check", "ntc": false, "as5600": false, "ir_rpm": false, "gps": false}
+{"ts_epoch": 1791049063.414, "ts_iso": "2026-10-03T19:37:43.413+02:00", "event": "wifi_connect", "ssid": "Galaxy A33 5G 2FBF", "ip": "10.141.254.88", "mac": "2c:cf:67:7d:14:65"}
+{"ts_epoch": 1791049063.549, "ts_iso": "2026-10-03T19:37:43.549+02:00", "event": "sensor_lost", "sensor": "ntc"}
+{"ts_epoch": 1791049063.551, "ts_iso": "2026-10-03T19:37:43.550+02:00", "event": "sensor_lost", "sensor": "as5600"}
+{"ts_epoch": 1791049063.583, "ts_iso": "2026-10-03T19:37:43.582+02:00", "event": "mqtt_connect", "broker": "broker.hivemq.com", "port": 1883, "client_id": "RPi-KART-2ccf677d1465", "session_present": true}
+{"ts_epoch": 1791049063.792, "ts_iso": "2026-10-03T19:37:43.792+02:00", "event": "wifi_connect", "ssid": "Galaxy A33 5G 2FBF", "ip": "10.141.254.88", "mac": "2c:cf:67:7d:14:65", "rssi": -31, "reconnect_time_s": 0, "reconnect_attempts": 0, "samples_during_disconnect": 2, "mqtt_connected": true, "gps_connected": false}
+{"ts_epoch": 1791049067.748, "ts_iso": "2026-10-03T19:37:47.747+02:00", "event": "bt_connect", "mac": "14:13:0B:C0:B2:1E", "rfcomm_channel": 1, "attempt": 1}
+{"ts_epoch": 1791049068.005, "ts_iso": "2026-10-03T19:37:48.004+02:00", "event": "first_nmea", "sentence": "$GPRMC,173747.7,V,4529.669890,N,00912.452636,E,,,031026,001.9,E,N*1D"}
+{"ts_epoch": 1791049073.292, "ts_iso": "2026-10-03T19:37:53.291+02:00", "event": "nmea_timeout", "seconds_without_nmea": 5.19, "action": "force_reconnect"}
+{"ts_epoch": 1791049079.206, "ts_iso": "2026-10-03T19:37:59.206+02:00", "event": "session_associated", "session_guid": "cc012ea0-325a-4efd-8d59-4c217ddb6f94"}
+{"ts_epoch": 1791049108.727, "ts_iso": "2026-10-03T19:38:28.727+02:00", "event": "bt_connect", "mac": "14:13:0B:C0:B2:1E", "rfcomm_channel": 1, "attempt": 12}
+{"ts_epoch": 1791049108.897, "ts_iso": "2026-10-03T19:38:28.896+02:00", "event": "first_nmea", "sentence": "$GPRMC,173828.8,V,4529.669890,N,00912.452636,E,,,031026,001.9,E,N*14"}
+{"ts_epoch": 1791049164.55, "ts_iso": "2026-10-03T19:39:24.550+02:00", "event": "bt_connect", "mac": "14:13:0B:C0:B2:1E", "rfcomm_channel": 1, "attempt": 16}
+{"ts_epoch": 1791049180.319, "ts_iso": "2026-10-03T19:39:40.318+02:00", "event": "bt_connect", "mac": "14:13:0B:C0:B2:1E", "rfcomm_channel": 1, "attempt": 2}
+{"ts_epoch": 1791049180.391, "ts_iso": "2026-10-03T19:39:40.390+02:00", "event": "first_nmea", "sentence": "$GPRMC,173940.3,V,4529.669890,N,00912.452636,E,,,031026,001.9,E,N*10"}
+{"ts_epoch": 1791049329.576, "ts_iso": "2026-10-03T19:42:09.576+02:00", "event": "service_stop", "reason": "mqtt_stop_command", "uptime_s": 250.383, "samples_published": 1323}
