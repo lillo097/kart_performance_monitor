@@ -28,7 +28,7 @@ DRIVERS_CONFIG = load_yaml("config/drivers.yaml")
 
 # -------------------------------------------------------------
 # Nessuna pista di default.
-# TRACK_CONFIG resta vuoto {} finché l'utente non seleziona
+# TRACK_CONFIG resta vuoto {} finché l'utente non selezionao
 # una pista dal setup (via START SESSION o GO TO DASHBOARD).
 # -------------------------------------------------------------
 TRACK_CONFIG = {}

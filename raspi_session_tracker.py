@@ -782,7 +782,7 @@ def on_mqtt_disconnect(
         141: "keepalive_timeout",
     }.get(rc_val, "unknown")
 
-    # Rate-limit: logga se il reason code cambia o se è passato LOG_RATE_LIMIT_S
+    # Rate-limit: logga se il reason code cambia oo se è passato LOG_RATE_LIMIT_S
     now_mono = time.monotonic()
     same_rc = (rc_val == _last_mqtt_disconn_rc)
     within_window = (now_mono - _last_mqtt_disconn_log_ts) < LOG_RATE_LIMIT_S
