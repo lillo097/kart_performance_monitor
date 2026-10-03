@@ -2551,11 +2551,12 @@ def publish_session_control(event):
         "session_guid": session.get("session_guid"),
     }
     try:
+        # NON usare retain=True per evitare messaggi stale al riavvio del Raspberry
         result = client.publish(
             MQTT_CONFIG["session_control_topic"],
             json.dumps(payload),
             qos=1,
-            retain=True,
+            retain=False,  # ← Cambiato da True a False
         )
         if result.rc != mqtt.MQTT_ERR_SUCCESS:
             raise RuntimeError(f"MQTT publish returned rc={result.rc}")

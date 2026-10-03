@@ -832,6 +832,12 @@ def on_mqtt_message(client, userdata, message):
                 raise RuntimeError("session logger is not initialized")
 
             session_guid = payload.get("session_guid")
+
+            # Ignora session_stopped se non c'è una sessione attiva
+            if not session_logger._session_active:
+                log.debug(f"[SESSION] ignoring session_stopped (no active session)")
+                return
+
             log.info(f"[SESSION] received session_stopped, guid={session_guid}")
             session_logger.stop_session(reason="mqtt_stop_command")
 
