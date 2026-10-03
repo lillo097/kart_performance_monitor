@@ -33,3 +33,8 @@
 2026-10-03 20:23:04.345 [INFO ] [main    ] [SESSION] directory=/home/lillo97/kart_performance_monitor/system_logs/sessions/2026-10-03_20-23-04_3189d72b-3467-482a-8872-ea05a002ee2e
 2026-10-03 20:23:04.346 [INFO ] [main    ] [SESSION] files=glo2-telemetry.log, boot.json, raw.jsonl, events.jsonl
 2026-10-03 20:26:12.714 [WARNING] [main    ] [wifi] connection lost
+2026-10-03 20:42:17.101 [WARNING] [main    ] [gps] no NMEA for 5.0s; force reconnect
+2026-10-03 20:42:39.498 [INFO ] [main    ] [SESSION] received session_stopped, guid=3189d72b-3467-482a-8872-ea05a002ee2e
+2026-10-03 20:42:39.938 [INFO ] [session ] [SESSION] stopped and saved: 2026-10-03_20-23-04_3189d72b-3467-482a-8872-ea05a002ee2e reason=mqtt_stop_command
+2026-10-03 20:42:39.951 [INFO ] [session ] [SESSION] ready for next session (buffering mode)
+2026-10-03 20:42:39.953 [INFO ] [main    ] [SESSION] session stopped, logging reverted to stdout

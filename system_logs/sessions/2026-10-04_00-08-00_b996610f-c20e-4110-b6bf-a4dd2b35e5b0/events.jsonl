@@ -1,0 +1,12 @@
+{"ts_epoch": 1791052927.545, "ts_iso": "2026-10-03T20:42:07.544+02:00", "event": "service_start", "pid": 660, "app_version": "2.1.1", "hostname": "raspberrypi"}
+{"ts_epoch": 1791052927.548, "ts_iso": "2026-10-03T20:42:07.548+02:00", "event": "hardware_check", "ntc": false, "as5600": false, "ir_rpm": false, "gps": false}
+{"ts_epoch": 1791052928.009, "ts_iso": "2026-10-03T20:42:08.008+02:00", "event": "wifi_connect", "ssid": "Galaxy A33 5G 2FBF", "ip": "10.141.254.88", "mac": "2c:cf:67:7d:14:65"}
+{"ts_epoch": 1791052928.161, "ts_iso": "2026-10-03T20:42:08.160+02:00", "event": "sensor_lost", "sensor": "ntc"}
+{"ts_epoch": 1791052928.162, "ts_iso": "2026-10-03T20:42:08.161+02:00", "event": "sensor_lost", "sensor": "as5600"}
+{"ts_epoch": 1791052928.201, "ts_iso": "2026-10-03T20:42:08.201+02:00", "event": "mqtt_connect", "broker": "broker.hivemq.com", "port": 1883, "client_id": "RPi-KART-2ccf677d1465", "session_present": false}
+{"ts_epoch": 1791052928.417, "ts_iso": "2026-10-03T20:42:08.417+02:00", "event": "wifi_connect", "ssid": "Galaxy A33 5G 2FBF", "ip": "10.141.254.88", "mac": "2c:cf:67:7d:14:65", "rssi": -9, "reconnect_time_s": 0, "reconnect_attempts": 0, "samples_during_disconnect": 2, "mqtt_connected": true, "gps_connected": false}
+{"ts_epoch": 1791052934.166, "ts_iso": "2026-10-03T20:42:14.166+02:00", "event": "bt_connect_failed", "reason": "timed out", "backoff_s": 1.0, "attempt": 1}
+{"ts_epoch": 1791052935.187, "ts_iso": "2026-10-03T20:42:15.187+02:00", "event": "bt_connect", "mac": "14:13:0B:C0:B2:1E", "rfcomm_channel": 1, "attempt": 2}
+{"ts_epoch": 1791052935.259, "ts_iso": "2026-10-03T20:42:15.258+02:00", "event": "first_nmea", "sentence": "$GPRMC,220724.0,A,4527.218783,N,00910.900221,E,000.16,164.4,031026,001.8,E,A*38"}
+{"ts_epoch": 1791065271.917, "ts_iso": "2026-10-04T00:07:51.917+02:00", "event": "wifi_disconnect", "ssid": "Galaxy A33 5G 2FBF", "last_rssi": -9, "connection_duration_s": 13.0, "mqtt_connected": true, "gps_connected": true}
+{"ts_epoch": 1791065280.302, "ts_iso": "2026-10-04T00:08:00.301+02:00", "event": "session_associated", "session_guid": "b996610f-c20e-4110-b6bf-a4dd2b35e5b0"}
