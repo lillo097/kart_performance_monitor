@@ -148,9 +148,9 @@ GPS_RECV_TIMEOUT_S = 0.5
 
 WIFI_CHECK_INTERVAL_S = 10.0
 WIFI_LOG_INTERVAL_S   = 60.0
-# Ping ogni 30s per mantenere attivo l'hotspot iPhone senza sovraccaricarlo.
-# Valori troppo bassi (es. 5s) causano disconnessioni per power management iOS.
-WIFI_KEEPALIVE_INTERVAL_S = 30.0
+# Keepalive aggressivo a 5s + publish MQTT heartbeat per generare traffico "reale"
+# che inganna il power management dell'hotspot Samsung/iPhone.
+WIFI_KEEPALIVE_INTERVAL_S = 5.0
 
 # Rate-limit per log ed eventi ripetuti (evita di riempire il .log)
 LOG_RATE_LIMIT_S = 300.0  # 5 minuti
@@ -1078,21 +1078,41 @@ def wifi_monitor_loop():
 
 def wifi_keepalive_loop():
     """
-    Pinga il gateway ogni 30s per tenere sveglio l'hotspot iPhone.
-    iOS spegne l'hotspot se non rileva traffico attivo dai client.
+    Keepalive aggressivo: ping gateway + publish MQTT heartbeat ogni 5s.
+    Genera traffico "reale" (non solo ICMP) per ingannare il power management
+    dell'hotspot Samsung/iPhone che ignora i soli ping.
     """
     while not _shutdown.is_set():
         try:
+            # 1. Ping gateway (ICMP)
             gw = get_default_gateway()
             if gw:
                 subprocess.run(
                     ["ping", "-c", "1", "-W", "2", gw],
                     capture_output=True, timeout=4,
                 )
+
+            # 2. Publish MQTT heartbeat (traffico applicativo reale)
+            # Usa l'ALIVE_TOPIC che il broker conosce già (retain=True)
+            if mqtt_client is not None and mqtt_connected:
+                try:
+                    mqtt_client.publish(
+                        ALIVE_TOPIC,
+                        json.dumps({
+                            "alive": True,
+                            "keepalive": True,
+                            "timestamp_ms": int(time.monotonic() * 1000),
+                        }),
+                        qos=1,
+                        retain=True,
+                    )
+                except Exception:
+                    pass
+
         except Exception:
             pass
 
-        # Attesa interruptibile
+        # Attesa interruptibile (5s)
         slept = 0.0
         while slept < WIFI_KEEPALIVE_INTERVAL_S and not _shutdown.is_set():
             time.sleep(0.5)
@@ -1241,9 +1261,9 @@ def main():
     # WiFi monitor thread
     threading.Thread(target=wifi_monitor_loop, daemon=True, name="WifiMon").start()
 
-    # WiFi keepalive thread (per hotspot iPhone)
+    # WiFi keepalive thread (per hotspot iPhone/Samsung)
     threading.Thread(target=wifi_keepalive_loop, daemon=True, name="WifiKeepalive").start()
-    log.info(f"[wifi] keepalive started (ping gateway every {int(WIFI_KEEPALIVE_INTERVAL_S)}s)")
+    log.info(f"[wifi] keepalive started (ping gateway + MQTT heartbeat every {int(WIFI_KEEPALIVE_INTERVAL_S)}s)")
 
     # GPS thread
     threading.Thread(target=gps_thread_func, daemon=True, name="GarminGps").start()
