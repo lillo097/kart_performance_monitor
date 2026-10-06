@@ -1,0 +1,10 @@
+{"ts_epoch": 1791220321.38, "ts_iso": "2026-10-05T19:12:01.379+02:00", "event": "service_start", "pid": 660, "app_version": "2.1.1", "hostname": "raspberrypi"}
+{"ts_epoch": 1791220321.384, "ts_iso": "2026-10-05T19:12:01.383+02:00", "event": "hardware_check", "ntc": false, "as5600": false, "ir_rpm": false, "gps": false}
+{"ts_epoch": 1791220321.87, "ts_iso": "2026-10-05T19:12:01.870+02:00", "event": "wifi_connect", "ssid": "Galaxy A33 5G 2FBF", "ip": "10.141.254.88", "mac": "2c:cf:67:7d:14:65"}
+{"ts_epoch": 1791220322.026, "ts_iso": "2026-10-05T19:12:02.026+02:00", "event": "sensor_lost", "sensor": "ntc"}
+{"ts_epoch": 1791220322.028, "ts_iso": "2026-10-05T19:12:02.028+02:00", "event": "sensor_lost", "sensor": "as5600"}
+{"ts_epoch": 1791220322.09, "ts_iso": "2026-10-05T19:12:02.089+02:00", "event": "mqtt_connect", "broker": "broker.hivemq.com", "port": 1883, "client_id": "RPi-KART-2ccf677d1465", "session_present": false}
+{"ts_epoch": 1791220322.277, "ts_iso": "2026-10-05T19:12:02.276+02:00", "event": "wifi_connect", "ssid": "Galaxy A33 5G 2FBF", "ip": "10.141.254.88", "mac": "2c:cf:67:7d:14:65", "rssi": -15, "reconnect_time_s": 0, "reconnect_attempts": 0, "samples_during_disconnect": 2, "mqtt_connected": true, "gps_connected": false}
+{"ts_epoch": 1791220326.241, "ts_iso": "2026-10-05T19:12:06.241+02:00", "event": "bt_connect", "mac": "14:13:0B:C0:B2:1E", "rfcomm_channel": 1, "attempt": 1}
+{"ts_epoch": 1791220326.283, "ts_iso": "2026-10-05T19:12:06.283+02:00", "event": "first_nmea", "sentence": "$GPRMC,115017.1,V,4529.644760,N,00912.411618,E,,,061026,001.9,E,N*18"}
+{"ts_epoch": 1791287471.924, "ts_iso": "2026-10-06T13:51:11.924+02:00", "event": "session_associated", "session_guid": "0f331797-8fad-4f34-bf8f-6820eb4bf8e1"}

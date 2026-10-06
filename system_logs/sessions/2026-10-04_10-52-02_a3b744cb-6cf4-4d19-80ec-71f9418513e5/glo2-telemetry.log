@@ -39,3 +39,4 @@
 2026-10-04 10:56:10.535 [INFO ] [session ] [SESSION] ready for next session (buffering mode)
 2026-10-04 10:56:10.536 [INFO ] [main    ] [SESSION] session stopped, logging reverted to stdout
 2026-10-04 10:58:34.874 [WARNING] [main    ] [wifi] connection lost
+2026-10-04 11:03:45.244 [WARNING] [main    ] [wifi] connection lost
