@@ -1,28 +1,28 @@
 {
   "schema_version": 13,
   "client_side": true,
-  "session_guid": "0f331797-8fad-4f34-bf8f-6820eb4bf8e1",
-  "saved_at": "2026-10-06T14:03:44.281+02:00",
-  "status": "stopped",
+  "session_guid": "41f961dc-a5c8-48ad-8619-d36f428c0bf1",
+  "saved_at": "2026-10-06T17:32:24.163+02:00",
+  "status": "running",
   "driver": {},
   "track": {},
   "track_config": {},
   "track_id": null,
   "mqtt_topic": "sensors2mqtt-glo2/esp32/location",
-  "started_at": "2026-10-06T13:51:11.875+02:00",
+  "started_at": "2026-10-06T17:28:52.187+02:00",
   "paused_at": null,
   "paused_total_s": 0.0,
-  "ended_at": "2026-10-06T14:03:44.280+02:00",
+  "ended_at": null,
   "data_age_at_start_s": null,
   "data_age_samples": {
     "at_epoch": [],
     "data_age_s": []
   },
-  "session_elapsed_s": 752.407,
+  "session_elapsed_s": 211.976,
   "summary": {
-    "raw_samples_received": 4033,
+    "raw_samples_received": 1370,
     "track_points_saved": 0,
-    "valid_gps_samples": 3860,
+    "valid_gps_samples": 1204,
     "filtered_out_samples": 0,
     "laps_completed": 0,
     "laps_aborted": 0,
@@ -60,7 +60,7 @@
       "ssid": "Galaxy A33 5G 2FBF",
       "ip": "10.141.254.88",
       "mac": "2c:cf:67:7d:14:65",
-      "rssi": -15
+      "rssi": -28
     },
     "gps": {
       "mac": "14:13:0B:C0:B2:1E",
@@ -78,10 +78,10 @@
       "gps": true
     },
     "counters": {
-      "samples_published": 4033,
-      "valid_gps_samples": 3860,
+      "samples_published": 1370,
+      "valid_gps_samples": 1204,
       "mqtt_reconnects": 0,
-      "bt_reconnects": 0,
+      "bt_reconnects": 1,
       "nmea_timeouts": 0,
       "raw_rotations": 0
     }
