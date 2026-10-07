@@ -11,3 +11,5 @@
 {"ts_epoch": 1791387029.003, "ts_iso": "2026-10-07T17:30:29.003+02:00", "event": "mqtt_disconnect", "rc": 128, "meaning": "unknown", "total_disconnects": 1}
 {"ts_epoch": 1791387030.235, "ts_iso": "2026-10-07T17:30:30.234+02:00", "event": "mqtt_connect", "broker": "broker.hivemq.com", "port": 1883, "client_id": "RPi-KART-2ccf677d1465", "session_present": true}
 {"ts_epoch": 1791387161.188, "ts_iso": "2026-10-07T17:32:41.188+02:00", "event": "session_associated", "session_guid": "7cbf6bc1-4885-47b3-ba4e-48f1913732e9"}
+{"ts_epoch": 1791387320.609, "ts_iso": "2026-10-07T17:35:20.608+02:00", "event": "wifi_disconnect", "ssid": "Galaxy A33 5G 2FBF", "last_rssi": -32, "connection_duration_s": 13.0, "mqtt_connected": true, "gps_connected": true}
+{"ts_epoch": 1791388089.614, "ts_iso": "2026-10-07T17:48:09.614+02:00", "event": "service_stop", "reason": "mqtt_stop_command", "uptime_s": 928.574, "samples_published": 5526}
