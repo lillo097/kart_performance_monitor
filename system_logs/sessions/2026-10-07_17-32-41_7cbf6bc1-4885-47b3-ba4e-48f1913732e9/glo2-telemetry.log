@@ -106,3 +106,12 @@
 2026-10-07 18:48:31.546 [WARNING] [main    ] [mqtt] disconnected rc=141 (keepalive_timeout); paho will retry [total=37]
 2026-10-07 18:48:37.629 [INFO ] [main    ] [mqtt] connected (session_present=True)
 2026-10-07 18:48:59.135 [WARNING] [main    ] [gps] connect failed: timed out; retry in 3.0s (attempt 605, next log in 300s if still failing)
+2026-10-07 18:50:13.738 [WARNING] [main    ] [mqtt] disconnected rc=128 (unknown); paho will retry [total=39]
+2026-10-07 18:50:19.862 [INFO ] [main    ] [mqtt] connected (session_present=True)
+2026-10-07 18:51:57.178 [WARNING] [main    ] [mqtt] disconnected rc=128 (unknown); paho will retry [total=40]
+2026-10-07 18:52:01.704 [INFO ] [main    ] [mqtt] connected (session_present=True)
+2026-10-07 18:53:49.500 [WARNING] [main    ] [mqtt] disconnected rc=128 (unknown); paho will retry [total=41]
+2026-10-07 18:53:59.295 [WARNING] [main    ] [gps] connect failed: timed out; retry in 3.0s (attempt 655, next log in 300s if still failing)
+2026-10-07 18:54:01.427 [INFO ] [main    ] [mqtt] connected (session_present=True)
+2026-10-07 18:54:54.485 [INFO ] [main    ] [gps] connected to 14:13:0B:C0:B2:1E (socket RFCOMM)
+2026-10-07 18:54:54.590 [INFO ] [main    ] [gps] first NMEA: $GPRMC,165454.5,A,4527.737545,N,00910.46...

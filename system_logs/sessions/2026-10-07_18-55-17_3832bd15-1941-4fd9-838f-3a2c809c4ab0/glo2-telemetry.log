@@ -1,0 +1,7 @@
+2026-10-07 17:32:41.045 [INFO ] [session ] [SESSION] flushed 30 buffered log lines to session file
+2026-10-07 17:32:41.183 [INFO ] [session ] [SESSION] flushed 12 events and 918 raw samples to disk
+2026-10-07 18:55:18.396 [INFO ] [session ] [SESSION] started and saved to disk: /home/lillo97/kart_performance_monitor/system_logs/sessions/2026-10-07_18-55-17_3832bd15-1941-4fd9-838f-3a2c809c4ab0
+2026-10-07 18:55:18.397 [INFO ] [session ] [SESSION] session_guid=3832bd15-1941-4fd9-838f-3a2c809c4ab0
+2026-10-07 18:55:18.404 [INFO ] [main    ] [SESSION] received session_started, guid=3832bd15-1941-4fd9-838f-3a2c809c4ab0
+2026-10-07 18:55:18.409 [INFO ] [main    ] [SESSION] directory=/home/lillo97/kart_performance_monitor/system_logs/sessions/2026-10-07_18-55-17_3832bd15-1941-4fd9-838f-3a2c809c4ab0
+2026-10-07 18:55:18.409 [INFO ] [main    ] [SESSION] files=glo2-telemetry.log, boot.json, raw.jsonl, events.jsonl
