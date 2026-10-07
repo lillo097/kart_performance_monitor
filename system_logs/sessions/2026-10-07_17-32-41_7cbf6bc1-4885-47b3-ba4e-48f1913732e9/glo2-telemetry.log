@@ -1,0 +1,35 @@
+2026-10-06 23:13:31.473 [INFO ] [main    ] [SESSION] logger initialized in buffering mode
+2026-10-06 23:13:31.473 [INFO ] [main    ] [SESSION] waiting for session start via MQTT
+2026-10-06 23:13:31.474 [INFO ] [main    ] ============================================================
+2026-10-06 23:13:31.475 [INFO ] [main    ] === SERVICE START v2.1.1 pid=660 at 2026-10-06 23:13:31 ===
+2026-10-06 23:13:31.475 [INFO ] [main    ] ============================================================
+2026-10-06 23:13:31.475 [INFO ] [main    ] [main] hostname=raspberrypi pid=660
+2026-10-06 23:13:31.476 [INFO ] [main    ] [main] mqtt_client_id=RPi-KART-2ccf677d1465 broker=broker.hivemq.com:1883
+2026-10-06 23:13:31.476 [INFO ] [main    ] [i2c] bus 1 opened
+2026-10-06 23:13:31.477 [INFO ] [main    ] ====================================================
+2026-10-06 23:13:31.477 [INFO ] [main    ] KART TELEMETRY - STARTUP CHECK
+2026-10-06 23:13:31.477 [INFO ] [main    ] ====================================================
+2026-10-06 23:13:31.478 [WARNING] [main    ] [check] NTC (ADC): no ADC
+2026-10-06 23:13:31.478 [WARNING] [main    ] [check] AS5600 I2C: not found
+2026-10-06 23:13:31.479 [INFO ] [main    ] [check] Garmin GLO2 verification in background
+2026-10-06 23:13:31.479 [INFO ] [main    ] [check] WiFi verification in background
+2026-10-06 23:13:31.479 [INFO ] [main    ] ====================================================
+2026-10-06 23:13:31.946 [INFO ] [main    ] [wifi] active ssid=Galaxy A33 5G 2FBF ip=10.141.254.88
+2026-10-06 23:13:31.948 [INFO ] [main    ] [mqtt] connecting...
+2026-10-06 23:13:32.936 [INFO ] [main    ] [wifi] keepalive started (ping gateway + MQTT heartbeat every 5s)
+2026-10-06 23:13:32.953 [INFO ] [main    ] [gps] task started
+2026-10-06 23:13:32.968 [INFO ] [main    ] [main] READY (watchdog armed, 30s)
+2026-10-06 23:13:32.970 [INFO ] [main    ] [ntc] reading invalid (open circuit or disconnected)
+2026-10-06 23:13:32.973 [WARNING] [main    ] [as5600] not detected at 0x36
+2026-10-06 23:13:33.000 [INFO ] [main    ] [mqtt] connected (session_present=False)
+2026-10-06 23:13:33.338 [INFO ] [main    ] [wifi] connected ssid=Galaxy A33 5G 2FBF ip=10.141.254.88 mac=2c:cf:67:7d:14:65 rssi=-32 dBm
+2026-10-06 23:13:38.858 [INFO ] [main    ] [gps] connected to 14:13:0B:C0:B2:1E (socket RFCOMM)
+2026-10-06 23:13:38.966 [INFO ] [main    ] [gps] first NMEA: $GPRMC,152941.3,V,4529.630366,N,00912.42...
+2026-10-07 17:30:10.191 [WARNING] [main    ] [wifi] connection lost
+2026-10-07 17:30:29.002 [WARNING] [main    ] [mqtt] disconnected rc=128 (unknown); paho will retry [total=1]
+2026-10-07 17:30:30.234 [INFO ] [main    ] [mqtt] connected (session_present=True)
+2026-10-07 17:32:41.213 [INFO ] [session ] [SESSION] started and saved to disk: /home/lillo97/kart_performance_monitor/system_logs/sessions/2026-10-07_17-32-41_7cbf6bc1-4885-47b3-ba4e-48f1913732e9
+2026-10-07 17:32:41.213 [INFO ] [session ] [SESSION] session_guid=7cbf6bc1-4885-47b3-ba4e-48f1913732e9
+2026-10-07 17:32:41.217 [INFO ] [main    ] [SESSION] received session_started, guid=7cbf6bc1-4885-47b3-ba4e-48f1913732e9
+2026-10-07 17:32:41.218 [INFO ] [main    ] [SESSION] directory=/home/lillo97/kart_performance_monitor/system_logs/sessions/2026-10-07_17-32-41_7cbf6bc1-4885-47b3-ba4e-48f1913732e9
+2026-10-07 17:32:41.218 [INFO ] [main    ] [SESSION] files=glo2-telemetry.log, boot.json, raw.jsonl, events.jsonl

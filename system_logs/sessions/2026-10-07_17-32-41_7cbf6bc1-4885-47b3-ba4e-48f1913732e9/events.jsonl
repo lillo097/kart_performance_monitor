@@ -1,0 +1,13 @@
+{"ts_epoch": 1791321211.476, "ts_iso": "2026-10-06T23:13:31.476+02:00", "event": "service_start", "pid": 660, "app_version": "2.1.1", "hostname": "raspberrypi"}
+{"ts_epoch": 1791321211.48, "ts_iso": "2026-10-06T23:13:31.480+02:00", "event": "hardware_check", "ntc": false, "as5600": false, "ir_rpm": false, "gps": false}
+{"ts_epoch": 1791321211.947, "ts_iso": "2026-10-06T23:13:31.947+02:00", "event": "wifi_connect", "ssid": "Galaxy A33 5G 2FBF", "ip": "10.141.254.88", "mac": "2c:cf:67:7d:14:65"}
+{"ts_epoch": 1791321212.971, "ts_iso": "2026-10-06T23:13:32.970+02:00", "event": "sensor_lost", "sensor": "ntc"}
+{"ts_epoch": 1791321212.975, "ts_iso": "2026-10-06T23:13:32.974+02:00", "event": "sensor_lost", "sensor": "as5600"}
+{"ts_epoch": 1791321213.001, "ts_iso": "2026-10-06T23:13:33.000+02:00", "event": "mqtt_connect", "broker": "broker.hivemq.com", "port": 1883, "client_id": "RPi-KART-2ccf677d1465", "session_present": false}
+{"ts_epoch": 1791321213.34, "ts_iso": "2026-10-06T23:13:33.340+02:00", "event": "wifi_connect", "ssid": "Galaxy A33 5G 2FBF", "ip": "10.141.254.88", "mac": "2c:cf:67:7d:14:65", "rssi": -32, "reconnect_time_s": 0, "reconnect_attempts": 0, "samples_during_disconnect": 2, "mqtt_connected": true, "gps_connected": false}
+{"ts_epoch": 1791321218.947, "ts_iso": "2026-10-06T23:13:38.947+02:00", "event": "bt_connect", "mac": "14:13:0B:C0:B2:1E", "rfcomm_channel": 1, "attempt": 1}
+{"ts_epoch": 1791321218.967, "ts_iso": "2026-10-06T23:13:38.967+02:00", "event": "first_nmea", "sentence": "$GPRMC,152941.3,V,4529.630366,N,00912.424659,E,,,071026,001.9,E,N*10"}
+{"ts_epoch": 1791387010.225, "ts_iso": "2026-10-07T17:30:10.224+02:00", "event": "wifi_disconnect", "ssid": "Galaxy A33 5G 2FBF", "last_rssi": -32, "connection_duration_s": 13.0, "mqtt_connected": true, "gps_connected": true}
+{"ts_epoch": 1791387029.003, "ts_iso": "2026-10-07T17:30:29.003+02:00", "event": "mqtt_disconnect", "rc": 128, "meaning": "unknown", "total_disconnects": 1}
+{"ts_epoch": 1791387030.235, "ts_iso": "2026-10-07T17:30:30.234+02:00", "event": "mqtt_connect", "broker": "broker.hivemq.com", "port": 1883, "client_id": "RPi-KART-2ccf677d1465", "session_present": true}
+{"ts_epoch": 1791387161.188, "ts_iso": "2026-10-07T17:32:41.188+02:00", "event": "session_associated", "session_guid": "7cbf6bc1-4885-47b3-ba4e-48f1913732e9"}
