@@ -76,3 +76,4 @@
 {"ts_epoch": 1791392094.486, "ts_iso": "2026-10-07T18:54:54.486+02:00", "event": "bt_connect", "mac": "14:13:0B:C0:B2:1E", "rfcomm_channel": 1, "attempt": 668}
 {"ts_epoch": 1791392094.592, "ts_iso": "2026-10-07T18:54:54.592+02:00", "event": "first_nmea", "sentence": "$GPRMC,165454.5,A,4527.737545,N,00910.461876,E,007.25,212.7,071026,001.8,E,E*3F"}
 {"ts_epoch": 1791392118.389, "ts_iso": "2026-10-07T18:55:18.388+02:00", "event": "session_associated", "session_guid": "3832bd15-1941-4fd9-838f-3a2c809c4ab0"}
+{"ts_epoch": 1791392902.942, "ts_iso": "2026-10-07T19:08:22.941+02:00", "event": "wifi_disconnect", "ssid": "Galaxy A33 5G 2FBF", "last_rssi": -32, "connection_duration_s": 13.0, "mqtt_connected": true, "gps_connected": true}
