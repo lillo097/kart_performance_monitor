@@ -12,3 +12,7 @@
 {"ts_epoch": 1793104723.476, "ts_iso": "2026-10-27T13:38:43.476+01:00", "event": "bt_connect", "mac": "14:13:0B:C0:B2:1E", "rfcomm_channel": 1, "attempt": 8}
 {"ts_epoch": 1793104723.575, "ts_iso": "2026-10-27T13:38:43.575+01:00", "event": "first_nmea", "sentence": "$GPRMC,123843.5,A,4529.650907,N,00912.410915,E,000.45,262.7,271026,001.9,E,A*32"}
 {"ts_epoch": 1793104752.744, "ts_iso": "2026-10-27T13:39:12.743+01:00", "event": "session_associated", "session_guid": "621fb9a8-c049-4142-b506-fa704519d3ab"}
+{"ts_epoch": 1793104934.235, "ts_iso": "2026-10-27T13:42:14.234+01:00", "event": "wifi_disconnect", "ssid": "Galaxy A33 5G 2FBF", "last_rssi": -28, "connection_duration_s": 13.0, "mqtt_connected": true, "gps_connected": true}
+{"ts_epoch": 1793105551.368, "ts_iso": "2026-10-27T13:52:31.367+01:00", "event": "sensor_appeared", "sensor": "as5600", "address": "0x36"}
+{"ts_epoch": 1793105551.372, "ts_iso": "2026-10-27T13:52:31.372+01:00", "event": "sensor_lost", "sensor": "as5600"}
+{"ts_epoch": 1793105567.6, "ts_iso": "2026-10-27T13:52:47.600+01:00", "event": "service_stop", "reason": "mqtt_stop_command", "uptime_s": 815.004, "samples_published": 4866}
