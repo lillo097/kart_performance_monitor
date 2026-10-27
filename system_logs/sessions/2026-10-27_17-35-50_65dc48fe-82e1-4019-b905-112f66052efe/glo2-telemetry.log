@@ -30,3 +30,5 @@
 2026-10-27 17:35:50.699 [INFO ] [main    ] [SESSION] received session_started, guid=65dc48fe-82e1-4019-b905-112f66052efe
 2026-10-27 17:35:50.700 [INFO ] [main    ] [SESSION] directory=/home/lillo97/kart_performance_monitor/system_logs/sessions/2026-10-27_17-35-50_65dc48fe-82e1-4019-b905-112f66052efe
 2026-10-27 17:35:50.700 [INFO ] [main    ] [SESSION] files=glo2-telemetry.log, boot.json, raw.jsonl, events.jsonl
+2026-10-27 17:40:43.818 [WARNING] [main    ] [wifi] connection lost
+2026-10-27 17:45:53.843 [WARNING] [main    ] [wifi] connection lost

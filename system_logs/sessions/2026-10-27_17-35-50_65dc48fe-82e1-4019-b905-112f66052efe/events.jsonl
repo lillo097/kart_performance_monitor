@@ -8,3 +8,5 @@
 {"ts_epoch": 1793105606.531, "ts_iso": "2026-10-27T13:53:26.530+01:00", "event": "bt_connect", "mac": "14:13:0B:C0:B2:1E", "rfcomm_channel": 1, "attempt": 1}
 {"ts_epoch": 1793105606.627, "ts_iso": "2026-10-27T13:53:26.627+01:00", "event": "first_nmea", "sentence": "$GPRMC,163500.2,A,4529.044192,N,00909.167247,E,000.17,021.7,271026,001.8,E,A*3C"}
 {"ts_epoch": 1793118950.658, "ts_iso": "2026-10-27T17:35:50.658+01:00", "event": "session_associated", "session_guid": "65dc48fe-82e1-4019-b905-112f66052efe"}
+{"ts_epoch": 1793119243.829, "ts_iso": "2026-10-27T17:40:43.829+01:00", "event": "wifi_disconnect", "ssid": "Galaxy A33 5G 2FBF", "last_rssi": -5, "connection_duration_s": 13.0, "mqtt_connected": true, "gps_connected": true}
+{"ts_epoch": 1793119553.845, "ts_iso": "2026-10-27T17:45:53.844+01:00", "event": "wifi_disconnect", "ssid": "Galaxy A33 5G 2FBF", "last_rssi": -5, "connection_duration_s": 13.0, "mqtt_connected": true, "gps_connected": true}
