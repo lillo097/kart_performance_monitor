@@ -114,3 +114,24 @@
 2026-11-03 15:36:41.330 [INFO ] [main    ] [mqtt] connected (session_present=True)
 2026-11-03 15:38:11.370 [WARNING] [main    ] [mqtt] disconnected rc=128 (unknown); paho will retry [total=44]
 2026-11-03 15:38:25.560 [INFO ] [main    ] [mqtt] connected (session_present=True)
+2026-11-03 15:40:13.623 [WARNING] [main    ] [mqtt] disconnected rc=141 (keepalive_timeout); paho will retry [total=45]
+2026-11-03 15:40:17.772 [INFO ] [main    ] [mqtt] connected (session_present=True)
+2026-11-03 15:40:39.315 [WARNING] [main    ] [gps] connect failed: timed out; retry in 3.0s (attempt 905, next log in 300s if still failing)
+2026-11-03 15:42:06.272 [WARNING] [main    ] [mqtt] disconnected rc=128 (unknown); paho will retry [total=47]
+2026-11-03 15:42:11.717 [INFO ] [main    ] [mqtt] connected (session_present=True)
+2026-11-03 15:44:05.600 [WARNING] [main    ] [mqtt] disconnected rc=128 (unknown); paho will retry [total=48]
+2026-11-03 15:44:18.278 [INFO ] [main    ] [mqtt] connected (session_present=True)
+2026-11-03 15:45:39.455 [WARNING] [main    ] [gps] connect failed: timed out; retry in 3.0s (attempt 955, next log in 300s if still failing)
+2026-11-03 15:45:48.418 [WARNING] [main    ] [mqtt] disconnected rc=128 (unknown); paho will retry [total=49]
+2026-11-03 15:45:54.349 [INFO ] [main    ] [mqtt] connected (session_present=True)
+2026-11-03 15:49:51.471 [WARNING] [main    ] [mqtt] disconnected rc=141 (keepalive_timeout); paho will retry [total=50]
+2026-11-03 15:49:52.045 [WARNING] [main    ] [wifi] connection lost
+2026-11-03 15:50:02.268 [WARNING] [main    ] [wifi] connection lost
+2026-11-03 15:50:12.518 [WARNING] [main    ] [wifi] connection lost
+2026-11-03 15:50:22.733 [WARNING] [main    ] [wifi] connection lost
+2026-11-03 15:50:32.955 [WARNING] [main    ] [wifi] connection lost
+2026-11-03 15:50:39.612 [WARNING] [main    ] [gps] connect failed: timed out; retry in 3.0s (attempt 1005, next log in 300s if still failing)
+2026-11-03 15:50:43.223 [WARNING] [main    ] [wifi] connection lost
+2026-11-03 15:50:53.429 [WARNING] [main    ] [wifi] connection lost
+2026-11-03 15:51:00.201 [INFO ] [main    ] [mqtt] connected (session_present=True)
+2026-11-03 15:53:29.833 [WARNING] [main    ] [wifi] connection lost
