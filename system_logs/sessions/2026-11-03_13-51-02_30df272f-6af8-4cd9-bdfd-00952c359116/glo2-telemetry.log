@@ -51,3 +51,19 @@
 2026-11-03 14:20:36.162 [WARNING] [main    ] [gps] connect failed: timed out; retry in 3.0s (attempt 105, next log in 300s if still failing)
 2026-11-03 14:23:06.251 [WARNING] [main    ] [mqtt] disconnected rc=141 (keepalive_timeout); paho will retry [total=6]
 2026-11-03 14:23:20.369 [INFO ] [main    ] [mqtt] connected (session_present=True)
+2026-11-03 14:25:09.000 [WARNING] [main    ] [mqtt] disconnected rc=141 (keepalive_timeout); paho will retry [total=8]
+2026-11-03 14:25:14.539 [INFO ] [main    ] [mqtt] connected (session_present=True)
+2026-11-03 14:25:36.303 [WARNING] [main    ] [gps] connect failed: timed out; retry in 3.0s (attempt 155, next log in 300s if still failing)
+2026-11-03 14:25:39.477 [WARNING] [main    ] [wifi] connection lost
+2026-11-03 14:26:59.198 [WARNING] [main    ] [mqtt] disconnected rc=128 (unknown); paho will retry [total=10]
+2026-11-03 14:27:02.845 [INFO ] [main    ] [mqtt] connected (session_present=True)
+2026-11-03 14:28:51.993 [WARNING] [main    ] [mqtt] disconnected rc=128 (unknown); paho will retry [total=11]
+2026-11-03 14:28:56.766 [INFO ] [main    ] [mqtt] connected (session_present=True)
+2026-11-03 14:30:36.447 [WARNING] [main    ] [gps] connect failed: timed out; retry in 3.0s (attempt 205, next log in 300s if still failing)
+2026-11-03 14:30:53.427 [WARNING] [main    ] [mqtt] disconnected rc=141 (keepalive_timeout); paho will retry [total=12]
+2026-11-03 14:30:56.918 [INFO ] [main    ] [mqtt] connected (session_present=True)
+2026-11-03 14:35:36.602 [WARNING] [main    ] [gps] connect failed: timed out; retry in 3.0s (attempt 255, next log in 300s if still failing)
+2026-11-03 14:35:57.149 [WARNING] [main    ] [mqtt] disconnected rc=141 (keepalive_timeout); paho will retry [total=14]
+2026-11-03 14:36:08.757 [INFO ] [main    ] [mqtt] connected (session_present=True)
+2026-11-03 14:37:38.820 [WARNING] [main    ] [mqtt] disconnected rc=128 (unknown); paho will retry [total=16]
+2026-11-03 14:37:51.294 [INFO ] [main    ] [mqtt] connected (session_present=True)
