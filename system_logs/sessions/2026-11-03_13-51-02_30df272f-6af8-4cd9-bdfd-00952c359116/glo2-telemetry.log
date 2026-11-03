@@ -189,3 +189,20 @@
 2026-11-03 16:50:37.951 [WARNING] [main    ] [mqtt] disconnected rc=128 (unknown); paho will retry [total=78]
 2026-11-03 16:50:41.423 [WARNING] [main    ] [gps] connect failed: timed out; retry in 3.0s (attempt 1605, next log in 300s if still failing)
 2026-11-03 16:50:43.924 [INFO ] [main    ] [mqtt] connected (session_present=True)
+2026-11-03 16:55:41.535 [WARNING] [main    ] [mqtt] disconnected rc=141 (keepalive_timeout); paho will retry [total=79]
+2026-11-03 16:55:41.567 [WARNING] [main    ] [gps] connect failed: timed out; retry in 3.0s (attempt 1655, next log in 300s if still failing)
+2026-11-03 16:55:49.799 [INFO ] [main    ] [mqtt] connected (session_present=True)
+2026-11-03 16:57:24.215 [INFO ] [main    ] [as5600] detected at 0x36 (magnet_detected=False)
+2026-11-03 16:57:24.225 [WARNING] [main    ] [as5600] not detected at 0x36
+2026-11-03 16:57:31.772 [WARNING] [main    ] [mqtt] disconnected rc=128 (unknown); paho will retry [total=81]
+2026-11-03 16:57:49.767 [INFO ] [main    ] [mqtt] connected (session_present=True)
+2026-11-03 16:59:33.635 [WARNING] [main    ] [mqtt] disconnected rc=141 (keepalive_timeout); paho will retry [total=82]
+2026-11-03 16:59:49.896 [INFO ] [main    ] [mqtt] connected (session_present=True)
+2026-11-03 17:00:41.729 [WARNING] [main    ] [gps] connect failed: timed out; retry in 3.0s (attempt 1705, next log in 300s if still failing)
+2026-11-03 17:01:35.269 [WARNING] [main    ] [mqtt] disconnected rc=141 (keepalive_timeout); paho will retry [total=84]
+2026-11-03 17:01:46.298 [INFO ] [main    ] [mqtt] connected (session_present=True)
+2026-11-03 17:05:38.024 [WARNING] [main    ] [mqtt] disconnected rc=141 (keepalive_timeout); paho will retry [total=86]
+2026-11-03 17:05:41.869 [WARNING] [main    ] [gps] connect failed: timed out; retry in 3.0s (attempt 1755, next log in 300s if still failing)
+2026-11-03 17:05:44.307 [INFO ] [main    ] [mqtt] connected (session_present=True)
+2026-11-03 17:08:40.311 [WARNING] [main    ] [mqtt] disconnected rc=141 (keepalive_timeout); paho will retry [total=88]
+2026-11-03 17:08:44.312 [INFO ] [main    ] [mqtt] connected (session_present=True)
