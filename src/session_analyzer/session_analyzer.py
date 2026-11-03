@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 r"""
-Session Analyzer — tool web standalone in un unico file.
+Session Analyzer — tool web standalone in un unico file. lillo97@100.112.77.26
 
 Avvio (da terminale con env già impostate):
     python session_analyzer.py
@@ -145,11 +145,23 @@ input[type="text"]{
 }
 input[type="text"]:focus{border-color:var(--accent);}
 
-.app{display:grid;grid-template-columns:300px 1fr;height:100vh;overflow:hidden;}
+.app{
+    display:grid;
+    grid-template-columns:300px 1fr;
+    height:100vh;
+    overflow:hidden;
+    padding:16px;
+    gap:16px;
+}
 
 .sidebar{
-    background:var(--panel);border-right:1px solid var(--border);
-    display:flex;flex-direction:column;overflow:hidden;min-height:0;
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:12px;
+    display:flex;
+    flex-direction:column;
+    overflow:hidden;
+    min-height:0;
 }
 .sidebar-inner{padding:16px;overflow-y:auto;flex:1;min-height:0;}
 .sidebar h1{font-size:16px;margin:0 0 4px;letter-spacing:.3px;}
@@ -186,7 +198,28 @@ input[type="text"]:focus{border-color:var(--accent);}
 .session-item:hover{background:var(--panel-2);}
 .session-item.active{background:rgba(124,92,255,.14);border-color:rgba(124,92,255,.4);}
 .session-item .name{
-    font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+    font-size:12px;font-weight:600;
+    white-space:nowrap;
+    overflow:hidden;
+    position:relative;
+}
+.session-item .name-inner{
+    display:inline-block;
+    white-space:nowrap;
+    max-width:100%;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    vertical-align:bottom;
+    will-change:transform;
+}
+.session-item .name.overflow:hover .name-inner{
+    max-width:none;
+    text-overflow:clip;
+    animation: name-marquee var(--marquee-duration, 6s) linear .35s infinite alternate;
+}
+@keyframes name-marquee{
+    from{ transform: translateX(0); }
+    to  { transform: translateX(var(--marquee-shift, 0)); }
 }
 .session-item .meta{
     font-size:11px;color:var(--muted);margin-top:2px;
@@ -210,7 +243,7 @@ input[type="text"]:focus{border-color:var(--accent);}
 .lap-badge.invalid{color:var(--red);background:rgba(239,68,68,.10);}
 
 .main{display:flex;flex-direction:column;min-width:0;min-height:0;overflow:hidden;}
-.main-scroll{overflow-y:auto;padding:16px;flex:1;min-height:0;}
+.main-scroll{overflow-y:auto;padding:0;flex:1;min-height:0;}
 
 .panel{
     background:var(--panel);border:1px solid var(--border);border-radius:12px;
@@ -282,6 +315,184 @@ input[type="text"]:focus{border-color:var(--accent);}
 .map-wrap.fullscreen .legend{max-height:60vh;}
 .legend-item{display:flex;align-items:center;gap:8px;}
 .legend-item .swatch{width:14px;height:3px;border-radius:2px;}
+
+/* =====================================================
+   SCRUBBER — posizione sessione (flottante per sezione)
+   ===================================================== */
+
+.scrubber-panel{
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:12px;
+    padding:12px 16px 14px;
+    margin-top:16px;
+    margin-bottom:16px;
+    transition:margin .15s;
+}
+.map-wrap + .scrubber-panel{
+    margin-top:0;
+}
+.scrubber-panel.in-grid{
+    margin-top:0;
+    margin-bottom:0;
+}
+.scrubber-head{
+    display:flex;justify-content:space-between;align-items:center;
+    margin-bottom:8px;gap:12px;
+}
+.scrubber-lap{
+    font-size:13px;font-weight:600;letter-spacing:.3px;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.mode-switch{
+    display:inline-flex;gap:2px;background:var(--panel-2);
+    border:1px solid var(--border);border-radius:8px;padding:2px;
+    flex:0 0 auto;
+}
+.mode-btn{
+    background:transparent;border:none;border-radius:6px;
+    padding:4px 10px;font-size:11px;font-weight:600;
+    color:var(--muted);cursor:pointer;letter-spacing:.4px;
+    transition:background .15s,color .15s;
+}
+.mode-btn:hover:not(.active){color:var(--text);}
+.mode-btn.active{background:rgba(124,92,255,.18);color:#b9a3ff;}
+
+#scrubber{
+    width:100%;height:6px;accent-color:var(--accent);
+    background:var(--panel-2);border-radius:3px;
+    cursor:pointer;appearance:none;-webkit-appearance:none;
+    outline:none;margin:6px 0 12px;
+}
+#scrubber::-webkit-slider-runnable-track{
+    height:6px;background:linear-gradient(90deg,#2a313b,#3a4250);
+    border-radius:3px;
+}
+#scrubber::-webkit-slider-thumb{
+    -webkit-appearance:none;appearance:none;
+    width:16px;height:16px;border-radius:50%;
+    background:var(--accent);border:2px solid #fff;
+    margin-top:-5px;cursor:grab;
+    box-shadow:0 0 8px rgba(124,92,255,.6);
+}
+#scrubber::-webkit-slider-thumb:active{cursor:grabbing;}
+#scrubber::-moz-range-track{
+    height:6px;background:linear-gradient(90deg,#2a313b,#3a4250);
+    border-radius:3px;
+}
+#scrubber::-moz-range-thumb{
+    width:14px;height:14px;border-radius:50%;
+    background:var(--accent);border:2px solid #fff;cursor:grab;
+    box-shadow:0 0 8px rgba(124,92,255,.6);
+}
+#scrubber:disabled{opacity:.4;cursor:not-allowed;}
+
+/* Layout footer scrubber: 6 colonne, 2 stat "wide" in alto + 6 stat normali sotto */
+.scrubber-foot{
+    display:grid;
+    grid-template-columns:repeat(6, minmax(0, 1fr));
+    gap:12px 14px;
+    margin-top:2px;
+}
+.scrubber-stat{
+    min-width:0;
+    display:flex;
+    flex-direction:column;
+    gap:3px;
+}
+.scrubber-stat.wide{
+    grid-column:span 3;
+    background:var(--panel-2);
+    border-radius:8px;
+    padding:8px 12px;
+}
+.scrubber-stat .k{
+    font-size:10px;
+    text-transform:uppercase;
+    letter-spacing:1px;
+    color:var(--muted);
+    font-weight:600;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+}
+.scrubber-stat .v{
+    font-size:14px;
+    font-weight:600;
+    font-family:ui-monospace,Menlo,Consolas,monospace;
+    font-variant-numeric:tabular-nums;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    line-height:1.25;
+    color:var(--text);
+}
+.scrubber-stat.wide .v{
+    font-size:15px;
+}
+.scrubber-stat .v.warn{color:var(--yellow);}
+.scrubber-stat .v.bad{color:var(--red);}
+
+@media (max-width: 1100px){
+    .scrubber-foot{
+        grid-template-columns:repeat(3, minmax(0, 1fr));
+    }
+    .scrubber-stat.wide{
+        grid-column:span 3;
+    }
+}
+@media (max-width: 700px){
+    .scrubber-foot{
+        grid-template-columns:repeat(2, minmax(0, 1fr));
+    }
+    .scrubber-stat.wide{
+        grid-column:span 2;
+    }
+}
+
+/* =====================================================
+   MAP SCRUB PIN + BANNER
+   ===================================================== */
+
+.map-scrub-pin{
+    pointer-events:none;
+    position:relative;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+}
+.map-scrub-dot{
+    width:18px;height:18px;border-radius:50%;
+    background:var(--accent);
+    border:3px solid #fff;
+    box-shadow:0 0 12px rgba(124,92,255,.9), 0 0 4px rgba(0,0,0,.6);
+}
+.map-scrub-banner{
+    position:absolute;
+    bottom:26px;left:50%;transform:translateX(-50%);
+    background:rgba(11,13,16,.94);
+    border:1px solid var(--border);
+    border-radius:8px;
+    padding:8px 10px;
+    backdrop-filter:blur(6px);
+    font-size:11px;
+    min-width:160px;
+    white-space:nowrap;
+    box-shadow:0 4px 14px rgba(0,0,0,.5);
+}
+.map-scrub-banner .banner-row{
+    display:flex;justify-content:space-between;gap:14px;
+    padding:1px 0;
+}
+.map-scrub-banner .banner-label{
+    color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.6px;
+}
+.map-scrub-banner .banner-value{
+    color:var(--text);font-weight:600;
+    font-family:ui-monospace,Menlo,Consolas,monospace;
+    font-variant-numeric:tabular-nums;
+    font-size:11px;
+}
 
 /* =====================================================
    CHART
@@ -443,7 +654,7 @@ tr.lap-row.selected{background:rgba(124,92,255,.08);}
     </aside>
 
     <main class="main">
-        <div class="main-scroll">
+        <div class="main-scroll" id="mainScroll">
 
             <div id="errorBox"></div>
 
@@ -500,7 +711,52 @@ tr.lap-row.selected{background:rgba(124,92,255,.08);}
                 </div>
             </div>
 
-            <div class="charts-grid">
+            <div class="scrubber-panel" id="scrubberPanel">
+                <div class="scrubber-head">
+                    <span class="scrubber-lap" id="scrubLapName">—</span>
+                    <div class="mode-switch" role="tablist">
+                        <button class="mode-btn active" data-mode="time" type="button">Tempo</button>
+                        <button class="mode-btn" data-mode="distance" type="button">Distanza</button>
+                    </div>
+                </div>
+                <input type="range" id="scrubber" min="0" max="100" value="0" step="0.1" disabled>
+                <div class="scrubber-foot">
+                    <div class="scrubber-stat wide">
+                        <div class="k">Sessione</div>
+                        <div class="v" id="scrubSessionVal">—</div>
+                    </div>
+                    <div class="scrubber-stat wide">
+                        <div class="k">Giro corrente</div>
+                        <div class="v" id="scrubLapVal">—</div>
+                    </div>
+                    <div class="scrubber-stat">
+                        <div class="k">Avanzamento</div>
+                        <div class="v" id="scrubPctVal">—</div>
+                    </div>
+                    <div class="scrubber-stat">
+                        <div class="k">Velocità</div>
+                        <div class="v" id="scrubSpeedVal">—</div>
+                    </div>
+                    <div class="scrubber-stat">
+                        <div class="k">RPM</div>
+                        <div class="v" id="scrubRpmVal">—</div>
+                    </div>
+                    <div class="scrubber-stat">
+                        <div class="k">Delta</div>
+                        <div class="v" id="scrubDeltaVal">—</div>
+                    </div>
+                    <div class="scrubber-stat">
+                        <div class="k">Satelliti</div>
+                        <div class="v" id="scrubSatVal">—</div>
+                    </div>
+                    <div class="scrubber-stat">
+                        <div class="k">Età dato</div>
+                        <div class="v" id="scrubAgeVal">—</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="charts-grid" id="chartsGrid">
                 <div class="chart-panel" id="chartPanelSpeed">
                     <div class="chart-header">
                         <div class="chart-title">Velocità (km/h) vs distanza (m)</div>
@@ -526,8 +782,18 @@ tr.lap-row.selected{background:rgba(124,92,255,.08);}
 
             <div class="chart-panel" id="chartPanelDataAge" style="margin-top:16px;">
                 <div class="chart-header">
-                    <div class="chart-title">Età del dato MQTT (s) vs tempo sessione</div>
-                    <button class="chart-fs-btn" data-chart="dataAge" title="Schermo intero (ESC per uscire)">⛶</button>
+                    <div class="chart-title">Età del dato MQTT (s) / Satelliti vs tempo sessione</div>
+                    <div class="row" style="gap:8px;align-items:center;">
+                        <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text);cursor:pointer;">
+                            <input type="checkbox" id="toggleDataAge" checked style="width:14px;height:14px;accent-color:var(--accent);" title="Mostra/nascondi età del dato">
+                            <span>Età del dato</span>
+                        </label>
+                        <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text);cursor:pointer;">
+                            <input type="checkbox" id="toggleSatellites" checked style="width:14px;height:14px;accent-color:var(--accent-2);" title="Mostra/nascondi numero satelliti">
+                            <span>Satelliti</span>
+                        </label>
+                        <button class="chart-fs-btn" data-chart="dataAge" title="Schermo intero (ESC per uscire)">⛶</button>
+                    </div>
                 </div>
                 <div id="dataAgeSummary" class="muted" style="margin-bottom:10px;">
                     Carica una sessione per vedere i campioni MQTT.
@@ -635,6 +901,19 @@ const state = {
     charts: { speed: null, rpm: null, delta: null, dataAge: null },
     config: null,
     isMapFullscreen: false,
+    scrub: {
+        mode: "time",
+        value: 0,
+        maxValue: 0,
+        timeline: null,
+        sample: null,
+        activeLapNumber: null,
+        localDistM: 0,
+        localTimeS: 0,
+        sessionTimeS: 0,
+        sessionDistM: 0,
+        dataAgeS: null,
+    },
 };
 
 function $(id){ return document.getElementById(id); }
@@ -769,7 +1048,6 @@ function applyChartFullscreenClass(panelEl, on){
                                : "Schermo intero (ESC per uscire)";
         }
     });
-    // Fai ridimensionare Chart.js dopo la transizione
     setTimeout(() => {
         Object.keys(state.charts).forEach(k => {
             const c = state.charts[k];
@@ -781,7 +1059,6 @@ function applyChartFullscreenClass(panelEl, on){
 function onFullscreenChange(){
     const fsEl = document.fullscreenElement || document.webkitFullscreenElement;
 
-    // --- Mappa ---
     const wrap = $("mapWrap");
     const mapIsFs = (fsEl === wrap);
     if (mapIsFs && !state.isMapFullscreen){
@@ -790,7 +1067,6 @@ function onFullscreenChange(){
         applyMapFullscreenClass(false);
     }
 
-    // --- Grafici ---
     const chartPanels = document.querySelectorAll(".chart-panel");
     let anyChartFs = false;
     chartPanels.forEach(p => {
@@ -800,7 +1076,6 @@ function onFullscreenChange(){
                 applyChartFullscreenClass(p, true);
             }
         } else if (p.classList.contains("fullscreen") && fsEl !== p){
-            // Se era in fullscreen e non lo è più, ripristina
             p.classList.remove("fullscreen");
             const b = p.querySelector(".chart-fs-btn");
             if (b){
@@ -810,7 +1085,6 @@ function onFullscreenChange(){
         }
     });
 
-    // Se siamo usciti da fullscreen nativo e nessun chart è fullscreen, ridimensiona
     if (!fsEl && !anyChartFs){
         setTimeout(() => {
             Object.keys(state.charts).forEach(k => {
@@ -894,6 +1168,8 @@ function initMapbox(token){
         state.map.on("load", () => {
             state.mapLoaded = true;
             renderMapLayers();
+            ensureScrubMarker();
+            updateScrub();
         });
 
         state.map.on("error", (e) => {
@@ -912,7 +1188,7 @@ function initMapbox(token){
 }
 
 /* ============================================================
-   MAPPA — gestione layer giro singolo / multiplo
+   MAPPA — layer + reveal parziale guidato dallo scrub
    ============================================================ */
 
 function lerp(a, b, t){ return a + (b - a) * t; }
@@ -982,6 +1258,53 @@ function clearMapLayers(){
     }
 }
 
+function getMapCoordsForLap(lap){
+    const tp = lap.track_points || {};
+    const lats = tp.latitude || [];
+    const lons = tp.longitude || [];
+    const speeds = tp.speed_kmph || [];
+    const dists = tp.lap_distance_m || [];
+
+    const cutoff = getRevealDistForLap(lap);
+    if (cutoff === -Infinity){
+        return { coords: [], speedAt: [] };
+    }
+
+    const coords = [];
+    const speedAt = [];
+
+    for (let i = 0; i < lats.length; i++){
+        const la = lats[i], lo = lons[i];
+        if (typeof la !== "number" || typeof lo !== "number") continue;
+        if (la === 0 && lo === 0) continue;
+        const d = dists[i];
+        if (cutoff !== Infinity && typeof d === "number" && Number.isFinite(cutoff) && d > cutoff) break;
+        coords.push([lo, la]);
+        speedAt.push(typeof speeds[i] === "number" ? speeds[i] : null);
+    }
+    return { coords, speedAt };
+}
+
+function computeLapBounds(lap){
+    const tp = lap.track_points || {};
+    const lats = tp.latitude || [];
+    const lons = tp.longitude || [];
+    let bbox = null;
+    for (let i = 0; i < lats.length; i++){
+        const la = lats[i], lo = lons[i];
+        if (typeof la !== "number" || typeof lo !== "number") continue;
+        if (la === 0 && lo === 0) continue;
+        if (!bbox) bbox = [lo, la, lo, la];
+        else {
+            bbox[0] = Math.min(bbox[0], lo);
+            bbox[1] = Math.min(bbox[1], la);
+            bbox[2] = Math.max(bbox[2], lo);
+            bbox[3] = Math.max(bbox[3], la);
+        }
+    }
+    return bbox;
+}
+
 function addGradientLap(lap, coords, speedAt){
     const map = state.map;
     const id = lap.lap_number;
@@ -1013,11 +1336,11 @@ function addGradientLap(lap, coords, speedAt){
     }
     map.getSource(srcId).setData({
         type: "FeatureCollection",
-        features: [{
+        features: coords.length >= 2 ? [{
             type: "Feature",
             properties: { lap: lap.lap_number },
             geometry: { type: "LineString", coordinates: coords },
-        }],
+        }] : [],
     });
 }
 
@@ -1051,11 +1374,11 @@ function addSolidLap(lap, coords, color){
     }
     map.getSource(srcId).setData({
         type: "FeatureCollection",
-        features: [{
+        features: coords.length >= 2 ? [{
             type: "Feature",
             properties: { lap: lap.lap_number },
             geometry: { type: "LineString", coordinates: coords },
-        }],
+        }] : [],
     });
 }
 
@@ -1081,32 +1404,20 @@ function renderMapLayers(){
     const gradientMode = selected.length === 1;
 
     let bbox = null;
+    selected.forEach(({ lap }) => {
+        const lapBounds = computeLapBounds(lap);
+        if (!lapBounds) return;
+        if (!bbox) bbox = lapBounds.slice();
+        else {
+            bbox[0] = Math.min(bbox[0], lapBounds[0]);
+            bbox[1] = Math.min(bbox[1], lapBounds[1]);
+            bbox[2] = Math.max(bbox[2], lapBounds[2]);
+            bbox[3] = Math.max(bbox[3], lapBounds[3]);
+        }
+    });
 
     selected.forEach(({ lap, idx }) => {
-        const tp = lap.track_points || {};
-        const lats = tp.latitude || [];
-        const lons = tp.longitude || [];
-        const speeds = tp.speed_kmph || [];
-        if (lats.length < 2 || lons.length < 2) return;
-
-        const coords = [];
-        const speedAt = [];
-        for (let i = 0; i < lats.length; i++){
-            const la = lats[i], lo = lons[i];
-            if (typeof la === "number" && typeof lo === "number" && !(la === 0 && lo === 0)){
-                coords.push([lo, la]);
-                speedAt.push(typeof speeds[i] === "number" ? speeds[i] : null);
-                if (!bbox) bbox = [lo, la, lo, la];
-                else {
-                    bbox[0] = Math.min(bbox[0], lo);
-                    bbox[1] = Math.min(bbox[1], la);
-                    bbox[2] = Math.max(bbox[2], lo);
-                    bbox[3] = Math.max(bbox[3], la);
-                }
-            }
-        }
-        if (coords.length < 2) return;
-
+        const { coords, speedAt } = getMapCoordsForLap(lap);
         const hasSpeeds = gradientMode && speedAt.some(Number.isFinite);
         if (hasSpeeds){
             addGradientLap(lap, coords, speedAt);
@@ -1124,6 +1435,26 @@ function renderMapLayers(){
 
     updateMapOverlay();
     updateLegend();
+}
+
+function updateMapData(){
+    const map = state.map;
+    if (!map || !state.mapLoaded) return;
+    const laps = getSessionLaps();
+    laps.forEach(lap => {
+        if (!state.selectedLaps.has(lap.lap_number)) return;
+        const srcId = "lap-src-" + lap.lap_number;
+        if (!map.getSource(srcId)) return;
+        const { coords } = getMapCoordsForLap(lap);
+        map.getSource(srcId).setData({
+            type: "FeatureCollection",
+            features: coords.length >= 2 ? [{
+                type: "Feature",
+                properties: { lap: lap.lap_number },
+                geometry: { type: "LineString", coordinates: coords },
+            }] : [],
+        });
+    });
 }
 
 function updateMapOverlay(){
@@ -1225,7 +1556,7 @@ function updateLegend(){
 }
 
 /* ============================================================
-   CHART
+   CHART — plugin scrubber line + dataset
    ============================================================ */
 
 const chartCommonOptions = {
@@ -1278,6 +1609,9 @@ function buildDataset(lap, idx, keyY){
             ? "Percorso iniziale"
             : "Giro " + lap.lap_number + (lap.is_in_progress ? " (in corso)" : ""),
         data,
+        _fullData: data,
+        _lapNumber: lap.lap_number,
+        _lapRef: lap,
         borderColor: color,
         backgroundColor: color + "22",
         borderWidth: 2,
@@ -1293,6 +1627,7 @@ function renderCharts(){
     renderChart("rpm", "rpmChart", selected, "as5600_rpm", "RPM");
     renderChart("delta", "deltaChart", selected, "delta_live_s", "Δ (s)");
     renderDataAge();
+    applyScrubToCharts();
 }
 
 function lapEventMarkers(lap){
@@ -1427,6 +1762,49 @@ function eventMarkerPlugin(markers){
     };
 }
 
+const scrubberLinePlugin = {
+    id: "scrubberLine",
+    afterDatasetsDraw(chart){
+        const axisCfg = chart.options.plugins && chart.options.plugins.scrubberLine;
+        const axis = axisCfg && axisCfg.axis;
+        if (!axis) return;
+        let x;
+        if (axis === "time"){
+            x = state.scrub.sessionTimeS;
+        } else {
+            x = state.scrub.localDistM;
+            const activeNum = state.scrub.activeLapNumber;
+            if (activeNum === null || activeNum === undefined) return;
+            const hasLap = chart.data.datasets.some(ds => ds._lapNumber === activeNum);
+            if (!hasLap) return;
+        }
+        if (!Number.isFinite(x)) return;
+        const xScale = chart.scales.x;
+        if (!xScale) return;
+        if (x < xScale.min || x > xScale.max) return;
+        const px = xScale.getPixelForValue(x);
+        const area = chart.chartArea;
+        const ctx = chart.ctx;
+        ctx.save();
+        ctx.strokeStyle = "rgba(124,92,255,0.9)";
+        ctx.lineWidth = 2;
+        ctx.setLineDash([5, 4]);
+        ctx.beginPath();
+        ctx.moveTo(px, area.top);
+        ctx.lineTo(px, area.bottom);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = "#7c5cff";
+        ctx.beginPath();
+        ctx.arc(px, area.top + 6, 4.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = "#fff";
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+        ctx.restore();
+    },
+};
+
 function dataAgeSamples(){
     const samples = state.session && state.session.data_age_samples;
     if (!samples || !Array.isArray(samples.at_epoch) || !Array.isArray(samples.data_age_s)){
@@ -1446,6 +1824,55 @@ function dataAgeSamples(){
     return points;
 }
 
+function satelliteSamples(){
+    const samples = state.session && state.session.data_age_samples;
+    if (samples && Array.isArray(samples.at_epoch) && Array.isArray(samples.satellites_used)){
+        const count = Math.min(samples.at_epoch.length, samples.satellites_used.length);
+        const points = [];
+        for (let i = 0; i < count; i++){
+            if (samples.at_epoch[i] == null || samples.satellites_used[i] == null) continue;
+            const at = Number(samples.at_epoch[i]);
+            const sat = Number(samples.satellites_used[i]);
+            if (Number.isFinite(at) && Number.isFinite(sat)){
+                points.push({ at, sat: Math.round(sat) });
+            }
+        }
+        if (points.length > 0) return points;
+    }
+
+    const warmup = state.session && state.session.warmup_and_pitlane_raw;
+    if (warmup && Array.isArray(warmup.received_at_epoch) && Array.isArray(warmup.satellites_used)){
+        const count = Math.min(warmup.received_at_epoch.length, warmup.satellites_used.length);
+        const points = [];
+        for (let i = 0; i < count; i++){
+            if (warmup.received_at_epoch[i] == null || warmup.satellites_used[i] == null) continue;
+            const at = Number(warmup.received_at_epoch[i]);
+            const sat = Number(warmup.satellites_used[i]);
+            if (Number.isFinite(at) && Number.isFinite(sat)){
+                points.push({ at, sat: Math.round(sat) });
+            }
+        }
+        if (points.length > 0) return points;
+    }
+
+    const telemetry = state.session && state.session.telemetry_raw;
+    if (telemetry && Array.isArray(telemetry)){
+        const points = [];
+        for (const entry of telemetry){
+            if (entry.received_at_epoch != null && entry.satellites_used != null){
+                const at = Number(entry.received_at_epoch);
+                const sat = Number(entry.satellites_used);
+                if (Number.isFinite(at) && Number.isFinite(sat)){
+                    points.push({ at, sat: Math.round(sat) });
+                }
+            }
+        }
+        if (points.length > 0) return points;
+    }
+
+    return [];
+}
+
 function renderDataAge(){
     const allLaps = getSessionLaps();
     const selectedLaps = allLaps.filter(lap =>
@@ -1455,69 +1882,132 @@ function renderDataAge(){
         allLaps.length === 0
         || selectedLaps.length === allLaps.length
     );
-    const rawPoints = dataAgeSamples();
+
+    const showDataAge = $("toggleDataAge").checked;
+    const showSatellites = $("toggleSatellites").checked;
+
+    const rawAgePoints = dataAgeSamples();
+    const rawSatPoints = satelliteSamples();
     const threshold = 1;
     const startEpoch = state.session && state.session.started_at
         ? Date.parse(state.session.started_at) / 1000
         : NaN;
     const origin = Number.isFinite(startEpoch)
         ? startEpoch
-        : (rawPoints.length ? rawPoints[0].at : 0);
-    const plottedSeries = showFullSession
-        ? [{
-            label: "Età del dato MQTT",
-            color: "#22d3ee",
-            points: rawPoints,
-        }]
-        : selectedLaps.map(({ lap_number, started_at_epoch, ended_at_epoch }, index) => {
-            const lapStart = Number(started_at_epoch);
-            const lapEnd = Number(ended_at_epoch);
-            const points = Number.isFinite(lapStart) && Number.isFinite(lapEnd)
-                ? rawPoints.filter(point => point.at >= lapStart && point.at <= lapEnd)
-                : [];
-            return {
-                label: "Giro " + lap_number,
-                color: PALETTE[index % PALETTE.length],
-                points,
-            };
-        });
-    const plottedPoints = plottedSeries.flatMap(series => series.points);
-    const chartDatasets = plottedSeries.map(series => ({
-        label: series.label,
-        data: series.points.map(point => ({
-            x: Math.max(0, point.at - origin),
-            y: point.age,
-        })),
-        borderColor: series.color,
-        backgroundColor: series.color + "22",
-        borderWidth: 1.5,
-        pointRadius: series.points.map(point => point.age > threshold ? 3 : 0),
-        pointHoverRadius: 4,
-        pointBackgroundColor: series.points.map(
-            point => point.age > threshold ? "#ef4444" : series.color
-        ),
-        tension: 0,
-    }));
-    const chartPoints = chartDatasets.flatMap(dataset => dataset.data);
-    const points = plottedPoints;
-    const anomalies = points.filter(point => point.age > threshold);
-    const maxAge = points.reduce(
-        (maximum, point) => Math.max(maximum, point.age),
-        0
-    );
+        : (rawAgePoints.length ? rawAgePoints[0].at : (rawSatPoints.length ? rawSatPoints[0].at : 0));
 
-    $("dataAgeSummary").textContent = points.length
-        ? (showFullSession
+    const chartDatasets = [];
+    let dataAgePoints = [];
+    let satellitePoints = [];
+
+    if (showDataAge) {
+        const plottedSeries = showFullSession
+            ? [{
+                label: "Età del dato MQTT",
+                color: "#22d3ee",
+                points: rawAgePoints,
+            }]
+            : selectedLaps.map(({ lap_number, started_at_epoch, ended_at_epoch }, index) => {
+                const lapStart = Number(started_at_epoch);
+                const lapEnd = Number(ended_at_epoch);
+                const points = Number.isFinite(lapStart) && Number.isFinite(lapEnd)
+                    ? rawAgePoints.filter(point => point.at >= lapStart && point.at <= lapEnd)
+                    : [];
+                return {
+                    label: "Giro " + lap_number,
+                    color: PALETTE[index % PALETTE.length],
+                    points,
+                };
+            });
+        dataAgePoints = plottedSeries.flatMap(series => series.points);
+        chartDatasets.push(...plottedSeries.map(series => ({
+            label: series.label,
+            data: series.points.map(point => ({
+                x: Math.max(0, point.at - origin),
+                y: point.age,
+            })),
+            borderColor: series.color,
+            backgroundColor: series.color + "22",
+            borderWidth: 1.5,
+            pointRadius: series.points.map(point => point.age > threshold ? 3 : 0),
+            pointHoverRadius: 4,
+            pointBackgroundColor: series.points.map(
+                point => point.age > threshold ? "#ef4444" : series.color
+            ),
+            tension: 0,
+            yAxisID: 'y',
+        })));
+    }
+
+    if (showSatellites) {
+        const plottedSeries = showFullSession
+            ? [{
+                label: "Satelliti GPS",
+                color: "#22c55e",
+                points: rawSatPoints,
+            }]
+            : selectedLaps.map(({ lap_number, started_at_epoch, ended_at_epoch }, index) => {
+                const lapStart = Number(started_at_epoch);
+                const lapEnd = Number(ended_at_epoch);
+                const points = Number.isFinite(lapStart) && Number.isFinite(lapEnd)
+                    ? rawSatPoints.filter(point => point.at >= lapStart && point.at <= lapEnd)
+                    : [];
+                return {
+                    label: "Giro " + lap_number + " (sat)",
+                    color: PALETTE[(index + 6) % PALETTE.length],
+                    points,
+                };
+            });
+        satellitePoints = plottedSeries.flatMap(series => series.points);
+        chartDatasets.push(...plottedSeries.map(series => ({
+            label: series.label,
+            data: series.points.map(point => ({
+                x: Math.max(0, point.at - origin),
+                y: point.sat,
+            })),
+            borderColor: series.color,
+            backgroundColor: series.color + "22",
+            borderWidth: 1.5,
+            pointRadius: 0,
+            pointHoverRadius: 4,
+            tension: 0,
+            yAxisID: 'y1',
+        })));
+    }
+
+    const chartPoints = chartDatasets.flatMap(dataset => dataset.data);
+
+    const anomalies = dataAgePoints.filter(point => point.age > threshold);
+    const maxAge = dataAgePoints.reduce((max, point) => Math.max(max, point.age), 0);
+    const maxSat = satellitePoints.reduce((max, point) => Math.max(max, point.sat), 0);
+    const minSat = satellitePoints.reduce((min, point) => Math.min(min, point.sat), Infinity);
+    const avgSat = satellitePoints.length > 0
+        ? satellitePoints.reduce((sum, point) => sum + point.sat, 0) / satellitePoints.length
+        : 0;
+
+    let summaryText = '';
+    if (showDataAge && dataAgePoints.length) {
+        summaryText += (showFullSession
             ? "Intera sessione · "
             : selectedLaps.length === 1
                 ? "Giro " + selectedLaps[0].lap_number + " · "
                 : selectedLaps.length + " giri selezionati · ") +
-          points.length.toLocaleString("it-IT") + " campioni · massimo " +
+          dataAgePoints.length.toLocaleString("it-IT") + " campioni età dato · max " +
           maxAge.toFixed(3) + " s · " + anomalies.length.toLocaleString("it-IT") +
-          " campioni oltre 1 s"
-        : selectedLaps.length === 0 && allLaps.length
+          " oltre 1 s";
+    }
+    if (showSatellites && satellitePoints.length) {
+        if (summaryText) summaryText += " | ";
+        summaryText += satellitePoints.length.toLocaleString("it-IT") + " campioni satelliti · " +
+          "min " + minSat + " · max " + maxSat + " · media " + avgSat.toFixed(1);
+    }
+    if (!summaryText) {
+        summaryText = selectedLaps.length === 0 && allLaps.length
             ? "Seleziona almeno un giro per vedere i relativi campioni."
-            : "Questa sessione non contiene campioni di età del dato nei giri selezionati.";
+            : "Questa sessione non contiene dati per i giri selezionati.";
+    }
+    $("dataAgeSummary").textContent = summaryText;
+
     $("dataAgeAnomalyCount").textContent = anomalies.length
         ? anomalies.length.toLocaleString("it-IT") + " superamenti"
         : "nessun superamento";
@@ -1530,21 +2020,29 @@ function renderDataAge(){
             '</tr>'
         ).join("")
         : '<tr><td colspan="3" class="empty-state">' +
-          (points.length ? "Nessun campione oltre 1 secondo." : "Nessun dato disponibile.") +
+          (dataAgePoints.length ? "Nessun campione oltre 1 secondo." : "Nessun dato disponibile.") +
           '</td></tr>';
 
     const canvas = $("dataAgeChart");
-    const chartData = [...chartDatasets];
+    const chartData = chartDatasets.map(ds => ({
+        ...ds,
+        _fullData: ds.data,
+    }));
     if (chartPoints.length){
         const lastX = chartPoints[chartPoints.length - 1].x;
-        chartData.push({
-            label: "Soglia 1 s",
-            data: [{ x: 0, y: threshold }, { x: lastX, y: threshold }],
-            borderColor: "#ef4444",
-            borderDash: [6, 4],
-            borderWidth: 1,
-            pointRadius: 0,
-        });
+        if (showDataAge) {
+            chartData.push({
+                label: "Soglia 1 s",
+                data: [{ x: 0, y: threshold }, { x: lastX, y: threshold }],
+                _fullData: [{ x: 0, y: threshold }, { x: lastX, y: threshold }],
+                _isThreshold: true,
+                borderColor: "#ef4444",
+                borderDash: [6, 4],
+                borderWidth: 1,
+                pointRadius: 0,
+                yAxisID: 'y',
+            });
+        }
     }
     const eventMarkers = sessionEventMarkers(
         showFullSession ? allLaps : selectedLaps
@@ -1564,7 +2062,20 @@ function renderDataAge(){
             if (!items.length) return "";
             return "Tempo sessione: " + items[0].parsed.x.toFixed(3) + " s";
         },
+        label: function(context) {
+            let label = context.dataset.label || '';
+            if (label) label += ': ';
+            if (context.parsed.y !== null) {
+                if (context.dataset.yAxisID === 'y1') {
+                    label += context.parsed.y + ' satelliti';
+                } else {
+                    label += context.parsed.y.toFixed(3) + ' s';
+                }
+            }
+            return label;
+        }
     };
+    options.plugins.scrubberLine = { axis: "time" };
     options.scales.x.title.text = "Tempo dalla partenza (s)";
     if (!showFullSession && selectedLaps.length){
         const lapStarts = selectedLaps.map(lap => Number(lap.started_at_epoch))
@@ -1588,16 +2099,35 @@ function renderDataAge(){
             ? Math.max(options.scales.x.max, dataMaxX)
             : dataMaxX;
     }
-    options.scales.y.title = { display: true, text: "Età del dato (s)", color: "#8b96a3" };
-    options.scales.y.beginAtZero = true;
-    options.plugins.legend.display = true;
+
+    options.scales.y = {
+        type: 'linear',
+        display: showDataAge,
+        position: 'left',
+        title: { display: true, text: "Età del dato (s)", color: "#8b96a3" },
+        beginAtZero: true,
+        grid: { color: "#1e242c" },
+        ticks: { color: "#8b96a3" },
+    };
+    options.scales.y1 = {
+        type: 'linear',
+        display: showSatellites,
+        position: 'right',
+        title: { display: true, text: "Satelliti", color: "#8b96a3" },
+        beginAtZero: true,
+        min: 0,
+        max: 20,
+        grid: { drawOnChartArea: false, color: "#1e242c" },
+        ticks: { color: "#8b96a3", stepSize: 2 },
+    };
+    options.plugins.legend.display = chartDatasets.length > 1;
 
     if (state.charts.dataAge) state.charts.dataAge.destroy();
     state.charts.dataAge = new Chart(canvas.getContext("2d"), {
         type: "line",
         data: { datasets: chartData },
         options,
-        plugins: [eventMarkerPlugin(eventMarkers)],
+        plugins: [eventMarkerPlugin(eventMarkers), scrubberLinePlugin],
     });
 }
 
@@ -1618,6 +2148,7 @@ function renderChart(id, canvasId, selected, keyY, yLabel){
 
     const options = JSON.parse(JSON.stringify(chartCommonOptions));
     options.scales.y.title = { display: true, text: yLabel, color: "#8b96a3" };
+    options.plugins.scrubberLine = { axis: "distance" };
 
     if (state.charts[id]) state.charts[id].destroy();
 
@@ -1625,7 +2156,605 @@ function renderChart(id, canvasId, selected, keyY, yLabel){
         type: "line",
         data: { datasets },
         options,
-        plugins: [eventMarkerPlugin(eventMarkers)],
+        plugins: [eventMarkerPlugin(eventMarkers), scrubberLinePlugin],
+    });
+}
+
+/* ============================================================
+   SCRUBBER — timeline, reveal, marker + banner
+   ============================================================ */
+
+function buildSessionTimeline(){
+    const session = state.session;
+    if (!session) return null;
+    const laps = getSessionLaps();
+    if (!laps.length) return null;
+
+    const entries = [];
+    let earliest = Infinity;
+    for (const lap of laps){
+        const s = Number(lap.started_at_epoch);
+        const e = Number(lap.ended_at_epoch);
+        if (!Number.isFinite(s) || !Number.isFinite(e) || e <= s) continue;
+        entries.push({ lap, lapNumber: lap.lap_number, startEpoch: s, endEpoch: e });
+        if (s < earliest) earliest = s;
+    }
+    if (!entries.length || !Number.isFinite(earliest)) return null;
+    entries.sort((a, b) => a.startEpoch - b.startEpoch);
+
+    const built = [];
+    let cumDist = 0;
+    for (const e of entries){
+        const tp = e.lap.track_points || {};
+        let lapDist = 0;
+        const distArr = tp.lap_distance_m || [];
+        if (distArr.length){
+            const last = distArr[distArr.length - 1];
+            if (Number.isFinite(last)) lapDist = last;
+        }
+        if (lapDist <= 0 && Number.isFinite(Number(e.lap.lap_distance_m))){
+            lapDist = Number(e.lap.lap_distance_m);
+        }
+        built.push({
+            lap: e.lap,
+            lapNumber: e.lapNumber,
+            startTimeS: Math.max(0, e.startEpoch - earliest),
+            endTimeS: e.endEpoch - earliest,
+            startDistM: cumDist,
+            endDistM: cumDist + lapDist,
+            lapDistM: lapDist,
+        });
+        cumDist += lapDist;
+    }
+
+    return {
+        originEpoch: earliest,
+        totalTimeS: built[built.length - 1].endTimeS,
+        totalDistM: cumDist,
+        entries: built,
+    };
+}
+
+function sampleLapByKey(lap, key, targetValue){
+    const tp = lap.track_points || {};
+    const arr = tp[key];
+    if (!Array.isArray(arr) || arr.length < 2) return null;
+
+    const n = arr.length;
+    let lo = 0, hi = n - 1;
+    if (targetValue <= arr[0]){
+        lo = 0; hi = 1;
+    } else if (targetValue >= arr[n - 1]){
+        lo = n - 2; hi = n - 1;
+    } else {
+        while (hi - lo > 1){
+            const mid = (lo + hi) >> 1;
+            if (arr[mid] <= targetValue) lo = mid;
+            else hi = mid;
+        }
+    }
+
+    const v0 = arr[lo];
+    const v1 = arr[hi];
+    const span = v1 - v0;
+    const t = span > 0
+        ? Math.max(0, Math.min(1, (targetValue - v0) / span))
+        : 0;
+
+    const pick = k => {
+        const a = tp[k];
+        if (!Array.isArray(a)) return null;
+        const x = a[lo], y = a[hi];
+        if (typeof x !== "number" || typeof y !== "number"){
+            return (typeof x === "number" ? x : (typeof y === "number" ? y : null));
+        }
+        return x + (y - x) * t;
+    };
+
+    const satRaw = pick("satellites_used");
+    const satellites = Number.isFinite(satRaw) ? Math.round(satRaw) : satRaw;
+
+    return {
+        latitude: pick("latitude"),
+        longitude: pick("longitude"),
+        speed_kmph: pick("speed_kmph"),
+        as5600_rpm: pick("as5600_rpm"),
+        delta_live_s: pick("delta_live_s"),
+        satellites_used: satellites,
+        lap_elapsed_s: pick("lap_elapsed_s"),
+        lap_distance_m: pick("lap_distance_m"),
+        received_at_epoch: pick("received_at_epoch"),
+    };
+}
+
+function findTimelineEntry(timeline, value, mode){
+    const startKey = mode === "time" ? "startTimeS" : "startDistM";
+    const endKey = mode === "time" ? "endTimeS" : "endDistM";
+    for (const e of timeline.entries){
+        if (value >= e[startKey] && value <= e[endKey]) return e;
+    }
+    let best = null, bestD = Infinity;
+    for (const e of timeline.entries){
+        const mid = (e[startKey] + e[endKey]) / 2;
+        const d = Math.abs(value - mid);
+        if (d < bestD){ bestD = d; best = e; }
+    }
+    return best;
+}
+
+function getRevealDistForLap(lap){
+    const timeline = state.scrub.timeline;
+    if (!timeline || !timeline.entries.length) return Infinity;
+    const entry = timeline.entries.find(e => e.lapNumber === lap.lap_number);
+    if (!entry) return Infinity;
+    const scrubVal = state.scrub.value;
+    const startVal = state.scrub.mode === "time" ? entry.startTimeS : entry.startDistM;
+    const endVal = state.scrub.mode === "time" ? entry.endTimeS : entry.endDistM;
+    if (scrubVal >= endVal) return Infinity;
+    if (scrubVal <= startVal) return -Infinity;
+    if (lap.lap_number === state.scrub.activeLapNumber){
+        return state.scrub.localDistM;
+    }
+    return -Infinity;
+}
+
+function filterDataUpTo(data, cutoff){
+    if (!Array.isArray(data) || !data.length) return data || [];
+    if (cutoff === Infinity) return data;
+    if (!Number.isFinite(cutoff) || cutoff < 0) return [];
+    let i = 0;
+    while (i < data.length && data[i].x <= cutoff) i++;
+    if (i === 0) return [data[0]];
+    if (i === data.length) return data;
+    return data.slice(0, i);
+}
+
+function applyScrubToCharts(){
+    ["speed", "rpm", "delta"].forEach(id => {
+        const chart = state.charts[id];
+        if (!chart) return;
+        chart.data.datasets.forEach(ds => {
+            if (!ds._fullData) return;
+            const lap = ds._lapRef;
+            if (!lap) return;
+            const cutoff = getRevealDistForLap(lap);
+            ds.data = filterDataUpTo(ds._fullData, cutoff);
+        });
+        chart.update("none");
+    });
+
+    const ageChart = state.charts.dataAge;
+    if (ageChart){
+        const cutoff = state.scrub.sessionTimeS;
+        ageChart.data.datasets.forEach(ds => {
+            if (!ds._fullData) return;
+            if (ds._isThreshold){
+                const y = ds._fullData[0] ? ds._fullData[0].y : 1;
+                const maxX = ds._fullData.length
+                    ? ds._fullData[ds._fullData.length - 1].x
+                    : 0;
+                const end = Math.min(cutoff, maxX);
+                ds.data = end > 0
+                    ? [{ x: 0, y }, { x: end, y }]
+                    : [];
+            } else {
+                ds.data = filterDataUpTo(ds._fullData, cutoff);
+            }
+        });
+        ageChart.update("none");
+    }
+}
+
+function findDataAgeAtEpoch(epoch){
+    const samples = state.session && state.session.data_age_samples;
+    if (!samples || !Array.isArray(samples.at_epoch) || !Array.isArray(samples.data_age_s)){
+        return null;
+    }
+    const atArr = samples.at_epoch;
+    const ageArr = samples.data_age_s;
+    const n = Math.min(atArr.length, ageArr.length);
+    if (!n || !Number.isFinite(epoch)) return null;
+
+    let lo = 0, hi = n - 1;
+    if (epoch <= Number(atArr[0])){
+        lo = 0; hi = Math.min(1, n - 1);
+    } else if (epoch >= Number(atArr[n - 1])){
+        lo = Math.max(0, n - 2); hi = n - 1;
+    } else {
+        while (hi - lo > 1){
+            const mid = (lo + hi) >> 1;
+            if (Number(atArr[mid]) <= epoch) lo = mid;
+            else hi = mid;
+        }
+    }
+    const a0 = Number(atArr[lo]), a1 = Number(atArr[hi]);
+    const v0 = Number(ageArr[lo]), v1 = Number(ageArr[hi]);
+    if (!Number.isFinite(v0)) return Number.isFinite(v1) ? v1 : null;
+    if (!Number.isFinite(v1)) return v0;
+    const span = a1 - a0;
+    const t = span > 0 ? Math.max(0, Math.min(1, (epoch - a0) / span)) : 0;
+    return v0 + (v1 - v0) * t;
+}
+
+let scrubMarker = null;
+
+function ensureScrubMarker(){
+    if (scrubMarker) return;
+    if (!state.map) return;
+    const el = document.createElement("div");
+    el.className = "map-scrub-pin";
+    el.innerHTML = `
+        <div class="map-scrub-dot"></div>
+        <div class="map-scrub-banner">
+            <div class="banner-row"><span class="banner-label">Velocità</span><span class="banner-value" id="bannerSpeed">—</span></div>
+            <div class="banner-row"><span class="banner-label">RPM</span><span class="banner-value" id="bannerRpm">—</span></div>
+            <div class="banner-row"><span class="banner-label">Satelliti</span><span class="banner-value" id="bannerSat">—</span></div>
+            <div class="banner-row"><span class="banner-label">Età dato</span><span class="banner-value" id="bannerAge">—</span></div>
+            <div class="banner-row"><span class="banner-label">Delta</span><span class="banner-value" id="bannerDelta">—</span></div>
+        </div>
+    `;
+    el.style.display = "none";
+    scrubMarker = new mapboxgl.Marker({ element: el, anchor: "center" })
+        .setLngLat([0, 0])
+        .addTo(state.map);
+}
+
+function updateScrubMarker(sample){
+    if (!state.map || !state.mapLoaded) return;
+    ensureScrubMarker();
+    if (!scrubMarker) return;
+    if (sample
+        && Number.isFinite(sample.latitude)
+        && Number.isFinite(sample.longitude)
+        && !(sample.latitude === 0 && sample.longitude === 0)){
+        scrubMarker.setLngLat([sample.longitude, sample.latitude]);
+        scrubMarker.getElement().style.display = "";
+    } else {
+        scrubMarker.getElement().style.display = "none";
+    }
+}
+
+function updateBanner(sample, dataAgeS){
+    if (!scrubMarker) return;
+    const el = scrubMarker.getElement();
+    const set = (id, val) => {
+        const e = el.querySelector("#" + id);
+        if (e) e.textContent = val;
+    };
+    if (!sample){
+        set("bannerSpeed", "—");
+        set("bannerRpm", "—");
+        set("bannerSat", "—");
+        set("bannerAge", "—");
+        set("bannerDelta", "—");
+        return;
+    }
+    set("bannerSpeed", Number.isFinite(sample.speed_kmph) ? sample.speed_kmph.toFixed(1) + " km/h" : "—");
+    set("bannerRpm", Number.isFinite(sample.as5600_rpm) ? Math.round(sample.as5600_rpm).toLocaleString("it-IT") : "—");
+    set("bannerSat", Number.isFinite(sample.satellites_used) ? String(Math.round(sample.satellites_used)) : "—");
+    set("bannerAge", Number.isFinite(dataAgeS) ? dataAgeS.toFixed(3) + " s" : "—");
+    set("bannerDelta", Number.isFinite(sample.delta_live_s)
+        ? (sample.delta_live_s >= 0 ? "+" : "") + sample.delta_live_s.toFixed(3) + " s"
+        : "—");
+}
+
+function configureScrubber(){
+    const slider = $("scrubber");
+    const timeline = state.scrub.timeline;
+    if (!timeline || !timeline.entries.length){
+        slider.disabled = true;
+        return;
+    }
+    slider.disabled = false;
+    if (state.scrub.mode === "time"){
+        slider.min = 0;
+        slider.max = Math.max(1, timeline.totalTimeS);
+        slider.step = 0.1;
+    } else {
+        slider.min = 0;
+        slider.max = Math.max(1, timeline.totalDistM);
+        slider.step = 0.5;
+    }
+    state.scrub.maxValue = parseFloat(slider.max);
+    state.scrub.value = Math.max(0, Math.min(state.scrub.maxValue, state.scrub.value));
+    slider.value = state.scrub.value;
+}
+
+function refreshScrubber(){
+    state.scrub.timeline = buildSessionTimeline();
+    if (state.scrub.timeline && state.scrub.timeline.entries.length){
+        state.scrub.value = state.scrub.mode === "time"
+            ? state.scrub.timeline.totalTimeS
+            : state.scrub.timeline.totalDistM;
+    } else {
+        state.scrub.value = 0;
+    }
+    configureScrubber();
+    updateScrub();
+}
+
+function switchScrubMode(newMode){
+    if (newMode === state.scrub.mode) return;
+    const timeline = state.scrub.timeline;
+    let newValue = state.scrub.value;
+
+    if (timeline && timeline.entries.length){
+        const entry = findTimelineEntry(timeline, state.scrub.value, state.scrub.mode);
+        if (entry){
+            if (state.scrub.mode === "time" && newMode === "distance"){
+                const localT = Math.max(0, state.scrub.value - entry.startTimeS);
+                const s = sampleLapByKey(entry.lap, "lap_elapsed_s", localT);
+                const localD = s && Number.isFinite(s.lap_distance_m) ? s.lap_distance_m : 0;
+                newValue = entry.startDistM + localD;
+            } else if (state.scrub.mode === "distance" && newMode === "time"){
+                const localD = Math.max(0, state.scrub.value - entry.startDistM);
+                const s = sampleLapByKey(entry.lap, "lap_distance_m", localD);
+                const localT = s && Number.isFinite(s.lap_elapsed_s) ? s.lap_elapsed_s : 0;
+                newValue = entry.startTimeS + localT;
+            }
+        }
+    }
+
+    state.scrub.mode = newMode;
+    state.scrub.value = newValue;
+    document.querySelectorAll(".mode-btn").forEach(btn => {
+        btn.classList.toggle("active", btn.getAttribute("data-mode") === newMode);
+    });
+    configureScrubber();
+    updateScrub();
+}
+
+function updateScrubReadout(entry, sample, localTimeS, localDistM, value, dataAgeS){
+    const lap = entry.lap;
+    const lapLabel = lap.is_warmup
+        ? "Percorso iniziale"
+        : (lap.is_in_progress
+            ? "Giro " + lap.lap_number + " (in corso)"
+            : "Giro " + lap.lap_number);
+    $("scrubLapName").textContent = lapLabel;
+
+    const timeline = state.scrub.timeline;
+    const pct = state.scrub.maxValue > 0
+        ? Math.min(100, Math.max(0, (value / state.scrub.maxValue) * 100))
+        : 0;
+
+    if (state.scrub.mode === "time"){
+        $("scrubSessionVal").textContent =
+            fmtTime(value) + " / " + fmtTime(timeline ? timeline.totalTimeS : 0);
+    } else {
+        $("scrubSessionVal").textContent =
+            Math.round(value) + " / " +
+            Math.round(timeline ? timeline.totalDistM : 0) + " m";
+    }
+
+    $("scrubLapVal").textContent =
+        fmtTime(localTimeS) + " · " + Math.round(localDistM) + " m";
+
+    $("scrubPctVal").textContent = pct.toFixed(1) + "%";
+
+    if (sample){
+        $("scrubSpeedVal").textContent =
+            Number.isFinite(sample.speed_kmph)
+                ? sample.speed_kmph.toFixed(1) + " km/h" : "—";
+        $("scrubRpmVal").textContent =
+            Number.isFinite(sample.as5600_rpm)
+                ? Math.round(sample.as5600_rpm).toLocaleString("it-IT") : "—";
+        $("scrubDeltaVal").textContent =
+            Number.isFinite(sample.delta_live_s)
+                ? (sample.delta_live_s >= 0 ? "+" : "") +
+                  sample.delta_live_s.toFixed(3) + " s"
+                : "—";
+        $("scrubSatVal").textContent =
+            Number.isFinite(sample.satellites_used)
+                ? Math.round(sample.satellites_used) : "—";
+    } else {
+        ["scrubSpeedVal","scrubRpmVal","scrubDeltaVal","scrubSatVal"]
+            .forEach(id => $(id).textContent = "—");
+    }
+
+    const ageEl = $("scrubAgeVal");
+    if (ageEl){
+        ageEl.classList.remove("warn", "bad");
+        if (Number.isFinite(dataAgeS)){
+            ageEl.textContent = dataAgeS.toFixed(3) + " s";
+            if (dataAgeS > 2) ageEl.classList.add("bad");
+            else if (dataAgeS > 1) ageEl.classList.add("warn");
+        } else {
+            ageEl.textContent = "—";
+        }
+    }
+}
+
+let scrubPending = false;
+function requestScrubUpdate(){
+    if (scrubPending) return;
+    scrubPending = true;
+    requestAnimationFrame(() => {
+        scrubPending = false;
+        updateScrub();
+    });
+}
+
+function updateScrub(){
+    const timeline = state.scrub.timeline;
+    const slider = $("scrubber");
+
+    if (!timeline || !timeline.entries.length){
+        state.scrub.sample = null;
+        state.scrub.activeLapNumber = null;
+        state.scrub.sessionTimeS = 0;
+        state.scrub.sessionDistM = 0;
+        state.scrub.dataAgeS = null;
+        updateScrubMarker(null);
+        updateBanner(null, null);
+        ["scrubSessionVal","scrubLapVal","scrubPctVal",
+         "scrubSpeedVal","scrubRpmVal","scrubDeltaVal","scrubSatVal","scrubAgeVal"]
+            .forEach(id => { const el = $(id); if (el) el.textContent = "—"; });
+        $("scrubLapName").textContent = "—";
+        applyScrubToCharts();
+        updateMapData();
+        return;
+    }
+
+    const value = parseFloat(slider.value);
+    state.scrub.value = value;
+
+    const entry = findTimelineEntry(timeline, value, state.scrub.mode);
+    if (!entry){
+        state.scrub.sample = null;
+        state.scrub.activeLapNumber = null;
+        updateScrubMarker(null);
+        updateBanner(null, null);
+        applyScrubToCharts();
+        updateMapData();
+        return;
+    }
+
+    let sample = null;
+    let localDistM = 0;
+    let localTimeS = 0;
+
+    if (state.scrub.mode === "time"){
+        localTimeS = Math.max(0, value - entry.startTimeS);
+        sample = sampleLapByKey(entry.lap, "lap_elapsed_s", localTimeS);
+        localDistM = sample && Number.isFinite(sample.lap_distance_m)
+            ? sample.lap_distance_m : 0;
+    } else {
+        localDistM = Math.max(0, value - entry.startDistM);
+        sample = sampleLapByKey(entry.lap, "lap_distance_m", localDistM);
+        localTimeS = sample && Number.isFinite(sample.lap_elapsed_s)
+            ? sample.lap_elapsed_s : 0;
+    }
+
+    const sessionTimeS = entry.startTimeS + localTimeS;
+    const sessionDistM = entry.startDistM + localDistM;
+
+    let dataAgeS = null;
+    if (sample && Number.isFinite(sample.received_at_epoch)){
+        dataAgeS = findDataAgeAtEpoch(sample.received_at_epoch);
+    }
+
+    state.scrub.sample = sample;
+    state.scrub.activeLapNumber = entry.lapNumber;
+    state.scrub.localDistM = localDistM;
+    state.scrub.localTimeS = localTimeS;
+    state.scrub.sessionTimeS = sessionTimeS;
+    state.scrub.sessionDistM = sessionDistM;
+    state.scrub.dataAgeS = dataAgeS;
+
+    updateScrubMarker(sample);
+    updateBanner(sample, dataAgeS);
+    updateScrubReadout(entry, sample, localTimeS, localDistM, value, dataAgeS);
+    updateMapData();
+    applyScrubToCharts();
+}
+
+/* ============================================================
+   SCRUBBER PLACEMENT — segue la sezione in focus
+   ============================================================ */
+
+const SCRUB_ANCHORS = [
+    () => $("mapWrap"),
+    () => $("chartPanelSpeed"),
+    () => $("chartPanelRpm"),
+    () => $("chartPanelDelta"),
+    () => $("chartPanelDataAge"),
+];
+
+function findFocusedAnchor(){
+    const scroller = $("mainScroll");
+    if (!scroller) return null;
+    const scRect = scroller.getBoundingClientRect();
+    if (scRect.height <= 0) return null;
+    const focusLine = scRect.top + scRect.height * 0.35;
+
+    let best = null, bestD = Infinity;
+    for (const get of SCRUB_ANCHORS){
+        const el = get();
+        if (!el) continue;
+        const r = el.getBoundingClientRect();
+        if (r.bottom < scRect.top + 40) continue;
+        if (r.top > scRect.bottom - 40) continue;
+
+        let d;
+        if (focusLine >= r.top && focusLine <= r.bottom){
+            d = 0;
+        } else if (focusLine < r.top){
+            d = r.top - focusLine;
+        } else {
+            d = focusLine - r.bottom;
+        }
+        if (d < bestD){ bestD = d; best = el; }
+    }
+    return best;
+}
+
+function placeScrubber(force){
+    const target = findFocusedAnchor();
+    if (!target) return;
+    const scrubber = $("scrubberPanel");
+    if (!scrubber) return;
+
+    if (!force
+        && target.nextSibling === scrubber
+        && scrubber.parentNode === target.parentNode){
+        return;
+    }
+
+    target.parentNode.insertBefore(scrubber, target.nextSibling);
+
+    const inGrid = scrubber.parentNode
+        && scrubber.parentNode.classList
+        && scrubber.parentNode.classList.contains("charts-grid");
+    scrubber.classList.toggle("in-grid", !!inGrid);
+}
+
+let scrubPlaceRaf = null;
+function scheduleScrubberPlacement(){
+    if (scrubPlaceRaf) return;
+    scrubPlaceRaf = requestAnimationFrame(() => {
+        scrubPlaceRaf = null;
+        placeScrubber(false);
+    });
+}
+
+function setupScrubberFollow(){
+    const scroller = $("mainScroll");
+    if (!scroller) return;
+    scroller.addEventListener("scroll", scheduleScrubberPlacement, { passive: true });
+    window.addEventListener("resize", () => {
+        placeScrubber(false);
+        setupSessionNameMarquees();
+    });
+    placeScrubber(true);
+}
+
+/* ============================================================
+   SESSION NAME MARQUEE — scroll del nome lungo all'hover
+   ============================================================ */
+
+function setupSessionNameMarquees(){
+    document.querySelectorAll(".session-item .name").forEach(nameEl => {
+        const innerEl = nameEl.querySelector(".name-inner");
+        if (!innerEl) return;
+
+        nameEl.classList.remove("overflow");
+        nameEl.style.removeProperty("--marquee-shift");
+        nameEl.style.removeProperty("--marquee-duration");
+
+        void innerEl.offsetWidth;
+
+        const naturalWidth = innerEl.scrollWidth;
+        const visibleWidth = nameEl.clientWidth;
+
+        const overflowAmount = naturalWidth - visibleWidth;
+        if (overflowAmount > 2){
+            nameEl.classList.add("overflow");
+            const shift = overflowAmount + 12;
+            nameEl.style.setProperty("--marquee-shift", "-" + shift + "px");
+            const duration = Math.max(2.5, Math.min(14, shift / 22));
+            nameEl.style.setProperty("--marquee-duration", duration.toFixed(2) + "s");
+        }
     });
 }
 
@@ -1897,6 +3026,7 @@ function toggleLap(lapNumber){
     renderEventsTable();
     renderMapLayers();
     renderCharts();
+    updateScrub();
 }
 
 function selectAllLaps(){
@@ -1908,6 +3038,7 @@ function selectAllLaps(){
     renderEventsTable();
     renderMapLayers();
     renderCharts();
+    updateScrub();
 }
 
 function clearAllLaps(){
@@ -1917,6 +3048,7 @@ function clearAllLaps(){
     renderEventsTable();
     renderMapLayers();
     renderCharts();
+    updateScrub();
 }
 
 /* ============================================================
@@ -1974,9 +3106,12 @@ function renderSessionList(){
 
     list.innerHTML = state.sessions.map(f => {
         const active = state.session && state.session._path === f.path ? " active" : "";
+        const safeName = escapeHtml(f.name);
         return (
             '<div class="session-item' + active + '" data-path="' + escapeHtml(f.path) + '">' +
-                '<div class="name">' + escapeHtml(f.name) + '</div>' +
+                '<div class="name" title="' + safeName + '">' +
+                    '<span class="name-inner">' + safeName + '</span>' +
+                '</div>' +
                 '<div class="meta">' +
                     '<span>' + fmtDate(f.mtime) + '</span>' +
                     '<span>' + fmtBytes(f.size_bytes) + '</span>' +
@@ -1984,6 +3119,8 @@ function renderSessionList(){
             '</div>'
         );
     }).join("");
+
+    setupSessionNameMarquees();
 
     list.querySelectorAll(".session-item").forEach(el => {
         el.addEventListener("click", () => loadSession(el.getAttribute("data-path")));
@@ -2017,6 +3154,8 @@ async function loadSession(path){
         renderEventsTable();
         renderMapLayers();
         renderCharts();
+        refreshScrubber();
+        placeScrubber(true);
 
         toast("Sessione caricata: " + (session.driver ? session.driver.name : "—"));
     } catch (e){
@@ -2077,7 +3216,15 @@ async function init(){
     $("clearAllBtn").addEventListener("click", clearAllLaps);
     $("mapFsBtn").addEventListener("click", toggleMapFullscreen);
 
-    // Pulsanti fullscreen per i grafici
+    $("toggleDataAge").addEventListener("change", () => {
+        renderDataAge();
+        applyScrubToCharts();
+    });
+    $("toggleSatellites").addEventListener("change", () => {
+        renderDataAge();
+        applyScrubToCharts();
+    });
+
     document.querySelectorAll(".chart-fs-btn").forEach(btn => {
         btn.addEventListener("click", (e) => {
             e.stopPropagation();
@@ -2085,6 +3232,15 @@ async function init(){
             if (panel) toggleChartFullscreen(panel);
         });
     });
+
+    $("scrubber").addEventListener("input", requestScrubUpdate);
+    document.querySelectorAll(".mode-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+            switchScrubMode(btn.getAttribute("data-mode"));
+        });
+    });
+
+    setupScrubberFollow();
 
     try {
         await loadConfig();

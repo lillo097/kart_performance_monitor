@@ -4,6 +4,8 @@
 system_logs/
 sessions/
 current/
+.proxyai/
+graphify-out/
 
 # Python
 __pycache__/

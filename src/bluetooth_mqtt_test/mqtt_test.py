@@ -33,7 +33,7 @@ STATUS_TOPIC_PREFIX = os.getenv(
     "STATUS_TOPIC_PREFIX",
     "sensors2mqtt-glo2/esp32/status"
 )
-WEB_PORT = int(os.getenv("WEB_PORT", "5001"))
+WEB_PORT = int(os.getenv("WEB_PORT", "5901"))
 
 # Token Mapbox (puoi metterlo anche in env: MAPBOX_TOKEN)
 MAPBOX_TOKEN = os.getenv(
