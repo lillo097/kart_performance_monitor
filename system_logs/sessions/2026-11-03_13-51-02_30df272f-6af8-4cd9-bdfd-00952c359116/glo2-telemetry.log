@@ -33,3 +33,8 @@
 2026-11-03 13:51:02.783 [INFO ] [main    ] [SESSION] received session_started, guid=30df272f-6af8-4cd9-bdfd-00952c359116
 2026-11-03 13:51:02.783 [INFO ] [main    ] [SESSION] directory=/home/lillo97/kart_performance_monitor/system_logs/sessions/2026-11-03_13-51-02_30df272f-6af8-4cd9-bdfd-00952c359116
 2026-11-03 13:51:02.784 [INFO ] [main    ] [SESSION] files=glo2-telemetry.log, boot.json, raw.jsonl, events.jsonl
+2026-11-03 13:54:37.946 [WARNING] [main    ] [wifi] connection lost
+2026-11-03 14:02:30.863 [INFO ] [main    ] [SESSION] received session_stopped, guid=30df272f-6af8-4cd9-bdfd-00952c359116
+2026-11-03 14:02:31.093 [INFO ] [session ] [SESSION] stopped and saved: 2026-11-03_13-51-02_30df272f-6af8-4cd9-bdfd-00952c359116 reason=mqtt_stop_command
+2026-11-03 14:02:31.102 [INFO ] [session ] [SESSION] ready for next session (buffering mode)
+2026-11-03 14:02:31.104 [INFO ] [main    ] [SESSION] session stopped, logging reverted to stdout
