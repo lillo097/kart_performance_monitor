@@ -1,0 +1,13 @@
+{"ts_epoch": 1793706392.833, "ts_iso": "2026-11-03T12:46:32.832+01:00", "event": "service_start", "pid": 662, "app_version": "2.1.1", "hostname": "raspberrypi"}
+{"ts_epoch": 1793706392.837, "ts_iso": "2026-11-03T12:46:32.836+01:00", "event": "hardware_check", "ntc": false, "as5600": false, "ir_rpm": false, "gps": false}
+{"ts_epoch": 1793706395.706, "ts_iso": "2026-11-03T12:46:35.705+01:00", "event": "wifi_connect", "ssid": "Galaxy A33 5G 2FBF", "ip": "10.253.73.88", "mac": "2c:cf:67:7d:14:65"}
+{"ts_epoch": 1793706396.459, "ts_iso": "2026-11-03T12:46:36.459+01:00", "event": "sensor_lost", "sensor": "ntc"}
+{"ts_epoch": 1793706396.52, "ts_iso": "2026-11-03T12:46:36.519+01:00", "event": "sensor_lost", "sensor": "as5600"}
+{"ts_epoch": 1793706396.533, "ts_iso": "2026-11-03T12:46:36.532+01:00", "event": "mqtt_connect", "broker": "broker.hivemq.com", "port": 1883, "client_id": "RPi-KART-2ccf677d1465", "session_present": false}
+{"ts_epoch": 1793706397.026, "ts_iso": "2026-11-03T12:46:37.026+01:00", "event": "wifi_connect", "ssid": "Galaxy A33 5G 2FBF", "ip": "10.253.73.88", "mac": "2c:cf:67:7d:14:65", "rssi": -24, "reconnect_time_s": 0, "reconnect_attempts": 0, "samples_during_disconnect": 3, "mqtt_connected": true, "gps_connected": false}
+{"ts_epoch": 1793706402.377, "ts_iso": "2026-11-03T12:46:42.377+01:00", "event": "bt_connect", "mac": "14:13:0B:C0:B2:1E", "rfcomm_channel": 1, "attempt": 1}
+{"ts_epoch": 1793706402.467, "ts_iso": "2026-11-03T12:46:42.467+01:00", "event": "first_nmea", "sentence": "$GPRMC,124908.4,A,4154.779113,N,01233.248695,E,000.18,245.0,031126,002.5,E,A*34"}
+{"ts_epoch": 1793710155.105, "ts_iso": "2026-11-03T13:49:15.104+01:00", "event": "sensor_appeared", "sensor": "as5600", "address": "0x36"}
+{"ts_epoch": 1793710155.11, "ts_iso": "2026-11-03T13:49:15.109+01:00", "event": "sensor_lost", "sensor": "as5600"}
+{"ts_epoch": 1793710167.421, "ts_iso": "2026-11-03T13:49:27.421+01:00", "event": "wifi_disconnect", "ssid": "Galaxy A33 5G 2FBF", "last_rssi": -24, "connection_duration_s": 3770.3, "mqtt_connected": true, "gps_connected": true}
+{"ts_epoch": 1793710262.752, "ts_iso": "2026-11-03T13:51:02.751+01:00", "event": "session_associated", "session_guid": "30df272f-6af8-4cd9-bdfd-00952c359116"}

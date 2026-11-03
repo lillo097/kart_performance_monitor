@@ -1,28 +1,28 @@
 {
   "schema_version": 13,
   "client_side": true,
-  "session_guid": "b996610f-c20e-4110-b6bf-a4dd2b35e5b0",
-  "saved_at": "2026-10-04T00:32:11.398+02:00",
-  "status": "stopped",
+  "session_guid": "30df272f-6af8-4cd9-bdfd-00952c359116",
+  "saved_at": "2026-11-03T13:53:32.912+01:00",
+  "status": "running",
   "driver": {},
   "track": {},
   "track_config": {},
   "track_id": null,
   "mqtt_topic": "sensors2mqtt-glo2/esp32/location",
-  "started_at": "2026-10-04T00:08:00.240+02:00",
+  "started_at": "2026-11-03T13:51:02.669+01:00",
   "paused_at": null,
   "paused_total_s": 0.0,
-  "ended_at": "2026-10-04T00:32:11.397+02:00",
+  "ended_at": null,
   "data_age_at_start_s": null,
   "data_age_samples": {
     "at_epoch": [],
     "data_age_s": []
   },
-  "session_elapsed_s": 1451.158,
+  "session_elapsed_s": 150.243,
   "summary": {
-    "raw_samples_received": 7397,
+    "raw_samples_received": 1345,
     "track_points_saved": 0,
-    "valid_gps_samples": 7338,
+    "valid_gps_samples": 1315,
     "filtered_out_samples": 0,
     "laps_completed": 0,
     "laps_aborted": 0,
@@ -58,9 +58,9 @@
     "mqtt_client_id": "RPi-KART-2ccf677d1465",
     "wifi": {
       "ssid": "Galaxy A33 5G 2FBF",
-      "ip": "10.141.254.88",
+      "ip": "10.253.73.88",
       "mac": "2c:cf:67:7d:14:65",
-      "rssi": -9
+      "rssi": -24
     },
     "gps": {
       "mac": "14:13:0B:C0:B2:1E",
@@ -78,10 +78,10 @@
       "gps": true
     },
     "counters": {
-      "samples_published": 7397,
-      "valid_gps_samples": 7338,
+      "samples_published": 1345,
+      "valid_gps_samples": 1315,
       "mqtt_reconnects": 0,
-      "bt_reconnects": 1,
+      "bt_reconnects": 0,
       "nmea_timeouts": 0,
       "raw_rotations": 0
     }
