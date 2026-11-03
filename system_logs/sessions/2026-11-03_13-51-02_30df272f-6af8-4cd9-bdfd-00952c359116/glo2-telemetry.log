@@ -103,3 +103,14 @@
 2026-11-03 15:20:38.705 [WARNING] [main    ] [gps] connect failed: timed out; retry in 3.0s (attempt 705, next log in 300s if still failing)
 2026-11-03 15:22:28.181 [WARNING] [main    ] [mqtt] disconnected rc=141 (keepalive_timeout); paho will retry [total=37]
 2026-11-03 15:22:34.908 [INFO ] [main    ] [mqtt] connected (session_present=True)
+2026-11-03 15:25:38.854 [WARNING] [main    ] [gps] connect failed: timed out; retry in 3.0s (attempt 755, next log in 300s if still failing)
+2026-11-03 15:30:29.865 [WARNING] [main    ] [mqtt] disconnected rc=141 (keepalive_timeout); paho will retry [total=39]
+2026-11-03 15:30:39.008 [WARNING] [main    ] [gps] connect failed: timed out; retry in 3.0s (attempt 805, next log in 300s if still failing)
+2026-11-03 15:30:41.935 [INFO ] [main    ] [mqtt] connected (session_present=True)
+2026-11-03 15:34:28.875 [WARNING] [main    ] [mqtt] disconnected rc=128 (unknown); paho will retry [total=41]
+2026-11-03 15:34:34.001 [INFO ] [main    ] [mqtt] connected (session_present=True)
+2026-11-03 15:35:39.160 [WARNING] [main    ] [gps] connect failed: timed out; retry in 3.0s (attempt 855, next log in 300s if still failing)
+2026-11-03 15:36:30.377 [WARNING] [main    ] [mqtt] disconnected rc=141 (keepalive_timeout); paho will retry [total=42]
+2026-11-03 15:36:41.330 [INFO ] [main    ] [mqtt] connected (session_present=True)
+2026-11-03 15:38:11.370 [WARNING] [main    ] [mqtt] disconnected rc=128 (unknown); paho will retry [total=44]
+2026-11-03 15:38:25.560 [INFO ] [main    ] [mqtt] connected (session_present=True)
