@@ -2,8 +2,8 @@
   "schema_version": 13,
   "client_side": true,
   "session_guid": "3e38a3cb-9bb9-435c-858f-11352ccdf820",
-  "saved_at": "2026-11-03T18:13:09.106+01:00",
-  "status": "running",
+  "saved_at": "2026-11-03T18:19:14.783+01:00",
+  "status": "stopped",
   "driver": {},
   "track": {},
   "track_config": {},
@@ -12,17 +12,17 @@
   "started_at": "2026-11-03T18:13:08.920+01:00",
   "paused_at": null,
   "paused_total_s": 0.0,
-  "ended_at": null,
+  "ended_at": "2026-11-03T18:19:14.781+01:00",
   "data_age_at_start_s": null,
   "data_age_samples": {
     "at_epoch": [],
     "data_age_s": []
   },
-  "session_elapsed_s": 0.187,
+  "session_elapsed_s": 365.864,
   "summary": {
-    "raw_samples_received": 1233,
+    "raw_samples_received": 3052,
     "track_points_saved": 0,
-    "valid_gps_samples": 293,
+    "valid_gps_samples": 1691,
     "filtered_out_samples": 0,
     "laps_completed": 0,
     "laps_aborted": 0,
@@ -78,8 +78,8 @@
       "gps": true
     },
     "counters": {
-      "samples_published": 1233,
-      "valid_gps_samples": 293,
+      "samples_published": 3052,
+      "valid_gps_samples": 1691,
       "mqtt_reconnects": 0,
       "bt_reconnects": 0,
       "nmea_timeouts": 0,
