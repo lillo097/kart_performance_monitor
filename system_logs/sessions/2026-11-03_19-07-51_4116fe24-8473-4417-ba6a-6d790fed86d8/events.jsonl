@@ -1,0 +1,13 @@
+{"ts_epoch": 1793726325.226, "ts_iso": "2026-11-03T18:18:45.226+01:00", "event": "service_start", "pid": 657, "app_version": "2.1.1", "hostname": "raspberrypi"}
+{"ts_epoch": 1793726325.23, "ts_iso": "2026-11-03T18:18:45.230+01:00", "event": "hardware_check", "ntc": false, "as5600": false, "ir_rpm": false, "gps": false}
+{"ts_epoch": 1793726325.711, "ts_iso": "2026-11-03T18:18:45.711+01:00", "event": "wifi_connect", "ssid": "Galaxy A33 5G 2FBF", "ip": "10.253.73.88", "mac": "2c:cf:67:7d:14:65"}
+{"ts_epoch": 1793726325.957, "ts_iso": "2026-11-03T18:18:45.956+01:00", "event": "sensor_lost", "sensor": "ntc"}
+{"ts_epoch": 1793726325.959, "ts_iso": "2026-11-03T18:18:45.958+01:00", "event": "sensor_lost", "sensor": "as5600"}
+{"ts_epoch": 1793726326.005, "ts_iso": "2026-11-03T18:18:46.004+01:00", "event": "mqtt_connect", "broker": "broker.hivemq.com", "port": 1883, "client_id": "RPi-KART-2ccf677d1465", "session_present": false}
+{"ts_epoch": 1793726326.308, "ts_iso": "2026-11-03T18:18:46.308+01:00", "event": "wifi_connect", "ssid": "Galaxy A33 5G 2FBF", "ip": "10.253.73.88", "mac": "2c:cf:67:7d:14:65", "rssi": -54, "reconnect_time_s": 0, "reconnect_attempts": 0, "samples_during_disconnect": 2, "mqtt_connected": true, "gps_connected": false}
+{"ts_epoch": 1793726331.962, "ts_iso": "2026-11-03T18:18:51.962+01:00", "event": "bt_connect_failed", "reason": "timed out", "backoff_s": 1.0, "attempt": 1}
+{"ts_epoch": 1793726333.021, "ts_iso": "2026-11-03T18:18:53.020+01:00", "event": "bt_connect", "mac": "14:13:0B:C0:B2:1E", "rfcomm_channel": 1, "attempt": 2}
+{"ts_epoch": 1793726333.132, "ts_iso": "2026-11-03T18:18:53.132+01:00", "event": "first_nmea", "sentence": "$GPRMC,180132.7,V,4156.524260,N,01232.938619,E,,,031126,002.5,E,N*1C"}
+{"ts_epoch": 1793728920.465, "ts_iso": "2026-11-03T19:02:00.465+01:00", "event": "wifi_disconnect", "ssid": "Galaxy A33 5G 2FBF", "last_rssi": -54, "connection_duration_s": 13.0, "mqtt_connected": true, "gps_connected": true}
+{"ts_epoch": 1793729231.363, "ts_iso": "2026-11-03T19:07:11.362+01:00", "event": "wifi_disconnect", "ssid": "Galaxy A33 5G 2FBF", "last_rssi": -54, "connection_duration_s": 13.0, "mqtt_connected": true, "gps_connected": true}
+{"ts_epoch": 1793729271.809, "ts_iso": "2026-11-03T19:07:51.808+01:00", "event": "session_associated", "session_guid": "4116fe24-8473-4417-ba6a-6d790fed86d8"}
